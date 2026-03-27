@@ -19,6 +19,8 @@ const SmartChargingPage = lazy(() => import('@/pages/energy/SmartChargingPage').
 const LoadPolicyPage    = lazy(() => import('@/pages/energy/LoadPolicyPage').then(m => ({ default: m.LoadPolicyPage })))
 const OCPIPartnersPage  = lazy(() => import('@/pages/roaming/OCPIPartnersPage').then(m => ({ default: m.OCPIPartnersPage })))
 const OCPICDRsPage      = lazy(() => import('@/pages/roaming/OCPICDRsPage').then(m => ({ default: m.OCPICDRsPage })))
+const RoamingSessionsPage = lazy(() => import('@/pages/roaming/RoamingSessionsPage').then(m => ({ default: m.RoamingSessionsPage })))
+const OCPICommandsPage = lazy(() => import('@/pages/roaming/OCPICommandsPage').then(m => ({ default: m.OCPICommandsPage })))
 const BillingPage       = lazy(() => import('@/pages/finance/BillingPage').then(m => ({ default: m.BillingPage })))
 const PayoutsPage       = lazy(() => import('@/pages/finance/PayoutsPage').then(m => ({ default: m.PayoutsPage })))
 const SettlementPage    = lazy(() => import('@/pages/finance/SettlementPage').then(m => ({ default: m.SettlementPage })))
@@ -66,6 +68,8 @@ export function AppRoutes() {
 
         {/* Roaming */}
         <Route path={PATHS.OCPI_PARTNERS}  element={<RequireAuth><OCPIPartnersPage /></RequireAuth>} />
+        <Route path="/roaming/sessions"    element={<RequireAuth><RoamingSessionsPage /></RequireAuth>} />
+        <Route path="/roaming/commands"    element={<RequireAuth><OCPICommandsPage /></RequireAuth>} />
         <Route path={PATHS.OCPI_CDRS}      element={<RequireAuth><OCPICDRsPage /></RequireAuth>} />
 
         {/* Finance */}
