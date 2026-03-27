@@ -8,6 +8,7 @@ const LoginPage         = lazy(() => import('@/pages/auth/LoginPage').then(m => 
 const DashboardPage     = lazy(() => import('@/pages/dashboard/DashboardPage').then(m => ({ default: m.DashboardPage })))
 const StationsPage      = lazy(() => import('@/pages/stations/StationsPage').then(m => ({ default: m.StationsPage })))
 const StationDetailPage = lazy(() => import('@/pages/stations/StationDetailPage').then(m => ({ default: m.StationDetailPage })))
+const CreateStationPage = lazy(() => import('@/pages/stations/CreateStationPage').then(m => ({ default: m.CreateStationPage })))
 const ChargePointsPage  = lazy(() => import('@/pages/charge-points/ChargePointsPage').then(m => ({ default: m.ChargePointsPage })))
 const ChargePointDetailPage = lazy(() => import('@/pages/charge-points/ChargePointDetailPage').then(m => ({ default: m.ChargePointDetailPage })))
 const SessionsPage      = lazy(() => import('@/pages/sessions/SessionsPage').then(m => ({ default: m.SessionsPage })))
@@ -48,8 +49,9 @@ export function AppRoutes() {
 
         {/* Protected — Infrastructure */}
         <Route path={PATHS.DASHBOARD}     element={<RequireAuth><DashboardPage /></RequireAuth>} />
-        <Route path={PATHS.STATIONS}      element={<RequireAuth><StationsPage /></RequireAuth>} />
-        <Route path="/stations/:id"       element={<RequireAuth><StationDetailPage /></RequireAuth>} />
+        <Route path={PATHS.STATIONS} element={<RequireAuth><StationsPage /></RequireAuth>} />
+        <Route path="/stations/new" element={<RequireAuth><CreateStationPage /></RequireAuth>} />
+        <Route path="/stations/:id" element={<RequireAuth><StationDetailPage /></RequireAuth>} />
         <Route path={PATHS.CHARGE_POINTS} element={<RequireAuth><ChargePointsPage /></RequireAuth>} />
         <Route path="/charge-points/:id"  element={<RequireAuth><ChargePointDetailPage /></RequireAuth>} />
 

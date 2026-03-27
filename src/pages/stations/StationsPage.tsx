@@ -1,87 +1,140 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
+import { Search, Filter, Map as MapIcon, List, MapPin, Zap, Plus } from 'lucide-react'
+import { useStations, type Station } from '@/core/hooks/useStations'
 import { PATHS } from '@/router/paths'
-import { Search, Plus, MapPin, Zap } from 'lucide-react'
-import type { Station, StationStatus } from '@/core/types/domain'
-
-const MOCK_STATIONS: Station[] = [
-  { id: 'st-1', name: 'Westlands Hub', address: 'Westlands Ave', city: 'Nairobi', country: 'Kenya', latitude: -1.268, longitude: 36.806, status: 'Online', capacity: 150, createdAt: '2024-01-15', chargePoints: [] },
-  { id: 'st-2', name: 'CBD Charging Station', address: 'Kenyatta Ave', city: 'Nairobi', country: 'Kenya', latitude: -1.283, longitude: 36.820, status: 'Degraded', capacity: 100, createdAt: '2024-02-10', chargePoints: [] },
-  { id: 'st-3', name: 'Airport East', address: 'Airport North Rd', city: 'Nairobi', country: 'Kenya', latitude: -1.319, longitude: 36.927, status: 'Online', capacity: 250, createdAt: '2024-03-01', chargePoints: [] },
-  { id: 'st-4', name: 'Garden City Mall', address: 'Thika Rd', city: 'Nairobi', country: 'Kenya', latitude: -1.231, longitude: 36.867, status: 'Maintenance', capacity: 80, createdAt: '2024-01-20', chargePoints: [] },
-  { id: 'st-5', name: 'Strathmore University', address: 'Ole Sangale Rd', city: 'Nairobi', country: 'Kenya', latitude: -1.310, longitude: 36.814, status: 'Online', capacity: 60, createdAt: '2024-04-05', chargePoints: [] },
-  { id: 'st-6', name: 'Two Rivers Mall', address: 'Limuru Rd', city: 'Nairobi', country: 'Kenya', latitude: -1.200, longitude: 36.787, status: 'Offline', capacity: 120, createdAt: '2024-05-12', chargePoints: [] },
-]
-
-const STATUS_FILTER: (StationStatus | 'All')[] = ['All', 'Online', 'Degraded', 'Maintenance', 'Offline']
+import { MapComponent } from '@/components/common/MapComponent'
 
 export function StationsPage() {
+  const [view, setView] = useState<'list' | 'map'>('list')
   const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState<StationStatus | 'All'>('All')
+  const [statusFilter, setStatusFilter] = useState<string>('All')
+  
+  const { data: stations, isLoading, error } = useStations()
 
-  const filtered = MOCK_STATIONS.filter(s =>
-    (filter === 'All' || s.status === filter) &&
+  const filtered = (stations || []).filter(s => 
+    (statusFilter === 'All' || s.status === statusFilter) &&
     (s.name.toLowerCase().includes(search.toLowerCase()) || s.city.toLowerCase().includes(search.toLowerCase()))
   )
 
+  if (isLoading) return <DashboardLayout pageTitle="Stations"><div className="p-8 text-center text-subtle">Loading fleet data...</div></DashboardLayout>
+  if (error) return <DashboardLayout pageTitle="Stations"><div className="p-8 text-center text-danger">Error loading stations.</div></DashboardLayout>
+
   return (
-    <DashboardLayout
-      pageTitle="Stations"
-      actions={
-        <Link to="/stations/new" className="btn primary sm">
-          <Plus size={14} /> Add Station
-        </Link>
-      }
-    >
+    <DashboardLayout pageTitle="Stations">
       {/* Aggregates */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        {(['Online', 'Degraded', 'Maintenance', 'Offline'] as StationStatus[]).map(s => (
-          <div key={s} className="kpi-card">
-            <div className="label">{s}</div>
-            <div className="value">{MOCK_STATIONS.filter(x => x.status === s).length}</div>
+        <div className="kpi-card"><div className="label">Total Stations</div><div className="value">{stations?.length}</div></div>
+        <div className="kpi-card"><div className="label">Online</div><div className="value">{stations?.filter(s => s.status === 'Online').length}</div></div>
+        <div className="kpi-card"><div className="label">Faulted</div><div className="value">{stations?.filter(s => s.status === 'Faulted').length}</div></div>
+        <div className="kpi-card"><div className="label">Grid Capacity</div><div className="value">1.2 MW</div></div>
+      </div>
+
+      {/* Toolbar */}
+      <div className="flex flex-col md:flex-row gap-4 mb-6 items-center justify-between">
+        <div className="flex gap-2 w-full md:w-auto">
+          <div className="relative flex-1 md:w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-subtle" size={16} />
+            <input 
+              type="text" 
+              placeholder="Search by name or city..." 
+              className="input pl-10 h-10"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
           </div>
-        ))}
+          <div className="relative">
+            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-subtle" size={16} />
+            <select 
+              className="input pl-10 h-10 appearance-none pr-8"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="All">All Statuses</option>
+              <option value="Online">Online</option>
+              <option value="Degraded">Degraded</option>
+              <option value="Offline">Offline</option>
+              <option value="Faulted">Faulted</option>
+            </select>
+          </div>
+          <Link to="/stations/new" className="px-4 bg-accent text-white rounded-lg flex items-center gap-2 text-sm font-bold shadow-lg shadow-accent/20 hover:brightness-110 h-10 transition-all">
+            <Plus size={16} /> <span className="hidden sm:inline">Add Station</span>
+          </Link>
+        </div>
+
+        <div className="flex bg-bg-muted rounded-lg p-1 border border-border">
+          <button 
+            onClick={() => setView('list')}
+            className={`px-3 py-1.5 rounded-md flex items-center gap-2 text-sm transition-all ${view === 'list' ? 'bg-accent text-white shadow-lg' : 'text-subtle hover:text-text'}`}
+          >
+            <List size={14} /> List
+          </button>
+          <button 
+            onClick={() => setView('map')}
+            className={`px-3 py-1.5 rounded-md flex items-center gap-2 text-sm transition-all ${view === 'map' ? 'bg-accent text-white shadow-lg' : 'text-subtle hover:text-text'}`}
+          >
+            <MapIcon size={14} /> Map
+          </button>
+        </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-3 mb-5 flex-wrap">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-subtle)' }} />
-          <input type="text" placeholder="Search stations..." className="input pl-9" value={search} onChange={e => setSearch(e.target.value)} />
-        </div>
-        <div className="flex gap-2">
-          {STATUS_FILTER.map(f => (
-            <button key={f} onClick={() => setFilter(f)} className={`btn sm ${filter === f ? 'primary' : 'secondary'}`}>{f}</button>
-          ))}
-        </div>
-      </div>
-
-      {/* Station Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {filtered.map(station => (
-          <Link key={station.id} to={PATHS.STATION_DETAIL(station.id)} className="card hover:border-[var(--accent)] transition-colors block">
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <div className="font-bold text-sm" style={{ color: 'var(--text)' }}>{station.name}</div>
-                <div className="flex items-center gap-1 text-xs mt-0.5" style={{ color: 'var(--text-subtle)' }}>
-                  <MapPin size={10} />{station.city}, {station.country}
+      {view === 'list' ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filtered.map((station: Station) => (
+            <Link key={station.id} to={PATHS.STATION_DETAIL(station.id)} className="card hover:border-accent transition-all group">
+              <div className="flex justify-between items-start mb-3">
+                <div>
+                  <h3 className="font-bold text-base group-hover:text-accent transition-colors">{station.name}</h3>
+                  <div className="flex items-center gap-1 text-xs text-subtle mt-1">
+                    <MapPin size={12} /> {station.city}, {station.country}
+                  </div>
+                </div>
+                <span className={`pill ${station.status.toLowerCase()}`}>{station.status}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-border/50">
+                <div className="flex items-center gap-2">
+                  <Zap size={14} className="text-accent" />
+                  <div>
+                    <div className="text-[10px] text-subtle uppercase leading-none">Power</div>
+                    <div className="text-sm font-semibold">{station.capacity} kW</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-ok shadow-[0_0_8px_var(--ok)]" />
+                  <div>
+                    <div className="text-[10px] text-subtle uppercase leading-none">Connectors</div>
+                    <div className="text-sm font-semibold">{station.chargePoints?.length || 0} Units</div>
+                  </div>
                 </div>
               </div>
-              <span className={`pill ${station.status.toLowerCase()}`}>{station.status}</span>
+            </Link>
+          ))}
+          {filtered.length === 0 && (
+            <div className="col-span-full py-20 text-center border-2 border-dashed border-border rounded-xl">
+              <div className="text-subtle mb-2">No stations found matching your criteria.</div>
+              <button onClick={() => { setSearch(''); setStatusFilter('All'); }} className="text-accent text-sm hover:underline">Clear all filters</button>
             </div>
-            <div className="flex items-center gap-4 text-xs" style={{ color: 'var(--text-muted)' }}>
-              <span className="flex items-center gap-1"><Zap size={12} /> {station.capacity} kW capacity</span>
-            </div>
-          </Link>
-        ))}
-
-        {filtered.length === 0 && (
-          <div className="col-span-full text-center py-16" style={{ color: 'var(--text-muted)' }}>
-            No stations match your filter.
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      ) : (
+        <div className="card h-[600px] p-0 overflow-hidden relative border-accent/20 shadow-2xl">
+          <MapComponent 
+            center={{ lat: -1.2863, lng: 36.8172 }} // Nairobi center
+            markers={filtered.map(s => ({
+              id: s.id,
+              lat: s.lat,
+              lng: s.lng,
+              title: s.name,
+              status: s.status
+            }))}
+            onMarkerClick={(id: string) => {
+              // Custom logic for marker click (e.g. open detail or tooltip)
+              console.log('Clicked station:', id)
+            }}
+          />
+        </div>
+      )}
     </DashboardLayout>
   )
 }

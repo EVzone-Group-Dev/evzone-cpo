@@ -1,48 +1,148 @@
 import { useParams } from 'react-router-dom'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
-import { MapPin, Cpu, Activity } from 'lucide-react'
-
-const MOCK = {
-  'st-1': { name: 'Westlands Hub', address: 'Westlands Ave', city: 'Nairobi', country: 'Kenya', status: 'Online', capacity: 150, chargePoints: 8, activeSessions: 5, energyToday: 342 },
-  'st-2': { name: 'CBD Charging Station', address: 'Kenyatta Ave', city: 'Nairobi', country: 'Kenya', status: 'Degraded', capacity: 100, chargePoints: 6, activeSessions: 2, energyToday: 188 },
-}
+import { MapPin, Cpu, Activity, Zap, Shield, Clock } from 'lucide-react'
+import { useStation } from '@/core/hooks/useStations'
+import { MapComponent } from '@/components/common/MapComponent'
 
 export function StationDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const station = MOCK[id as keyof typeof MOCK]
+  const { data: station, isLoading, error } = useStation(id)
 
-  if (!station) return (
+  if (isLoading) return <DashboardLayout pageTitle="Loading..."><div className="p-12 text-center text-subtle font-mono animate-pulse">Retrieving station telemetry...</div></DashboardLayout>
+  
+  if (error || !station) return (
     <DashboardLayout pageTitle="Station Not Found">
-      <div className="card text-center py-12" style={{ color: 'var(--text-muted)' }}>Station not found.</div>
+      <div className="card text-center py-12 border-danger/30" style={{ color: 'var(--danger)' }}>
+        <div className="text-lg font-bold">Error 404</div>
+        <div className="text-sm opacity-70">Station not found or telemetry stream interrupted.</div>
+      </div>
     </DashboardLayout>
   )
 
   return (
     <DashboardLayout pageTitle={station.name}>
-      <div className="flex items-center gap-2 mb-6 text-sm" style={{ color: 'var(--text-muted)' }}>
-        <MapPin size={14} /> {station.address}, {station.city}, {station.country}
-        <span className={`pill ml-2 ${station.status.toLowerCase()}`}>{station.status}</span>
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div className="kpi-card"><div className="label">Capacity</div><div className="value">{station.capacity} kW</div></div>
-        <div className="kpi-card"><div className="label">Charge Points</div><div className="value">{station.chargePoints}</div></div>
-        <div className="kpi-card"><div className="label">Active Sessions</div><div className="value">{station.activeSessions}</div></div>
-        <div className="kpi-card"><div className="label">Energy Today</div><div className="value">{station.energyToday} kWh</div></div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="card">
-          <div className="section-title"><Cpu size={16} style={{ color: 'var(--accent)' }} />Charge Points</div>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-            Navigate to <strong>Charge Points</strong> to manage individual connectors for this station.
-          </p>
+      {/* Header Info */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div className="flex items-center gap-3 text-sm" style={{ color: 'var(--text-muted)' }}>
+          <div className="flex items-center gap-1"><MapPin size={14} className="text-accent" /> {station.address}, {station.city}</div>
+          <span className={`pill ${station.status.toLowerCase()}`}>{station.status}</span>
         </div>
-        <div className="card">
-          <div className="section-title"><Activity size={16} style={{ color: 'var(--accent)' }} />Recent Sessions</div>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-            Recent sessions for this station are visible in the <strong>Sessions</strong> module.
-          </p>
+        <div className="flex gap-2">
+          <button className="px-4 py-2 bg-bg-muted border border-border rounded-lg text-xs font-semibold hover:border-accent transition-all">Configure Assets</button>
+          <button className="px-4 py-2 bg-accent text-white rounded-lg text-xs font-semibold shadow-lg shadow-accent/20 hover:brightness-110 transition-all">Service Mode</button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column: Stats & Map */}
+        <div className="lg:col-span-2 space-y-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="kpi-card group hover:border-accent transition-all cursor-default">
+              <div className="label">Nominal Power</div>
+              <div className="value flex items-center gap-2">{station.capacity} kW <Zap size={14} className="text-ok" /></div>
+            </div>
+            <div className="kpi-card">
+              <div className="label">Charge Points</div>
+              <div className="value">{station.chargePoints.length}</div>
+            </div>
+            <div className="kpi-card">
+              <div className="label">Uptime (30d)</div>
+              <div className="value">99.2%</div>
+            </div>
+            <div className="kpi-card">
+              <div className="label">Daily Avg</div>
+              <div className="value text-accent">142 kWh</div>
+            </div>
+          </div>
+
+          <div className="card p-0 h-[400px] overflow-hidden relative border-accent/10 shadow-xl group">
+             <MapComponent 
+              center={{ lat: station.lat, lng: station.lng }}
+              zoom={15}
+              markers={[{
+                id: station.id,
+                lat: station.lat,
+                lng: station.lng,
+                title: station.name,
+                status: station.status
+              }]}
+             />
+             <div className="absolute top-4 right-4 bg-bg/80 backdrop-blur-md border border-border p-2 rounded-lg text-[10px] uppercase tracking-tighter text-subtle pointer-events-none">
+                Live Geofence Active
+             </div>
+          </div>
+
+          <div className="card">
+            <div className="section-title"><Cpu size={16} className="text-accent" />Charge Points & Connectors</div>
+            <div className="table-wrap mt-4">
+              <table className="table">
+                <thead>
+                  <tr><th>ID</th><th>Type</th><th>Status</th><th>Last Heartbeat</th><th>Action</th></tr>
+                </thead>
+                <tbody>
+                  {station.chargePoints.map((cp: any) => (
+                    <tr key={cp.id}>
+                      <td className="font-mono text-xs">{cp.id}</td>
+                      <td className="text-xs">{cp.type}</td>
+                      <td><span className={`pill ${cp.status.toLowerCase()}`}>{cp.status}</span></td>
+                      <td className="text-[10px] text-subtle">2 minutes ago</td>
+                      <td><button className="text-accent text-[10px] font-bold uppercase hover:underline">Manage</button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Health & Security */}
+        <div className="space-y-6">
+           <div className="card border-l-4 border-l-ok">
+            <div className="section-title"><Shield size={16} className="text-ok" />System Integrity</div>
+            <div className="mt-4 space-y-3">
+              <div className="flex justify-between items-center text-xs">
+                 <span className="text-subtle">Firmware Version</span>
+                 <span className="font-mono bg-bg-muted px-2 py-0.5 rounded">v2.4.1-stable</span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                 <span className="text-subtle">OCPP Version</span>
+                 <span className="font-mono px-2 py-0.5 rounded border border-border">1.6J</span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                 <span className="text-subtle">SLA Compliance</span>
+                 <span className="text-ok font-bold">100%</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="section-title"><Activity size={16} className="text-accent" />Network Latency</div>
+            <div className="mt-4 h-24 flex items-end gap-1 px-2">
+               {[40, 60, 45, 80, 50, 30, 45, 40, 50, 35, 40, 30].map((h, i) => (
+                 <div key={i} className="flex-1 bg-accent/20 rounded-t-sm hover:bg-accent transition-all cursor-help" style={{ height: `${h}%` }} />
+               ))}
+            </div>
+            <div className="flex justify-between mt-2 text-[10px] text-subtle uppercase">
+               <span>1.2s avg</span>
+               <span>Real-time</span>
+            </div>
+          </div>
+
+          <div className="card border-l-4 border-l-accent/50">
+             <div className="section-title"><Clock size={16} className="text-accent" />Recent Events</div>
+             <div className="mt-4 space-y-4">
+                {[
+                  { desc: 'Heartbeat received', time: '2m ago' },
+                  { desc: 'Status notification (Available)', time: '14m ago' },
+                  { desc: 'Remote reset triggered by admin', time: '1h ago' },
+                ].map((ev, i) => (
+                  <div key={i} className="flex justify-between items-start gap-4">
+                    <div className="text-[11px] leading-tight">{ev.desc}</div>
+                    <div className="text-[9px] text-subtle whitespace-nowrap">{ev.time}</div>
+                  </div>
+                ))}
+             </div>
+          </div>
         </div>
       </div>
     </DashboardLayout>
