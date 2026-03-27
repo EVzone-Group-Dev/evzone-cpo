@@ -6,6 +6,7 @@ import { PATHS } from './paths'
 // Lazy-loaded pages
 const LoginPage         = lazy(() => import('@/pages/auth/LoginPage').then(m => ({ default: m.LoginPage })))
 const DashboardPage     = lazy(() => import('@/pages/dashboard/DashboardPage').then(m => ({ default: m.DashboardPage })))
+const SiteOwnerDashboard = lazy(() => import('@/pages/dashboard/SiteOwnerDashboard').then(m => ({ default: m.SiteOwnerDashboard })))
 const StationsPage      = lazy(() => import('@/pages/stations/StationsPage').then(m => ({ default: m.StationsPage })))
 const StationDetailPage = lazy(() => import('@/pages/stations/StationDetailPage').then(m => ({ default: m.StationDetailPage })))
 const CreateStationPage = lazy(() => import('@/pages/stations/CreateStationPage').then(m => ({ default: m.CreateStationPage })))
@@ -31,6 +32,7 @@ const WebhooksPage      = lazy(() => import('@/pages/webhooks/WebhooksPage').the
 const IntegrationsPage  = lazy(() => import('@/pages/integrations/IntegrationsPage').then(m => ({ default: m.IntegrationsPage })))
 const ProtocolsPage     = lazy(() => import('@/pages/protocols/ProtocolsPage').then(m => ({ default: m.ProtocolsPage })))
 const SettingsPage      = lazy(() => import('@/pages/settings/SettingsPage').then(m => ({ default: m.SettingsPage })))
+const WhiteLabelPage    = lazy(() => import('@/pages/settings/WhiteLabelPage').then(m => ({ default: m.WhiteLabelPage })))
 const NotificationsPage = lazy(() => import('@/pages/notifications/NotificationsPage').then(m => ({ default: m.NotificationsPage })))
 
 function PageLoader() {
@@ -51,6 +53,7 @@ export function AppRoutes() {
 
         {/* Protected — Infrastructure */}
         <Route path={PATHS.DASHBOARD}     element={<RequireAuth><DashboardPage /></RequireAuth>} />
+        <Route path="/site-dashboard"     element={<RequireAuth><SiteOwnerDashboard /></RequireAuth>} />
         <Route path={PATHS.STATIONS} element={<RequireAuth><StationsPage /></RequireAuth>} />
         <Route path="/stations/new" element={<RequireAuth><CreateStationPage /></RequireAuth>} />
         <Route path="/stations/:id" element={<RequireAuth><StationDetailPage /></RequireAuth>} />
@@ -90,6 +93,7 @@ export function AppRoutes() {
 
         {/* Settings */}
         <Route path={PATHS.SETTINGS}      element={<RequireAuth><SettingsPage /></RequireAuth>} />
+        <Route path="/settings/white-label" element={<RequireAuth><WhiteLabelPage /></RequireAuth>} />
         <Route path={PATHS.NOTIFICATIONS} element={<RequireAuth><NotificationsPage /></RequireAuth>} />
 
         {/* Catch-all */}

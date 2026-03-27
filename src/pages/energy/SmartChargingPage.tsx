@@ -139,6 +139,15 @@ export function SmartChargingPage() {
                 The smart charging engine is predicting a peak load at <strong>19:30</strong> today. 
                 System will automatically apply a 15% reduction to lower priority connectors to avoid penalties.
              </p>
+             <div className="mt-4 space-y-2">
+                <div className="text-[9px] font-bold uppercase text-subtle opacity-60">Active V2G Strategy</div>
+                <select className="input h-8 text-[10px] bg-bg-card">
+                   <option>Grid-Interactive (Standard)</option>
+                   <option>Aggressive Peak Shaving</option>
+                   <option>Emergency Load Shedding</option>
+                   <option>Renewable Max (Solar Sync)</option>
+                </select>
+             </div>
              <button className="w-full mt-4 py-2 bg-accent/10 text-accent text-xs font-bold rounded-lg border border-accent/20 hover:bg-accent/20 transition-all">
                 Review Strategy
              </button>
