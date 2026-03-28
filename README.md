@@ -66,8 +66,22 @@ In development mode, MSW starts automatically from `src/main.tsx` and intercepts
 npm run dev
 npm run build
 npm run lint
+npm run test
+npm run test:watch
 npm run preview
 ```
+
+## Testing
+
+The project now includes a lightweight Vitest + Testing Library setup for engineering hygiene and regression protection.
+
+Current coverage includes:
+
+- `fetchJson` header injection and API error handling
+- `mapToOCPILocation` tenant/party-aware OCPI mapping
+- Billing screen rendering against mock billing workspace data
+
+As we add more enterprise workflows, we should keep extending tests around hooks, route-level pages, and protocol/finance mapping utilities.
 
 ## Mock API Coverage
 
@@ -111,6 +125,6 @@ The source of truth for these mock responses lives in `src/mocks/data.ts`.
 ## Near-Term Priorities
 
 - Replace remaining placeholder modules with richer mock-backed flows
-- Introduce test coverage for hooks and route-level screens
+- Expand test coverage for hooks and route-level screens
 - Tighten lint compliance across the codebase
 - Define the backend contract for OCPP, OCPI, billing, settlements, and tenant isolation
