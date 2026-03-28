@@ -6,7 +6,8 @@ import {
   getDashboardOverview,
   getDemoUserHints,
   getIncidentCommand,
-  getModuleNotice,
+  getIntegrationsModule,
+  getNotificationsModule,
   getOCPICommands,
   getOCPICdrs,
   getProtocolEngine,
@@ -16,6 +17,7 @@ import {
   getSiteOwnerDashboard,
   getSmartCharging,
   getStationById,
+  getWebhooksModule,
   listAlerts,
   listAuditLogs,
   listChargePoints,
@@ -237,10 +239,22 @@ export const handlers = [
     return HttpResponse.json(getProtocolEngine(access.tenantId))
   }),
 
-  http.get('/api/platform/:moduleKey', ({ params, request }) => {
+  http.get('/api/platform/integrations', ({ request }) => {
     const access = getTenantId(request)
     if (!access) return unauthorized()
-    return HttpResponse.json(getModuleNotice(String(params.moduleKey) as 'integrations' | 'webhooks' | 'notifications', access.tenantId))
+    return HttpResponse.json(getIntegrationsModule(access.tenantId))
+  }),
+
+  http.get('/api/platform/webhooks', ({ request }) => {
+    const access = getTenantId(request)
+    if (!access) return unauthorized()
+    return HttpResponse.json(getWebhooksModule(access.tenantId))
+  }),
+
+  http.get('/api/platform/notifications', ({ request }) => {
+    const access = getTenantId(request)
+    if (!access) return unauthorized()
+    return HttpResponse.json(getNotificationsModule(access.tenantId))
   }),
 
   http.post('/api/commands/start', async ({ request }) => {

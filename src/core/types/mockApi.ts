@@ -374,6 +374,24 @@ export interface OCPICommandsResponse {
 }
 
 export interface BillingResponse {
+  aging: Array<{
+    label: string
+    value: string
+  }>
+  invoices: Array<{
+    amount: string
+    customer: string
+    dueDate: string
+    id: string
+    scope: string
+    status: 'Draft' | 'Issued' | 'Paid' | 'Overdue'
+  }>
+  metrics: Array<{
+    id: 'revenue' | 'collection-rate' | 'outstanding' | 'tax'
+    label: string
+    tone: 'default' | 'ok' | 'warning'
+    value: string
+  }>
   note: string
   totalRevenueThisMonth: string
 }
@@ -397,6 +415,19 @@ export interface SettlementRecord {
 }
 
 export interface SettlementResponse {
+  exceptions: Array<{
+    action: string
+    id: string
+    impact: string
+    partner: string
+    reason: string
+  }>
+  metrics: Array<{
+    id: 'ready' | 'reconciling' | 'settled' | 'exceptions'
+    label: string
+    tone: 'default' | 'ok' | 'warning' | 'danger'
+    value: string
+  }>
   note: string
   records: SettlementRecord[]
 }
@@ -465,6 +496,73 @@ export interface ProtocolEngineResponse {
   supportedVersions: string[]
 }
 
-export interface ModuleNotice {
-  message: string
+export interface IntegrationModuleResponse {
+  connections: Array<{
+    authMode: string
+    category: 'Payments' | 'Roaming' | 'ERP' | 'CRM'
+    id: string
+    lastSync: string
+    latency: string
+    name: string
+    status: 'Connected' | 'Degraded' | 'Pending'
+  }>
+  metrics: Array<{
+    id: 'connected' | 'degraded' | 'pending' | 'coverage'
+    label: string
+    tone: 'default' | 'ok' | 'warning'
+    value: string
+  }>
+  note: string
+}
+
+export interface WebhooksModuleResponse {
+  endpoints: Array<{
+    eventGroup: string
+    id: string
+    lastDelivery: string
+    signingStatus: string
+    status: 'Healthy' | 'Retrying' | 'Muted'
+    successRate: string
+    target: string
+  }>
+  metrics: Array<{
+    id: 'healthy' | 'retrying' | 'muted' | 'deliveries'
+    label: string
+    tone: 'default' | 'ok' | 'warning'
+    value: string
+  }>
+  note: string
+  recentDeliveries: Array<{
+    endpoint: string
+    event: string
+    id: string
+    latency: string
+    result: 'Delivered' | 'Retried' | 'Failed'
+    time: string
+  }>
+}
+
+export interface NotificationsModuleResponse {
+  channels: Array<{
+    coverage: string
+    id: string
+    name: string
+    status: 'Active' | 'Fallback' | 'Paused'
+    volume: string
+  }>
+  metrics: Array<{
+    id: 'active-routes' | 'delivery-rate' | 'escalations' | 'suppressed'
+    label: string
+    tone: 'default' | 'ok' | 'warning'
+    value: string
+  }>
+  note: string
+  recentDispatches: Array<{
+    channel: string
+    id: string
+    recipient: string
+    rule: string
+    status: 'Delivered' | 'Queued' | 'Escalated'
+    time: string
+  }>
 }

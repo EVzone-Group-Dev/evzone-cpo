@@ -8,9 +8,10 @@ import type {
   DashboardOverviewResponse,
   DemoUserHint,
   IncidentCommandResponse,
+  IntegrationModuleResponse,
   LoadPolicyRecord,
   LoginResponse,
-  ModuleNotice,
+  NotificationsModuleResponse,
   OCPICdrsResponse,
   OCPICommandsResponse,
   PayoutRecord,
@@ -27,10 +28,10 @@ import type {
   TeamMember,
   TenantContextResponse,
   TenantSummary,
+  WebhooksModuleResponse,
 } from '@/core/types/mockApi'
 
 type TenantId = 'tenant-global' | 'tenant-evzone-ke' | 'tenant-westlands-mall'
-type ModuleKey = 'integrations' | 'webhooks' | 'notifications'
 
 interface DemoUserRecord extends DemoUserHint {
   defaultTenantId: TenantId
@@ -668,16 +669,312 @@ const ocpiCommandsByTenant: Record<TenantId, OCPICommandsResponse> = {
   },
 }
 
+function makeBillingResponse(
+  totalRevenueThisMonth: string,
+  note: string,
+  collectionRate: string,
+  outstanding: string,
+  taxExposure: string,
+  invoices: BillingResponse['invoices'],
+  aging: BillingResponse['aging'],
+): BillingResponse {
+  return {
+    totalRevenueThisMonth,
+    note,
+    metrics: [
+      { id: 'revenue', label: 'Revenue', value: totalRevenueThisMonth, tone: 'default' },
+      { id: 'collection-rate', label: 'Collection Rate', value: collectionRate, tone: 'ok' },
+      { id: 'outstanding', label: 'Outstanding', value: outstanding, tone: 'warning' },
+      { id: 'tax', label: 'Tax Exposure', value: taxExposure, tone: 'warning' },
+    ],
+    invoices,
+    aging,
+  }
+}
+
 const billingByTenant: Record<TenantId, BillingResponse> = {
-  'tenant-global': { totalRevenueThisMonth: 'KES 4,284,200', note: 'Global billing rollup across every active tenant.' },
-  'tenant-evzone-ke': { totalRevenueThisMonth: 'KES 3,112,800', note: 'Kenya billing is scoped to EVzone Kenya stations and roaming.' },
-  'tenant-westlands-mall': { totalRevenueThisMonth: 'KES 428,400', note: 'Hosted-site billing reflects Westlands Mall only.' },
+  'tenant-global': makeBillingResponse(
+    'KES 4,284,200',
+    'Global billing rollup across every active tenant, with invoice queue and aging exposed through the mock finance API.',
+    '97.8%',
+    'KES 318,400',
+    'KES 482,000 due Apr 5',
+    [
+      { id: 'INV-24031', customer: 'Hubject Settlement Desk', scope: 'Platform roaming', amount: 'KES 684,220', dueDate: 'Apr 02, 2026', status: 'Issued' },
+      { id: 'INV-24032', customer: 'Shell Recharge', scope: 'Cross-border roaming', amount: 'KES 302,115', dueDate: 'Apr 04, 2026', status: 'Overdue' },
+      { id: 'INV-24033', customer: 'Westlands Mall Group', scope: 'Hosted site revenue share', amount: 'KES 148,220', dueDate: 'Apr 06, 2026', status: 'Draft' },
+      { id: 'INV-24030', customer: 'Kenya Fleet Program', scope: 'Managed charging', amount: 'KES 412,700', dueDate: 'Mar 26, 2026', status: 'Paid' },
+    ],
+    [
+      { label: 'Current', value: 'KES 1.9M' },
+      { label: '1-30 Days', value: 'KES 274K' },
+      { label: '31-60 Days', value: 'KES 44K' },
+      { label: '61+ Days', value: 'KES 8K' },
+    ],
+  ),
+  'tenant-evzone-ke': makeBillingResponse(
+    'KES 3,112,800',
+    'Kenya billing is scoped to EVzone Kenya stations, roaming partners, and operating-company tax obligations.',
+    '98.4%',
+    'KES 201,900',
+    'KES 331,000 due Apr 5',
+    [
+      { id: 'INV-KE-1201', customer: 'Hubject', scope: 'Roaming settlement', amount: 'KES 484,220', dueDate: 'Apr 02, 2026', status: 'Issued' },
+      { id: 'INV-KE-1202', customer: 'Kenya Fleet Program', scope: 'Managed charging', amount: 'KES 412,700', dueDate: 'Mar 26, 2026', status: 'Paid' },
+      { id: 'INV-KE-1203', customer: 'Shell Recharge', scope: 'Roaming settlement', amount: 'KES 198,900', dueDate: 'Apr 04, 2026', status: 'Overdue' },
+    ],
+    [
+      { label: 'Current', value: 'KES 1.4M' },
+      { label: '1-30 Days', value: 'KES 176K' },
+      { label: '31-60 Days', value: 'KES 22K' },
+      { label: '61+ Days', value: 'KES 3K' },
+    ],
+  ),
+  'tenant-westlands-mall': makeBillingResponse(
+    'KES 428,400',
+    'Hosted-site billing reflects the Westlands Mall tenant only, including revenue share, service fees, and portfolio aging.',
+    '99.2%',
+    'KES 28,200',
+    'KES 42,000 due Apr 8',
+    [
+      { id: 'INV-WML-201', customer: 'Westlands Mall Group', scope: 'Hosted portfolio share', amount: 'KES 148,220', dueDate: 'Apr 06, 2026', status: 'Draft' },
+      { id: 'INV-WML-202', customer: 'Premium Parking Ops', scope: 'Facility service fee', amount: 'KES 42,800', dueDate: 'Mar 27, 2026', status: 'Paid' },
+      { id: 'INV-WML-203', customer: 'Partner roaming true-up', scope: 'Monthly true-up', amount: 'KES 28,200', dueDate: 'Apr 03, 2026', status: 'Issued' },
+    ],
+    [
+      { label: 'Current', value: 'KES 186K' },
+      { label: '1-30 Days', value: 'KES 24K' },
+      { label: '31-60 Days', value: 'KES 4K' },
+      { label: '61+ Days', value: 'KES 0' },
+    ],
+  ),
+}
+
+function makeSettlementResponse(
+  note: string,
+  ready: string,
+  reconciling: string,
+  settled: string,
+  exceptions: SettlementResponse['exceptions'],
+  records: SettlementResponse['records'],
+): SettlementResponse {
+  return {
+    note,
+    metrics: [
+      { id: 'ready', label: 'Ready', value: ready, tone: 'default' },
+      { id: 'reconciling', label: 'Reconciling', value: reconciling, tone: 'warning' },
+      { id: 'settled', label: 'Settled', value: settled, tone: 'ok' },
+      { id: 'exceptions', label: 'Exceptions', value: String(exceptions.length), tone: exceptions.length > 0 ? 'danger' : 'ok' },
+    ],
+    exceptions,
+    records,
+  }
 }
 
 const settlementByTenant: Record<TenantId, SettlementResponse> = {
-  'tenant-global': { note: 'Settlement rolls up tenant-isolated partner cycles.', records: [{ id: 'SET-1', partner: 'Hubject', period: 'Mar 1-15, 2026', netAmount: 'KES 684,220', status: 'Settled' }, { id: 'SET-2', partner: 'Plugsurfing', period: 'Mar 16-31, 2026', netAmount: 'KES 518,900', status: 'Reconciling' }] },
-  'tenant-evzone-ke': { note: 'Settlement is isolated to EVzone Kenya counterparties.', records: [{ id: 'SET-KE-1', partner: 'Hubject', period: 'Mar 1-15, 2026', netAmount: 'KES 484,220', status: 'Settled' }] },
-  'tenant-westlands-mall': { note: 'Hosted settlement reflects the Westlands Mall revenue-share agreement.', records: [{ id: 'SET-WML-1', partner: 'Westlands Mall Revenue Share', period: 'Mar 1-15, 2026', netAmount: 'KES 148,220', status: 'Settled' }] },
+  'tenant-global': makeSettlementResponse(
+    'Settlement rolls up tenant-isolated partner cycles, exception handling, and reconciliation queues.',
+    'KES 302,115',
+    'KES 518,900',
+    'KES 684,220',
+    [
+      { id: 'EX-31', partner: 'Shell Recharge', reason: 'CDR currency mismatch', impact: 'KES 22,400 held', action: 'Review conversion rule' },
+      { id: 'EX-32', partner: 'Westlands Mall Group', reason: 'Revenue-share invoice awaiting approval', impact: 'Payout blocked', action: 'Request finance sign-off' },
+    ],
+    [
+      { id: 'SET-1', partner: 'Hubject', period: 'Mar 1-15, 2026', netAmount: 'KES 684,220', status: 'Settled' },
+      { id: 'SET-2', partner: 'Plugsurfing', period: 'Mar 16-31, 2026', netAmount: 'KES 518,900', status: 'Reconciling' },
+      { id: 'SET-3', partner: 'Shell Recharge', period: 'Mar 16-31, 2026', netAmount: 'KES 302,115', status: 'Ready' },
+    ],
+  ),
+  'tenant-evzone-ke': makeSettlementResponse(
+    'Settlement is isolated to EVzone Kenya counterparties and local finance controls.',
+    'KES 198,900',
+    'KES 318,900',
+    'KES 484,220',
+    [
+      { id: 'EX-KE-1', partner: 'Shell Recharge', reason: 'Outstanding approval for roaming fees', impact: 'KES 18,200 held', action: 'Approve roaming statement' },
+    ],
+    [
+      { id: 'SET-KE-1', partner: 'Hubject', period: 'Mar 1-15, 2026', netAmount: 'KES 484,220', status: 'Settled' },
+      { id: 'SET-KE-2', partner: 'Plugsurfing', period: 'Mar 16-31, 2026', netAmount: 'KES 318,900', status: 'Reconciling' },
+      { id: 'SET-KE-3', partner: 'Shell Recharge', period: 'Mar 16-31, 2026', netAmount: 'KES 198,900', status: 'Ready' },
+    ],
+  ),
+  'tenant-westlands-mall': makeSettlementResponse(
+    'Hosted settlement reflects the Westlands Mall revenue-share agreement and site-owner approval workflow.',
+    'KES 92,300',
+    'KES 0',
+    'KES 148,220',
+    [
+      { id: 'EX-WML-1', partner: 'Westlands Mall Group', reason: 'Awaiting site-owner invoice approval', impact: 'Next payout delayed', action: 'Approve hosted statement' },
+    ],
+    [
+      { id: 'SET-WML-1', partner: 'Westlands Mall Revenue Share', period: 'Mar 1-15, 2026', netAmount: 'KES 148,220', status: 'Settled' },
+      { id: 'SET-WML-2', partner: 'Westlands Mall Revenue Share', period: 'Mar 16-31, 2026', netAmount: 'KES 92,300', status: 'Ready' },
+    ],
+  ),
+}
+
+const integrationsByTenant: Record<TenantId, IntegrationModuleResponse> = {
+  'tenant-global': {
+    note: 'The integration registry is still mocked, but each connection now carries tenant-scoped health, sync, and auth posture.',
+    metrics: [
+      { id: 'connected', label: 'Connected', value: '8', tone: 'ok' },
+      { id: 'degraded', label: 'Degraded', value: '2', tone: 'warning' },
+      { id: 'pending', label: 'Pending', value: '1', tone: 'warning' },
+      { id: 'coverage', label: 'Coverage', value: 'Finance + CRM + Roaming', tone: 'default' },
+    ],
+    connections: [
+      { id: 'int-1', name: 'Hubject OCPI Gateway', category: 'Roaming', status: 'Connected', authMode: 'Token Exchange', lastSync: '2 min ago', latency: '420 ms' },
+      { id: 'int-2', name: 'SAP Finance Bridge', category: 'ERP', status: 'Degraded', authMode: 'Service Account', lastSync: '18 min ago', latency: '2.8 s' },
+      { id: 'int-3', name: 'Stripe Treasury', category: 'Payments', status: 'Connected', authMode: 'OAuth 2.0', lastSync: '34 sec ago', latency: '180 ms' },
+      { id: 'int-4', name: 'Salesforce Enterprise', category: 'CRM', status: 'Pending', authMode: 'OAuth 2.0', lastSync: 'Awaiting approval', latency: '-' },
+    ],
+  },
+  'tenant-evzone-ke': {
+    note: 'Kenya operating-company integrations now expose sync posture and tenant-specific dependency health from MSW.',
+    metrics: [
+      { id: 'connected', label: 'Connected', value: '5', tone: 'ok' },
+      { id: 'degraded', label: 'Degraded', value: '1', tone: 'warning' },
+      { id: 'pending', label: 'Pending', value: '1', tone: 'warning' },
+      { id: 'coverage', label: 'Coverage', value: 'Roaming + ERP + Payments', tone: 'default' },
+    ],
+    connections: [
+      { id: 'int-ke-1', name: 'Hubject OCPI Gateway', category: 'Roaming', status: 'Connected', authMode: 'Token Exchange', lastSync: '3 min ago', latency: '460 ms' },
+      { id: 'int-ke-2', name: 'SAP Finance Bridge', category: 'ERP', status: 'Degraded', authMode: 'Service Account', lastSync: '18 min ago', latency: '2.8 s' },
+      { id: 'int-ke-3', name: 'DPO Payments', category: 'Payments', status: 'Connected', authMode: 'API Key', lastSync: '51 sec ago', latency: '220 ms' },
+    ],
+  },
+  'tenant-westlands-mall': {
+    note: 'Hosted-site integrations are still mocked, but now reflect the site portfolio’s payment, CRM, and roaming dependencies.',
+    metrics: [
+      { id: 'connected', label: 'Connected', value: '3', tone: 'ok' },
+      { id: 'degraded', label: 'Degraded', value: '0', tone: 'ok' },
+      { id: 'pending', label: 'Pending', value: '1', tone: 'warning' },
+      { id: 'coverage', label: 'Coverage', value: 'Hosted billing + access', tone: 'default' },
+    ],
+    connections: [
+      { id: 'int-wml-1', name: 'Property PMS Sync', category: 'CRM', status: 'Connected', authMode: 'SAML + API Token', lastSync: '6 min ago', latency: '510 ms' },
+      { id: 'int-wml-2', name: 'DPO Hosted Billing', category: 'Payments', status: 'Connected', authMode: 'API Key', lastSync: '1 min ago', latency: '240 ms' },
+      { id: 'int-wml-3', name: 'Plugsurfing OCPI Link', category: 'Roaming', status: 'Pending', authMode: 'Token Exchange', lastSync: 'Awaiting counterpart', latency: '-' },
+    ],
+  },
+}
+
+const webhooksByTenant: Record<TenantId, WebhooksModuleResponse> = {
+  'tenant-global': {
+    note: 'Webhook management remains mocked, but endpoint health, signing posture, and recent deliveries now reflect realistic platform operations.',
+    metrics: [
+      { id: 'healthy', label: 'Healthy', value: '12', tone: 'ok' },
+      { id: 'retrying', label: 'Retrying', value: '2', tone: 'warning' },
+      { id: 'muted', label: 'Muted', value: '1', tone: 'warning' },
+      { id: 'deliveries', label: '24h Deliveries', value: '148K', tone: 'default' },
+    ],
+    endpoints: [
+      { id: 'wh-1', target: 'https://erp.evzone.io/webhooks/finance', eventGroup: 'billing.*', lastDelivery: '42 sec ago', signingStatus: 'Secret rotated 7d ago', status: 'Healthy', successRate: '99.98%' },
+      { id: 'wh-2', target: 'https://partners.hubject.io/ocpi/events', eventGroup: 'roaming.cdr.*', lastDelivery: '3 min ago', signingStatus: 'Secret rotated 14d ago', status: 'Retrying', successRate: '96.2%' },
+      { id: 'wh-3', target: 'https://crm.evzone.io/hooks/incidents', eventGroup: 'incidents.*', lastDelivery: 'Muted for maintenance', signingStatus: 'Secret rotated today', status: 'Muted', successRate: '-' },
+    ],
+    recentDeliveries: [
+      { id: 'dlv-1', endpoint: 'ERP Finance', event: 'billing.invoice.issued', result: 'Delivered', latency: '190 ms', time: '42 sec ago' },
+      { id: 'dlv-2', endpoint: 'Hubject Events', event: 'roaming.cdr.sent', result: 'Retried', latency: '4.8 s', time: '3 min ago' },
+      { id: 'dlv-3', endpoint: 'CRM Incidents', event: 'incident.created', result: 'Failed', latency: '6.2 s', time: '12 min ago' },
+    ],
+  },
+  'tenant-evzone-ke': {
+    note: 'Kenya webhook delivery status now reflects the operating-company event streams and retry backlog.',
+    metrics: [
+      { id: 'healthy', label: 'Healthy', value: '7', tone: 'ok' },
+      { id: 'retrying', label: 'Retrying', value: '1', tone: 'warning' },
+      { id: 'muted', label: 'Muted', value: '0', tone: 'ok' },
+      { id: 'deliveries', label: '24h Deliveries', value: '82K', tone: 'default' },
+    ],
+    endpoints: [
+      { id: 'wh-ke-1', target: 'https://finance.ke.evzone.io/webhooks', eventGroup: 'billing.*', lastDelivery: '1 min ago', signingStatus: 'Secret rotated 9d ago', status: 'Healthy', successRate: '99.9%' },
+      { id: 'wh-ke-2', target: 'https://hubject.ke.evzone.io/events', eventGroup: 'roaming.cdr.*', lastDelivery: '4 min ago', signingStatus: 'Secret rotated 16d ago', status: 'Retrying', successRate: '95.8%' },
+    ],
+    recentDeliveries: [
+      { id: 'dlv-ke-1', endpoint: 'Kenya Finance', event: 'billing.invoice.issued', result: 'Delivered', latency: '220 ms', time: '1 min ago' },
+      { id: 'dlv-ke-2', endpoint: 'Hubject Kenya', event: 'roaming.cdr.sent', result: 'Retried', latency: '5.1 s', time: '4 min ago' },
+    ],
+  },
+  'tenant-westlands-mall': {
+    note: 'Hosted-site webhooks are mocked but now expose health, muted maintenance windows, and recent delivery outcomes.',
+    metrics: [
+      { id: 'healthy', label: 'Healthy', value: '3', tone: 'ok' },
+      { id: 'retrying', label: 'Retrying', value: '0', tone: 'ok' },
+      { id: 'muted', label: 'Muted', value: '1', tone: 'warning' },
+      { id: 'deliveries', label: '24h Deliveries', value: '12K', tone: 'default' },
+    ],
+    endpoints: [
+      { id: 'wh-wml-1', target: 'https://ops.westlandsmall.com/hooks/billing', eventGroup: 'billing.*', lastDelivery: '5 min ago', signingStatus: 'Secret rotated 3d ago', status: 'Healthy', successRate: '100%' },
+      { id: 'wh-wml-2', target: 'https://ops.westlandsmall.com/hooks/access', eventGroup: 'session.*', lastDelivery: 'Muted during site maintenance', signingStatus: 'Secret rotated 1d ago', status: 'Muted', successRate: '-' },
+    ],
+    recentDeliveries: [
+      { id: 'dlv-wml-1', endpoint: 'Westlands Billing', event: 'billing.invoice.draft', result: 'Delivered', latency: '260 ms', time: '5 min ago' },
+      { id: 'dlv-wml-2', endpoint: 'Westlands Access', event: 'session.started', result: 'Retried', latency: '1.8 s', time: '14 min ago' },
+    ],
+  },
+}
+
+const notificationsByTenant: Record<TenantId, NotificationsModuleResponse> = {
+  'tenant-global': {
+    note: 'Notification routing remains mocked, but delivery posture, escalation channels, and dispatch activity are now visible by tenant.',
+    metrics: [
+      { id: 'active-routes', label: 'Active Routes', value: '24', tone: 'ok' },
+      { id: 'delivery-rate', label: 'Delivery Rate', value: '99.1%', tone: 'ok' },
+      { id: 'escalations', label: 'Escalations', value: '6', tone: 'warning' },
+      { id: 'suppressed', label: 'Suppressed', value: '18', tone: 'warning' },
+    ],
+    channels: [
+      { id: 'ch-1', name: 'Email Ops', coverage: 'Operational digests and incidents', status: 'Active', volume: '12.4K / day' },
+      { id: 'ch-2', name: 'Slack NOC', coverage: 'Critical fleet alerts', status: 'Active', volume: '420 / day' },
+      { id: 'ch-3', name: 'SMS Escalation', coverage: 'Sev-1 after-hours events', status: 'Fallback', volume: '38 / day' },
+      { id: 'ch-4', name: 'Push Mobile', coverage: 'Field technician dispatch', status: 'Paused', volume: '0 / day' },
+    ],
+    recentDispatches: [
+      { id: 'ntf-1', channel: 'Slack NOC', recipient: '#noc-global', rule: 'Critical site outage', status: 'Delivered', time: '2 min ago' },
+      { id: 'ntf-2', channel: 'SMS Escalation', recipient: 'On-call finance lead', rule: 'Settlement exception > KES 20K', status: 'Escalated', time: '11 min ago' },
+      { id: 'ntf-3', channel: 'Email Ops', recipient: 'regional-managers@evzone.io', rule: 'Morning executive digest', status: 'Queued', time: '18 min ago' },
+    ],
+  },
+  'tenant-evzone-ke': {
+    note: 'Kenya notification routing reflects operating-company incidents, finance escalations, and local field dispatch.',
+    metrics: [
+      { id: 'active-routes', label: 'Active Routes', value: '16', tone: 'ok' },
+      { id: 'delivery-rate', label: 'Delivery Rate', value: '99.4%', tone: 'ok' },
+      { id: 'escalations', label: 'Escalations', value: '3', tone: 'warning' },
+      { id: 'suppressed', label: 'Suppressed', value: '9', tone: 'warning' },
+    ],
+    channels: [
+      { id: 'ch-ke-1', name: 'Email Ops KE', coverage: 'Daily ops and finance', status: 'Active', volume: '7.2K / day' },
+      { id: 'ch-ke-2', name: 'Slack KE NOC', coverage: 'Critical site alerts', status: 'Active', volume: '210 / day' },
+      { id: 'ch-ke-3', name: 'SMS Escalation KE', coverage: 'Sev-1 field alerts', status: 'Fallback', volume: '19 / day' },
+    ],
+    recentDispatches: [
+      { id: 'ntf-ke-1', channel: 'Slack KE NOC', recipient: '#ke-noc', rule: 'Critical charger outage', status: 'Delivered', time: '3 min ago' },
+      { id: 'ntf-ke-2', channel: 'SMS Escalation KE', recipient: 'Kenya on-call lead', rule: 'Settlement exception > KES 10K', status: 'Escalated', time: '16 min ago' },
+    ],
+  },
+  'tenant-westlands-mall': {
+    note: 'Hosted-site notification channels now show the property team’s active, paused, and fallback routing posture.',
+    metrics: [
+      { id: 'active-routes', label: 'Active Routes', value: '8', tone: 'ok' },
+      { id: 'delivery-rate', label: 'Delivery Rate', value: '99.8%', tone: 'ok' },
+      { id: 'escalations', label: 'Escalations', value: '1', tone: 'warning' },
+      { id: 'suppressed', label: 'Suppressed', value: '4', tone: 'warning' },
+    ],
+    channels: [
+      { id: 'ch-wml-1', name: 'Property Email', coverage: 'Hosted finance and uptime', status: 'Active', volume: '1.8K / day' },
+      { id: 'ch-wml-2', name: 'Security Desk SMS', coverage: 'After-hours access alerts', status: 'Fallback', volume: '8 / day' },
+      { id: 'ch-wml-3', name: 'Tenant App Push', coverage: 'Customer concierge updates', status: 'Paused', volume: '0 / day' },
+    ],
+    recentDispatches: [
+      { id: 'ntf-wml-1', channel: 'Property Email', recipient: 'ops@westlandsmall.com', rule: 'Hosted billing draft ready', status: 'Delivered', time: '7 min ago' },
+      { id: 'ntf-wml-2', channel: 'Security Desk SMS', recipient: 'Security desk lead', rule: 'After-hours communication lag', status: 'Escalated', time: '22 min ago' },
+    ],
+  },
 }
 
 const reportsByTenant: Record<TenantId, ReportsResponse> = {
@@ -812,6 +1109,9 @@ export function listTeamMembers(tenantId: TenantId) { return listTenantScoped(te
 export function listAuditLogs(tenantId: TenantId) { return listTenantScoped(auditLogs, tenantId) }
 export function getReports(tenantId: TenantId) { return reportsByTenant[tenantId] }
 export function getProtocolEngine(tenantId: TenantId) { return protocolsByTenant[tenantId] }
+export function getIntegrationsModule(tenantId: TenantId) { return integrationsByTenant[tenantId] }
+export function getWebhooksModule(tenantId: TenantId) { return webhooksByTenant[tenantId] }
+export function getNotificationsModule(tenantId: TenantId) { return notificationsByTenant[tenantId] }
 
 export function getIncidentCommand(tenantId: TenantId): IncidentCommandResponse {
   const incidents = listTenantScoped(incidentRecords, tenantId)
@@ -835,15 +1135,4 @@ export function getIncidentCommand(tenantId: TenantId): IncidentCommandResponse 
       ? { text: 'Communication lag on the Westlands switch stack suggests a connector fault risk within 24 hours.', cta: 'Schedule Site Check' }
       : { text: 'Based on heat signatures, Station LOC-2 is at risk of a major connector fault within the next 48 hours.', cta: 'Schedule Maintenance' },
   }
-}
-
-export function getModuleNotice(moduleKey: ModuleKey, tenantId: TenantId): ModuleNotice {
-  const tenantName = tenantCatalog[tenantId].name
-  const messages: Record<ModuleKey, string> = {
-    integrations: `Integration management is still mocked, but ${tenantName} now receives tenant-scoped integration notices from MSW.`,
-    webhooks: `Webhook endpoint management remains mocked, with status now scoped to ${tenantName}.`,
-    notifications: `Notification preferences are still a placeholder workflow, but the page now reflects the active ${tenantName} tenant.`,
-  }
-
-  return { message: messages[moduleKey] }
 }

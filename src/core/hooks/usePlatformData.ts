@@ -10,8 +10,9 @@ import type {
   DashboardOverviewResponse,
   DemoUserHint,
   IncidentCommandResponse,
+  IntegrationModuleResponse,
   LoadPolicyRecord,
-  ModuleNotice,
+  NotificationsModuleResponse,
   OCPICdrsResponse,
   OCPICommandsResponse,
   PayoutRecord,
@@ -25,6 +26,7 @@ import type {
   SmartChargingResponse,
   TariffRecord,
   TeamMember,
+  WebhooksModuleResponse,
 } from '@/core/types/mockApi'
 
 function useTenantQueryContext(enabled = true) {
@@ -253,12 +255,32 @@ export function useProtocolEngine() {
   })
 }
 
-export function useModuleNotice(moduleKey: 'integrations' | 'webhooks' | 'notifications') {
+export function useIntegrationsModule() {
   const { enabled, tenantKey } = useTenantQueryContext()
 
-  return useQuery<ModuleNotice>({
-    queryKey: ['platform', moduleKey, tenantKey],
-    queryFn: () => fetchJson<ModuleNotice>(`/api/platform/${moduleKey}`),
+  return useQuery<IntegrationModuleResponse>({
+    queryKey: ['platform', 'integrations', tenantKey],
+    queryFn: () => fetchJson<IntegrationModuleResponse>('/api/platform/integrations'),
+    enabled,
+  })
+}
+
+export function useWebhooksModule() {
+  const { enabled, tenantKey } = useTenantQueryContext()
+
+  return useQuery<WebhooksModuleResponse>({
+    queryKey: ['platform', 'webhooks', tenantKey],
+    queryFn: () => fetchJson<WebhooksModuleResponse>('/api/platform/webhooks'),
+    enabled,
+  })
+}
+
+export function useNotificationsModule() {
+  const { enabled, tenantKey } = useTenantQueryContext()
+
+  return useQuery<NotificationsModuleResponse>({
+    queryKey: ['platform', 'notifications', tenantKey],
+    queryFn: () => fetchJson<NotificationsModuleResponse>('/api/platform/notifications'),
     enabled,
   })
 }
