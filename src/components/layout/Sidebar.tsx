@@ -1,16 +1,7 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
-  ACTIVE_ROLES,
-  ENERGY_ROLES,
-  FINANCE_ROLES,
-  INFRASTRUCTURE_ROLES,
-  OPERATIONS_ROLES,
-  PLATFORM_ADMIN_ROLES,
-  REPORTING_ROLES,
-  ROAMING_ROLES,
-  SETTINGS_ROLES,
-  TEAM_ROLES,
+  ACCESS_POLICY,
   canAccessRole,
 } from '@/core/auth/access'
 import { useAuthStore } from '@/core/auth/authStore'
@@ -40,59 +31,59 @@ const NAV: NavGroup[] = [
   {
     label: 'Overview',
     items: [
-      { label: 'Dashboard', icon: <LayoutDashboard size={16} />, path: PATHS.DASHBOARD, allowedRoles: ACTIVE_ROLES },
+      { label: 'Dashboard', icon: <LayoutDashboard size={16} />, path: PATHS.DASHBOARD, allowedRoles: ACCESS_POLICY.dashboardHome },
     ],
   },
   {
     label: 'Infrastructure',
     items: [
-      { label: 'Stations', icon: <Zap size={16} />, path: PATHS.STATIONS, allowedRoles: INFRASTRUCTURE_ROLES },
-      { label: 'Charge Points', icon: <Cpu size={16} />, path: PATHS.CHARGE_POINTS, allowedRoles: INFRASTRUCTURE_ROLES },
-      { label: 'Swap Stations', icon: <RefreshCw size={16} />, path: PATHS.SWAP_STATIONS, allowedRoles: INFRASTRUCTURE_ROLES },
+      { label: 'Stations', icon: <Zap size={16} />, path: PATHS.STATIONS, allowedRoles: ACCESS_POLICY.stationsRead },
+      { label: 'Charge Points', icon: <Cpu size={16} />, path: PATHS.CHARGE_POINTS, allowedRoles: ACCESS_POLICY.chargePointsRead },
+      { label: 'Swap Stations', icon: <RefreshCw size={16} />, path: PATHS.SWAP_STATIONS, allowedRoles: ACCESS_POLICY.swapStationsRead },
     ],
   },
   {
     label: 'Operations',
     items: [
-      { label: 'Sessions', icon: <Activity size={16} />, path: PATHS.SESSIONS, allowedRoles: OPERATIONS_ROLES },
-      { label: 'Swap Sessions', icon: <RefreshCw size={16} />, path: PATHS.SWAP_SESSIONS, allowedRoles: OPERATIONS_ROLES },
-      { label: 'Incidents', icon: <AlertTriangle size={16} />, path: PATHS.INCIDENTS, allowedRoles: OPERATIONS_ROLES },
-      { label: 'Alerts', icon: <Bell size={16} />, path: PATHS.ALERTS, allowedRoles: OPERATIONS_ROLES },
+      { label: 'Sessions', icon: <Activity size={16} />, path: PATHS.SESSIONS, allowedRoles: ACCESS_POLICY.sessionsRead },
+      { label: 'Swap Sessions', icon: <RefreshCw size={16} />, path: PATHS.SWAP_SESSIONS, allowedRoles: ACCESS_POLICY.swapSessionsRead },
+      { label: 'Incidents', icon: <AlertTriangle size={16} />, path: PATHS.INCIDENTS, allowedRoles: ACCESS_POLICY.incidentsRead },
+      { label: 'Alerts', icon: <Bell size={16} />, path: PATHS.ALERTS, allowedRoles: ACCESS_POLICY.alertsRead },
     ],
   },
   {
     label: 'Energy',
     items: [
-      { label: 'Smart Charging', icon: <Gauge size={16} />, path: PATHS.SMART_CHARGING, allowedRoles: ENERGY_ROLES },
-      { label: 'Load Policy', icon: <TrendingUp size={16} />, path: PATHS.LOAD_POLICY, allowedRoles: ENERGY_ROLES },
-      { label: 'Battery Inventory', icon: <Package size={16} />, path: PATHS.BATTERY_INVENTORY, allowedRoles: ENERGY_ROLES },
+      { label: 'Smart Charging', icon: <Gauge size={16} />, path: PATHS.SMART_CHARGING, allowedRoles: ACCESS_POLICY.smartChargingRead },
+      { label: 'Load Policy', icon: <TrendingUp size={16} />, path: PATHS.LOAD_POLICY, allowedRoles: ACCESS_POLICY.loadPoliciesRead },
+      { label: 'Battery Inventory', icon: <Package size={16} />, path: PATHS.BATTERY_INVENTORY, allowedRoles: ACCESS_POLICY.batteryInventoryRead },
     ],
   },
   {
     label: 'Roaming (OCPI)',
     items: [
-      { label: 'Partners', icon: <Network size={16} />, path: PATHS.OCPI_PARTNERS, allowedRoles: ROAMING_ROLES },
-      { label: 'CDR Ledger', icon: <BookOpen size={16} />, path: PATHS.OCPI_CDRS, allowedRoles: ROAMING_ROLES },
+      { label: 'Partners', icon: <Network size={16} />, path: PATHS.OCPI_PARTNERS, allowedRoles: ACCESS_POLICY.roamingRead },
+      { label: 'CDR Ledger', icon: <BookOpen size={16} />, path: PATHS.OCPI_CDRS, allowedRoles: ACCESS_POLICY.roamingRead },
     ],
   },
   {
     label: 'Finance',
     items: [
-      { label: 'Tariffs', icon: <DollarSign size={16} />, path: PATHS.TARIFFS, allowedRoles: FINANCE_ROLES },
-      { label: 'Billing', icon: <FileText size={16} />, path: PATHS.BILLING, allowedRoles: FINANCE_ROLES },
-      { label: 'Payouts', icon: <TrendingUp size={16} />, path: PATHS.PAYOUTS, allowedRoles: FINANCE_ROLES },
-      { label: 'Settlement', icon: <ShieldCheck size={16} />, path: PATHS.SETTLEMENT, allowedRoles: FINANCE_ROLES },
+      { label: 'Tariffs', icon: <DollarSign size={16} />, path: PATHS.TARIFFS, allowedRoles: ACCESS_POLICY.tariffsRead },
+      { label: 'Billing', icon: <FileText size={16} />, path: PATHS.BILLING, allowedRoles: ACCESS_POLICY.billingRead },
+      { label: 'Payouts', icon: <TrendingUp size={16} />, path: PATHS.PAYOUTS, allowedRoles: ACCESS_POLICY.payoutsRead },
+      { label: 'Settlement', icon: <ShieldCheck size={16} />, path: PATHS.SETTLEMENT, allowedRoles: ACCESS_POLICY.settlementRead },
     ],
   },
   {
     label: 'Platform',
     items: [
-      { label: 'Reports', icon: <BarChart3 size={16} />, path: PATHS.REPORTS, allowedRoles: REPORTING_ROLES },
-      { label: 'Team', icon: <Users size={16} />, path: PATHS.TEAM, allowedRoles: TEAM_ROLES },
-      { label: 'Audit Logs', icon: <FileText size={16} />, path: PATHS.AUDIT_LOGS, allowedRoles: FINANCE_ROLES },
-      { label: 'Webhooks', icon: <Webhook size={16} />, path: PATHS.WEBHOOKS, allowedRoles: PLATFORM_ADMIN_ROLES },
-      { label: 'Integrations', icon: <Puzzle size={16} />, path: PATHS.INTEGRATIONS, allowedRoles: PLATFORM_ADMIN_ROLES },
-      { label: 'Protocols', icon: <Globe2 size={16} />, path: PATHS.PROTOCOLS, allowedRoles: PLATFORM_ADMIN_ROLES },
+      { label: 'Reports', icon: <BarChart3 size={16} />, path: PATHS.REPORTS, allowedRoles: ACCESS_POLICY.reportsRead },
+      { label: 'Team', icon: <Users size={16} />, path: PATHS.TEAM, allowedRoles: ACCESS_POLICY.teamRead },
+      { label: 'Audit Logs', icon: <FileText size={16} />, path: PATHS.AUDIT_LOGS, allowedRoles: ACCESS_POLICY.auditLogsRead },
+      { label: 'Webhooks', icon: <Webhook size={16} />, path: PATHS.WEBHOOKS, allowedRoles: ACCESS_POLICY.platformAdminRead },
+      { label: 'Integrations', icon: <Puzzle size={16} />, path: PATHS.INTEGRATIONS, allowedRoles: ACCESS_POLICY.platformAdminRead },
+      { label: 'Protocols', icon: <Globe2 size={16} />, path: PATHS.PROTOCOLS, allowedRoles: ACCESS_POLICY.platformAdminRead },
     ],
   },
 ]
@@ -161,7 +152,7 @@ export function Sidebar() {
 
       {/* User */}
       <div className="border-t border-[var(--border)] px-3 py-3 space-y-1">
-        {canAccessRole(userRole, SETTINGS_ROLES) && (
+        {canAccessRole(userRole, ACCESS_POLICY.settingsRead) && (
           <Link to={PATHS.SETTINGS} className="nav-item" title={collapsed ? 'Settings' : undefined}>
             <Settings size={16} />
             {!collapsed && <span>Settings</span>}

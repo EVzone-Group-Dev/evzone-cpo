@@ -1,14 +1,5 @@
 import {
-  ACTIVE_ROLES,
-  ENERGY_ROLES,
-  FINANCE_ROLES,
-  INFRASTRUCTURE_ROLES,
-  OPERATIONS_ROLES,
-  PLATFORM_ADMIN_ROLES,
-  REPORTING_ROLES,
-  ROAMING_ROLES,
-  SETTINGS_ROLES,
-  TEAM_ROLES,
+  ACCESS_POLICY,
   canAccessRole,
 } from '@/core/auth/access'
 import type { CPORole } from '@/core/types/domain'
@@ -144,31 +135,31 @@ export const handlers = [
   }),
 
   http.get('/api/tenancy/context', ({ request }) => {
-    const result = authorize(request, ACTIVE_ROLES)
+    const result = authorize(request, ACCESS_POLICY.tenancyContext)
     if (!result.ok) return result.response
     return HttpResponse.json(result.access.context)
   }),
 
   http.get('/api/dashboard/overview', ({ request }) => {
-    const result = authorize(request, ACTIVE_ROLES)
+    const result = authorize(request, ACCESS_POLICY.dashboardHome)
     if (!result.ok) return result.response
     return HttpResponse.json(getDashboardOverview(result.access.tenantId))
   }),
 
   http.get('/api/dashboard/site-owner', ({ request }) => {
-    const result = authorize(request, ACTIVE_ROLES)
+    const result = authorize(request, ACCESS_POLICY.siteDashboard)
     if (!result.ok) return result.response
     return HttpResponse.json(getSiteOwnerDashboard(result.access.tenantId))
   }),
 
   http.get('/api/stations', ({ request }) => {
-    const result = authorize(request, INFRASTRUCTURE_ROLES)
+    const result = authorize(request, ACCESS_POLICY.stationsRead)
     if (!result.ok) return result.response
     return HttpResponse.json(listStations(result.access.tenantId))
   }),
 
   http.get('/api/stations/:id', ({ params, request }) => {
-    const result = authorize(request, INFRASTRUCTURE_ROLES)
+    const result = authorize(request, ACCESS_POLICY.stationsRead)
     if (!result.ok) return result.response
 
     const station = getStationById(String(params.id), result.access.tenantId)
@@ -177,13 +168,13 @@ export const handlers = [
   }),
 
   http.get('/api/swapping/stations', ({ request }) => {
-    const result = authorize(request, INFRASTRUCTURE_ROLES)
+    const result = authorize(request, ACCESS_POLICY.swapStationsRead)
     if (!result.ok) return result.response
     return HttpResponse.json(listSwapStations(result.access.tenantId))
   }),
 
   http.get('/api/swapping/stations/:id', ({ params, request }) => {
-    const result = authorize(request, INFRASTRUCTURE_ROLES)
+    const result = authorize(request, ACCESS_POLICY.swapStationsRead)
     if (!result.ok) return result.response
 
     const station = getSwapStationById(String(params.id), result.access.tenantId)
@@ -192,13 +183,13 @@ export const handlers = [
   }),
 
   http.get('/api/charge-points', ({ request }) => {
-    const result = authorize(request, INFRASTRUCTURE_ROLES)
+    const result = authorize(request, ACCESS_POLICY.chargePointsRead)
     if (!result.ok) return result.response
     return HttpResponse.json(listChargePoints(result.access.tenantId))
   }),
 
   http.get('/api/charge-points/:id', ({ params, request }) => {
-    const result = authorize(request, INFRASTRUCTURE_ROLES)
+    const result = authorize(request, ACCESS_POLICY.chargePointsRead)
     if (!result.ok) return result.response
 
     const chargePoint = getChargePointById(String(params.id), result.access.tenantId)
@@ -207,7 +198,7 @@ export const handlers = [
   }),
 
   http.post('/api/charge-points/:id/commands', async ({ params, request }) => {
-    const result = authorize(request, OPERATIONS_ROLES)
+    const result = authorize(request, ACCESS_POLICY.chargePointCommands)
     if (!result.ok) return result.response
 
     const chargePoint = getChargePointById(String(params.id), result.access.tenantId)
@@ -222,139 +213,139 @@ export const handlers = [
   }),
 
   http.get('/api/sessions', ({ request }) => {
-    const result = authorize(request, OPERATIONS_ROLES)
+    const result = authorize(request, ACCESS_POLICY.sessionsRead)
     if (!result.ok) return result.response
     return HttpResponse.json(listSessions(result.access.tenantId))
   }),
 
   http.get('/api/swapping/sessions', ({ request }) => {
-    const result = authorize(request, OPERATIONS_ROLES)
+    const result = authorize(request, ACCESS_POLICY.swapSessionsRead)
     if (!result.ok) return result.response
     return HttpResponse.json(listBatterySwapSessions(result.access.tenantId))
   }),
 
   http.get('/api/swapping/inventory', ({ request }) => {
-    const result = authorize(request, ENERGY_ROLES)
+    const result = authorize(request, ACCESS_POLICY.batteryInventoryRead)
     if (!result.ok) return result.response
     return HttpResponse.json(getBatteryInventory(result.access.tenantId))
   }),
 
   http.get('/api/incidents', ({ request }) => {
-    const result = authorize(request, OPERATIONS_ROLES)
+    const result = authorize(request, ACCESS_POLICY.incidentsRead)
     if (!result.ok) return result.response
     return HttpResponse.json(getIncidentCommand(result.access.tenantId))
   }),
 
   http.get('/api/alerts', ({ request }) => {
-    const result = authorize(request, OPERATIONS_ROLES)
+    const result = authorize(request, ACCESS_POLICY.alertsRead)
     if (!result.ok) return result.response
     return HttpResponse.json(listAlerts(result.access.tenantId))
   }),
 
   http.get('/api/tariffs', ({ request }) => {
-    const result = authorize(request, FINANCE_ROLES)
+    const result = authorize(request, ACCESS_POLICY.tariffsRead)
     if (!result.ok) return result.response
     return HttpResponse.json(listTariffs(result.access.tenantId))
   }),
 
   http.get('/api/energy/smart-charging', ({ request }) => {
-    const result = authorize(request, ENERGY_ROLES)
+    const result = authorize(request, ACCESS_POLICY.smartChargingRead)
     if (!result.ok) return result.response
     return HttpResponse.json(getSmartCharging(result.access.tenantId))
   }),
 
   http.get('/api/energy/load-policies', ({ request }) => {
-    const result = authorize(request, ENERGY_ROLES)
+    const result = authorize(request, ACCESS_POLICY.loadPoliciesRead)
     if (!result.ok) return result.response
     return HttpResponse.json(listLoadPolicies(result.access.tenantId))
   }),
 
   http.get('/api/roaming/partners', ({ request }) => {
-    const result = authorize(request, ROAMING_ROLES)
+    const result = authorize(request, ACCESS_POLICY.roamingRead)
     if (!result.ok) return result.response
     return HttpResponse.json(listRoamingPartners(result.access.tenantId))
   }),
 
   http.get('/api/roaming/sessions', ({ request }) => {
-    const result = authorize(request, ROAMING_ROLES)
+    const result = authorize(request, ACCESS_POLICY.roamingRead)
     if (!result.ok) return result.response
     return HttpResponse.json(getRoamingSessions(result.access.tenantId))
   }),
 
   http.get('/api/roaming/cdrs', ({ request }) => {
-    const result = authorize(request, ROAMING_ROLES)
+    const result = authorize(request, ACCESS_POLICY.roamingRead)
     if (!result.ok) return result.response
     return HttpResponse.json(getOCPICdrs(result.access.tenantId))
   }),
 
   http.get('/api/roaming/commands', ({ request }) => {
-    const result = authorize(request, ROAMING_ROLES)
+    const result = authorize(request, ACCESS_POLICY.roamingRead)
     if (!result.ok) return result.response
     return HttpResponse.json(getOCPICommands(result.access.tenantId))
   }),
 
   http.get('/api/finance/billing', ({ request }) => {
-    const result = authorize(request, FINANCE_ROLES)
+    const result = authorize(request, ACCESS_POLICY.billingRead)
     if (!result.ok) return result.response
     return HttpResponse.json(getBilling(result.access.tenantId))
   }),
 
   http.get('/api/finance/payouts', ({ request }) => {
-    const result = authorize(request, FINANCE_ROLES)
+    const result = authorize(request, ACCESS_POLICY.payoutsRead)
     if (!result.ok) return result.response
     return HttpResponse.json(listPayouts(result.access.tenantId))
   }),
 
   http.get('/api/finance/settlement', ({ request }) => {
-    const result = authorize(request, FINANCE_ROLES)
+    const result = authorize(request, ACCESS_POLICY.settlementRead)
     if (!result.ok) return result.response
     return HttpResponse.json(getSettlement(result.access.tenantId))
   }),
 
   http.get('/api/team', ({ request }) => {
-    const result = authorize(request, TEAM_ROLES)
+    const result = authorize(request, ACCESS_POLICY.teamRead)
     if (!result.ok) return result.response
     return HttpResponse.json(listTeamMembers(result.access.tenantId))
   }),
 
   http.get('/api/audit-logs', ({ request }) => {
-    const result = authorize(request, FINANCE_ROLES)
+    const result = authorize(request, ACCESS_POLICY.auditLogsRead)
     if (!result.ok) return result.response
     return HttpResponse.json(listAuditLogs(result.access.tenantId))
   }),
 
   http.get('/api/reports', ({ request }) => {
-    const result = authorize(request, REPORTING_ROLES)
+    const result = authorize(request, ACCESS_POLICY.reportsRead)
     if (!result.ok) return result.response
     return HttpResponse.json(getReports(result.access.tenantId))
   }),
 
   http.get('/api/protocols', ({ request }) => {
-    const result = authorize(request, PLATFORM_ADMIN_ROLES)
+    const result = authorize(request, ACCESS_POLICY.platformAdminRead)
     if (!result.ok) return result.response
     return HttpResponse.json(getProtocolEngine(result.access.tenantId))
   }),
 
   http.get('/api/platform/integrations', ({ request }) => {
-    const result = authorize(request, PLATFORM_ADMIN_ROLES)
+    const result = authorize(request, ACCESS_POLICY.platformAdminRead)
     if (!result.ok) return result.response
     return HttpResponse.json(getIntegrationsModule(result.access.tenantId))
   }),
 
   http.get('/api/platform/webhooks', ({ request }) => {
-    const result = authorize(request, PLATFORM_ADMIN_ROLES)
+    const result = authorize(request, ACCESS_POLICY.platformAdminRead)
     if (!result.ok) return result.response
     return HttpResponse.json(getWebhooksModule(result.access.tenantId))
   }),
 
   http.get('/api/platform/notifications', ({ request }) => {
-    const result = authorize(request, SETTINGS_ROLES)
+    const result = authorize(request, ACCESS_POLICY.notificationsRead)
     if (!result.ok) return result.response
     return HttpResponse.json(getNotificationsModule(result.access.tenantId))
   }),
 
   http.post('/api/commands/start', async ({ request }) => {
-    const result = authorize(request, OPERATIONS_ROLES)
+    const result = authorize(request, ACCESS_POLICY.remoteCommandStart)
     if (!result.ok) return result.response
 
     const { chargePointId } = await request.json() as { chargePointId: string }

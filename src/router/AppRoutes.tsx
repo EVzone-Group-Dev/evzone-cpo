@@ -1,18 +1,7 @@
 import { Suspense, lazy } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import {
-  ACTIVE_ROLES,
-  ADMIN_ROLES,
-  ASSET_MANAGER_ROLES,
-  ENERGY_ROLES,
-  FINANCE_ROLES,
-  INFRASTRUCTURE_ROLES,
-  OPERATIONS_ROLES,
-  PLATFORM_ADMIN_ROLES,
-  REPORTING_ROLES,
-  ROAMING_ROLES,
-  SETTINGS_ROLES,
-  TEAM_ROLES,
+  ACCESS_POLICY,
   getRoleHomePath,
 } from '@/core/auth/access'
 import { useAuthStore } from '@/core/auth/authStore'
@@ -55,13 +44,6 @@ const SettingsPage      = lazy(() => import('@/pages/settings/SettingsPage').the
 const WhiteLabelPage    = lazy(() => import('@/pages/settings/WhiteLabelPage').then(m => ({ default: m.WhiteLabelPage })))
 const NotificationsPage = lazy(() => import('@/pages/notifications/NotificationsPage').then(m => ({ default: m.NotificationsPage })))
 
-const SUPER_ADMIN_ONLY = ['SUPER_ADMIN'] as const
-const CPO_ADMIN_ONLY = ['CPO_ADMIN'] as const
-const STATION_MANAGER_ONLY = ['STATION_MANAGER'] as const
-const FINANCE_ONLY = ['FINANCE'] as const
-const OPERATOR_ONLY = ['OPERATOR'] as const
-const TECHNICIAN_ONLY = ['TECHNICIAN'] as const
-
 function PageLoader() {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
@@ -84,59 +66,59 @@ export function AppRoutes() {
         <Route path={PATHS.LOGIN} element={<RequireGuest><LoginPage /></RequireGuest>} />
 
         {/* Protected — Infrastructure */}
-        <Route path={PATHS.DASHBOARD} element={<RequireAuth allowedRoles={ACTIVE_ROLES}><RoleHomeRedirect /></RequireAuth>} />
-        <Route path={PATHS.DASHBOARD_SUPER_ADMIN} element={<RequireAuth allowedRoles={SUPER_ADMIN_ONLY}><DashboardPage /></RequireAuth>} />
-        <Route path={PATHS.DASHBOARD_CPO_ADMIN} element={<RequireAuth allowedRoles={CPO_ADMIN_ONLY}><DashboardPage /></RequireAuth>} />
-        <Route path={PATHS.DASHBOARD_STATION_MANAGER} element={<RequireAuth allowedRoles={STATION_MANAGER_ONLY}><DashboardPage /></RequireAuth>} />
-        <Route path={PATHS.DASHBOARD_FINANCE} element={<RequireAuth allowedRoles={FINANCE_ONLY}><DashboardPage /></RequireAuth>} />
-        <Route path={PATHS.DASHBOARD_OPERATOR} element={<RequireAuth allowedRoles={OPERATOR_ONLY}><DashboardPage /></RequireAuth>} />
-        <Route path={PATHS.DASHBOARD_TECHNICIAN} element={<RequireAuth allowedRoles={TECHNICIAN_ONLY}><DashboardPage /></RequireAuth>} />
-        <Route path="/site-dashboard"     element={<RequireAuth allowedRoles={ACTIVE_ROLES}><SiteOwnerDashboard /></RequireAuth>} />
-        <Route path={PATHS.STATIONS} element={<RequireAuth allowedRoles={INFRASTRUCTURE_ROLES}><StationsPage /></RequireAuth>} />
-        <Route path="/stations/new" element={<RequireAuth allowedRoles={ASSET_MANAGER_ROLES}><CreateStationPage /></RequireAuth>} />
-        <Route path="/stations/:id" element={<RequireAuth allowedRoles={INFRASTRUCTURE_ROLES}><StationDetailPage /></RequireAuth>} />
-        <Route path={PATHS.CHARGE_POINTS} element={<RequireAuth allowedRoles={INFRASTRUCTURE_ROLES}><ChargePointsPage /></RequireAuth>} />
-        <Route path="/charge-points/:id"  element={<RequireAuth allowedRoles={INFRASTRUCTURE_ROLES}><ChargePointDetailPage /></RequireAuth>} />
-        <Route path={PATHS.SWAP_STATIONS} element={<RequireAuth allowedRoles={INFRASTRUCTURE_ROLES}><SwapStationsPage /></RequireAuth>} />
-        <Route path="/swap-stations/:id" element={<RequireAuth allowedRoles={INFRASTRUCTURE_ROLES}><SwapStationDetailPage /></RequireAuth>} />
+        <Route path={PATHS.DASHBOARD} element={<RequireAuth allowedRoles={ACCESS_POLICY.dashboardHome}><RoleHomeRedirect /></RequireAuth>} />
+        <Route path={PATHS.DASHBOARD_SUPER_ADMIN} element={<RequireAuth allowedRoles={ACCESS_POLICY.dashboardSuperAdmin}><DashboardPage /></RequireAuth>} />
+        <Route path={PATHS.DASHBOARD_CPO_ADMIN} element={<RequireAuth allowedRoles={ACCESS_POLICY.dashboardCpoAdmin}><DashboardPage /></RequireAuth>} />
+        <Route path={PATHS.DASHBOARD_STATION_MANAGER} element={<RequireAuth allowedRoles={ACCESS_POLICY.dashboardStationManager}><DashboardPage /></RequireAuth>} />
+        <Route path={PATHS.DASHBOARD_FINANCE} element={<RequireAuth allowedRoles={ACCESS_POLICY.dashboardFinance}><DashboardPage /></RequireAuth>} />
+        <Route path={PATHS.DASHBOARD_OPERATOR} element={<RequireAuth allowedRoles={ACCESS_POLICY.dashboardOperator}><DashboardPage /></RequireAuth>} />
+        <Route path={PATHS.DASHBOARD_TECHNICIAN} element={<RequireAuth allowedRoles={ACCESS_POLICY.dashboardTechnician}><DashboardPage /></RequireAuth>} />
+        <Route path="/site-dashboard"     element={<RequireAuth allowedRoles={ACCESS_POLICY.siteDashboard}><SiteOwnerDashboard /></RequireAuth>} />
+        <Route path={PATHS.STATIONS} element={<RequireAuth allowedRoles={ACCESS_POLICY.stationsRead}><StationsPage /></RequireAuth>} />
+        <Route path="/stations/new" element={<RequireAuth allowedRoles={ACCESS_POLICY.stationsWrite}><CreateStationPage /></RequireAuth>} />
+        <Route path="/stations/:id" element={<RequireAuth allowedRoles={ACCESS_POLICY.stationsRead}><StationDetailPage /></RequireAuth>} />
+        <Route path={PATHS.CHARGE_POINTS} element={<RequireAuth allowedRoles={ACCESS_POLICY.chargePointsRead}><ChargePointsPage /></RequireAuth>} />
+        <Route path="/charge-points/:id"  element={<RequireAuth allowedRoles={ACCESS_POLICY.chargePointsRead}><ChargePointDetailPage /></RequireAuth>} />
+        <Route path={PATHS.SWAP_STATIONS} element={<RequireAuth allowedRoles={ACCESS_POLICY.swapStationsRead}><SwapStationsPage /></RequireAuth>} />
+        <Route path="/swap-stations/:id" element={<RequireAuth allowedRoles={ACCESS_POLICY.swapStationsRead}><SwapStationDetailPage /></RequireAuth>} />
 
         {/* Operations */}
-        <Route path={PATHS.SESSIONS}   element={<RequireAuth allowedRoles={OPERATIONS_ROLES}><SessionsPage /></RequireAuth>} />
-        <Route path={PATHS.SWAP_SESSIONS} element={<RequireAuth allowedRoles={OPERATIONS_ROLES}><SwapSessionsPage /></RequireAuth>} />
-        <Route path={PATHS.INCIDENTS}  element={<RequireAuth allowedRoles={OPERATIONS_ROLES}><IncidentsPage /></RequireAuth>} />
-        <Route path={PATHS.ALERTS}     element={<RequireAuth allowedRoles={OPERATIONS_ROLES}><AlertsPage /></RequireAuth>} />
+        <Route path={PATHS.SESSIONS}   element={<RequireAuth allowedRoles={ACCESS_POLICY.sessionsRead}><SessionsPage /></RequireAuth>} />
+        <Route path={PATHS.SWAP_SESSIONS} element={<RequireAuth allowedRoles={ACCESS_POLICY.swapSessionsRead}><SwapSessionsPage /></RequireAuth>} />
+        <Route path={PATHS.INCIDENTS}  element={<RequireAuth allowedRoles={ACCESS_POLICY.incidentsRead}><IncidentsPage /></RequireAuth>} />
+        <Route path={PATHS.ALERTS}     element={<RequireAuth allowedRoles={ACCESS_POLICY.alertsRead}><AlertsPage /></RequireAuth>} />
 
         {/* Energy */}
-        <Route path={PATHS.SMART_CHARGING} element={<RequireAuth allowedRoles={ENERGY_ROLES}><SmartChargingPage /></RequireAuth>} />
-        <Route path={PATHS.LOAD_POLICY}    element={<RequireAuth allowedRoles={ENERGY_ROLES}><LoadPolicyPage /></RequireAuth>} />
-        <Route path={PATHS.BATTERY_INVENTORY} element={<RequireAuth allowedRoles={ENERGY_ROLES}><BatteryInventoryPage /></RequireAuth>} />
+        <Route path={PATHS.SMART_CHARGING} element={<RequireAuth allowedRoles={ACCESS_POLICY.smartChargingRead}><SmartChargingPage /></RequireAuth>} />
+        <Route path={PATHS.LOAD_POLICY}    element={<RequireAuth allowedRoles={ACCESS_POLICY.loadPoliciesRead}><LoadPolicyPage /></RequireAuth>} />
+        <Route path={PATHS.BATTERY_INVENTORY} element={<RequireAuth allowedRoles={ACCESS_POLICY.batteryInventoryRead}><BatteryInventoryPage /></RequireAuth>} />
 
         {/* Roaming */}
-        <Route path={PATHS.OCPI_PARTNERS}  element={<RequireAuth allowedRoles={ROAMING_ROLES}><OCPIPartnersPage /></RequireAuth>} />
-        <Route path="/roaming/sessions"    element={<RequireAuth allowedRoles={ROAMING_ROLES}><RoamingSessionsPage /></RequireAuth>} />
-        <Route path="/roaming/commands"    element={<RequireAuth allowedRoles={ROAMING_ROLES}><OCPICommandsPage /></RequireAuth>} />
-        <Route path={PATHS.OCPI_CDRS}      element={<RequireAuth allowedRoles={ROAMING_ROLES}><OCPICDRsPage /></RequireAuth>} />
+        <Route path={PATHS.OCPI_PARTNERS}  element={<RequireAuth allowedRoles={ACCESS_POLICY.roamingRead}><OCPIPartnersPage /></RequireAuth>} />
+        <Route path="/roaming/sessions"    element={<RequireAuth allowedRoles={ACCESS_POLICY.roamingRead}><RoamingSessionsPage /></RequireAuth>} />
+        <Route path="/roaming/commands"    element={<RequireAuth allowedRoles={ACCESS_POLICY.roamingRead}><OCPICommandsPage /></RequireAuth>} />
+        <Route path={PATHS.OCPI_CDRS}      element={<RequireAuth allowedRoles={ACCESS_POLICY.roamingRead}><OCPICDRsPage /></RequireAuth>} />
 
         {/* Finance */}
-        <Route path={PATHS.TARIFFS}    element={<RequireAuth allowedRoles={FINANCE_ROLES}><TariffsPage /></RequireAuth>} />
-        <Route path={PATHS.BILLING}    element={<RequireAuth allowedRoles={FINANCE_ROLES}><BillingPage /></RequireAuth>} />
-        <Route path={PATHS.PAYOUTS}    element={<RequireAuth allowedRoles={FINANCE_ROLES}><PayoutsPage /></RequireAuth>} />
-        <Route path={PATHS.SETTLEMENT} element={<RequireAuth allowedRoles={FINANCE_ROLES}><SettlementPage /></RequireAuth>} />
+        <Route path={PATHS.TARIFFS}    element={<RequireAuth allowedRoles={ACCESS_POLICY.tariffsRead}><TariffsPage /></RequireAuth>} />
+        <Route path={PATHS.BILLING}    element={<RequireAuth allowedRoles={ACCESS_POLICY.billingRead}><BillingPage /></RequireAuth>} />
+        <Route path={PATHS.PAYOUTS}    element={<RequireAuth allowedRoles={ACCESS_POLICY.payoutsRead}><PayoutsPage /></RequireAuth>} />
+        <Route path={PATHS.SETTLEMENT} element={<RequireAuth allowedRoles={ACCESS_POLICY.settlementRead}><SettlementPage /></RequireAuth>} />
 
         {/* Team */}
-        <Route path={PATHS.TEAM}       element={<RequireAuth allowedRoles={TEAM_ROLES}><TeamPage /></RequireAuth>} />
+        <Route path={PATHS.TEAM}       element={<RequireAuth allowedRoles={ACCESS_POLICY.teamRead}><TeamPage /></RequireAuth>} />
 
         {/* Platform */}
-        <Route path={PATHS.REPORTS}       element={<RequireAuth allowedRoles={REPORTING_ROLES}><ReportsPage /></RequireAuth>} />
-        <Route path={PATHS.AUDIT_LOGS}    element={<RequireAuth allowedRoles={FINANCE_ROLES}><AuditLogsPage /></RequireAuth>} />
-        <Route path={PATHS.WEBHOOKS}      element={<RequireAuth allowedRoles={PLATFORM_ADMIN_ROLES}><WebhooksPage /></RequireAuth>} />
-        <Route path={PATHS.INTEGRATIONS}  element={<RequireAuth allowedRoles={PLATFORM_ADMIN_ROLES}><IntegrationsPage /></RequireAuth>} />
-        <Route path={PATHS.PROTOCOLS}     element={<RequireAuth allowedRoles={PLATFORM_ADMIN_ROLES}><ProtocolsPage /></RequireAuth>} />
+        <Route path={PATHS.REPORTS}       element={<RequireAuth allowedRoles={ACCESS_POLICY.reportsRead}><ReportsPage /></RequireAuth>} />
+        <Route path={PATHS.AUDIT_LOGS}    element={<RequireAuth allowedRoles={ACCESS_POLICY.auditLogsRead}><AuditLogsPage /></RequireAuth>} />
+        <Route path={PATHS.WEBHOOKS}      element={<RequireAuth allowedRoles={ACCESS_POLICY.platformAdminRead}><WebhooksPage /></RequireAuth>} />
+        <Route path={PATHS.INTEGRATIONS}  element={<RequireAuth allowedRoles={ACCESS_POLICY.platformAdminRead}><IntegrationsPage /></RequireAuth>} />
+        <Route path={PATHS.PROTOCOLS}     element={<RequireAuth allowedRoles={ACCESS_POLICY.platformAdminRead}><ProtocolsPage /></RequireAuth>} />
 
         {/* Settings */}
-        <Route path={PATHS.SETTINGS}      element={<RequireAuth allowedRoles={SETTINGS_ROLES}><SettingsPage /></RequireAuth>} />
-        <Route path="/settings/white-label" element={<RequireAuth allowedRoles={ADMIN_ROLES}><WhiteLabelPage /></RequireAuth>} />
-        <Route path={PATHS.NOTIFICATIONS} element={<RequireAuth allowedRoles={SETTINGS_ROLES}><NotificationsPage /></RequireAuth>} />
+        <Route path={PATHS.SETTINGS}      element={<RequireAuth allowedRoles={ACCESS_POLICY.settingsRead}><SettingsPage /></RequireAuth>} />
+        <Route path="/settings/white-label" element={<RequireAuth allowedRoles={ACCESS_POLICY.whiteLabelAdmin}><WhiteLabelPage /></RequireAuth>} />
+        <Route path={PATHS.NOTIFICATIONS} element={<RequireAuth allowedRoles={ACCESS_POLICY.notificationsRead}><NotificationsPage /></RequireAuth>} />
 
         {/* Catch-all */}
         <Route path="*" element={<Navigate to={PATHS.DASHBOARD} replace />} />
