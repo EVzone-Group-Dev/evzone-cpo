@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/core/auth/authStore'
+import { useTenant } from '@/core/hooks/useTenant'
 import { PATHS } from '@/router/paths'
 import {
   LayoutDashboard, Zap, Cpu, Activity, AlertTriangle, Bell,
@@ -81,6 +82,7 @@ const NAV: NavGroup[] = [
 export function Sidebar() {
   const location = useLocation()
   const { user, logout } = useAuthStore()
+  const { activeTenant } = useTenant()
   const [collapsed, setCollapsed] = useState(false)
 
   return (
@@ -151,6 +153,9 @@ export function Sidebar() {
             <div className="overflow-hidden">
               <div className="text-xs font-semibold text-[var(--text)] truncate">{user.name}</div>
               <div className="text-[10px] text-[var(--text-subtle)] truncate">{user.role}</div>
+              {activeTenant && (
+                <div className="text-[10px] text-[var(--accent)] truncate">{activeTenant.name}</div>
+              )}
             </div>
           </div>
         )}

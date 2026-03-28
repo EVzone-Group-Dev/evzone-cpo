@@ -1,20 +1,26 @@
 import { useQuery } from '@tanstack/react-query'
 import { fetchJson } from '@/core/api/fetchJson'
+import { useTenant } from '@/core/hooks/useTenant'
 import type { StationDetail, StationSummary } from '@/core/types/mockApi'
 
 export type Station = StationSummary
 
 export function useStations() {
+  const { activeTenantId, isReady } = useTenant()
+
   return useQuery<Station[]>({
-    queryKey: ['stations'],
+    queryKey: ['stations', activeTenantId ?? 'default'],
     queryFn: () => fetchJson<Station[]>('/api/stations'),
+    enabled: isReady,
   })
 }
 
 export function useStation(id?: string) {
+  const { activeTenantId, isReady } = useTenant()
+
   return useQuery<StationDetail>({
-    queryKey: ['stations', id],
+    queryKey: ['stations', activeTenantId ?? 'default', id],
     queryFn: () => fetchJson<StationDetail>(`/api/stations/${id}`),
-    enabled: !!id,
+    enabled: isReady && !!id,
   })
 }

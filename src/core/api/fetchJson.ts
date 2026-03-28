@@ -1,5 +1,21 @@
+import { useAuthStore } from '@/core/auth/authStore'
+
 export async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(input, init)
+  const { activeTenantId, token } = useAuthStore.getState()
+  const headers = new Headers(init?.headers)
+
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`)
+  }
+
+  if (activeTenantId && !headers.has('x-tenant-id')) {
+    headers.set('x-tenant-id', activeTenantId)
+  }
+
+  const response = await fetch(input, {
+    ...init,
+    headers,
+  })
 
   if (!response.ok) {
     let message = `Request failed with status ${response.status}`

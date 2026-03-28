@@ -1,6 +1,8 @@
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { useDashboardOverview } from '@/core/hooks/usePlatformData'
 import { useAuthStore } from '@/core/auth/authStore'
+import { useTenant } from '@/core/hooks/useTenant'
+import { SiteOwnerDashboard } from '@/pages/dashboard/SiteOwnerDashboard'
 import { Zap, Activity, AlertTriangle, BarChart3, TrendingUp, Cpu, Users, Globe2 } from 'lucide-react'
 
 const KPI_META = {
@@ -16,7 +18,16 @@ const KPI_META = {
 
 export function DashboardPage() {
   const { user } = useAuthStore()
-  const { data, isLoading, error } = useDashboardOverview()
+  const { activeTenant, dashboardMode, isLoading: isTenantLoading } = useTenant()
+  const { data, isLoading, error } = useDashboardOverview({ enabled: dashboardMode !== 'site' })
+
+  if (isTenantLoading) {
+    return <DashboardLayout pageTitle="Tenant Overview"><div className="p-8 text-center text-subtle">Loading tenant context...</div></DashboardLayout>
+  }
+
+  if (dashboardMode === 'site') {
+    return <SiteOwnerDashboard />
+  }
 
   if (isLoading) {
     return <DashboardLayout pageTitle="Operations Overview"><div className="p-8 text-center text-subtle">Loading network overview...</div></DashboardLayout>
@@ -32,7 +43,7 @@ export function DashboardPage() {
       <div className="mb-6">
         <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
           Welcome back, <span style={{ color: 'var(--accent)', fontWeight: 700 }}>{user?.name}</span>.
-          Here's your network at a glance.
+          Here's {activeTenant ? `${activeTenant.name}'s` : 'your'} network at a glance.
         </p>
       </div>
 

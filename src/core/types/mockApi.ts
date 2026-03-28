@@ -13,6 +13,33 @@ export interface LoginResponse {
   user: CPOUser
 }
 
+export type TenantScope = 'platform' | 'organization' | 'site'
+export type DashboardMode = 'operations' | 'site'
+
+export interface TenantSummary {
+  chargePointCount: number
+  code: string
+  currency: string
+  description: string
+  id: string
+  name: string
+  region: string
+  scope: TenantScope
+  scopeLabel: string
+  siteCount: number
+  slug: string
+  stationCount: number
+  timeZone: string
+}
+
+export interface TenantContextResponse {
+  activeTenant: TenantSummary
+  availableTenants: TenantSummary[]
+  canSwitchTenants: boolean
+  dashboardMode: DashboardMode
+  dataScopeLabel: string
+}
+
 export interface DashboardKpi {
   id: string
   label: string

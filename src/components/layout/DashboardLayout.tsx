@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { useAuthStore } from '@/core/auth/authStore'
+import { useTenant } from '@/core/hooks/useTenant'
 import { Bell, Settings } from 'lucide-react'
 import { PATHS } from '@/router/paths'
 
@@ -13,6 +14,7 @@ interface Props {
 
 export function DashboardLayout({ children, pageTitle, actions }: Props) {
   const { user } = useAuthStore()
+  const { activeTenant, availableTenants, canSwitchTenants, isLoading, setActiveTenantId } = useTenant()
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: 'var(--bg)' }}>
@@ -31,6 +33,28 @@ export function DashboardLayout({ children, pageTitle, actions }: Props) {
             <div />
           )}
           <div className="flex items-center gap-2">
+            {activeTenant && (
+              <div className="hidden lg:flex items-center gap-3 rounded-xl border px-3 py-2" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
+                <div className="text-right leading-tight">
+                  <div className="text-[10px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-subtle)' }}>{activeTenant.scopeLabel}</div>
+                  <div className="text-xs font-semibold" style={{ color: 'var(--text)' }}>{activeTenant.name}</div>
+                </div>
+                {canSwitchTenants && (
+                  <select
+                    className="input !h-9 !py-0 !min-w-[220px]"
+                    value={activeTenant.id}
+                    onChange={(event) => setActiveTenantId(event.target.value)}
+                    disabled={isLoading}
+                  >
+                    {availableTenants.map((tenant) => (
+                      <option key={tenant.id} value={tenant.id}>
+                        {tenant.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            )}
             {actions}
             <Link to={PATHS.NOTIFICATIONS} className="btn ghost icon" title="Notifications">
               <Bell size={16} />

@@ -3,12 +3,14 @@ import { persist } from 'zustand/middleware'
 import type { CPOUser, CPORole } from '@/core/types/domain'
 
 export interface AuthState {
+  activeTenantId: string | null
   user: CPOUser | null
   token: string | null
   isAuthenticated: boolean
   isLoading: boolean
 
   setUser: (user: CPOUser, token: string) => void
+  setActiveTenantId: (tenantId: string | null) => void
   logout: () => void
   setLoading: (v: boolean) => void
 }
@@ -16,18 +18,25 @@ export interface AuthState {
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
+      activeTenantId: null,
       user: null,
       token: null,
       isAuthenticated: false,
       isLoading: false,
 
-      setUser: (user, token) => set({ user, token, isAuthenticated: true }),
-      logout: () => set({ user: null, token: null, isAuthenticated: false }),
+      setUser: (user, token) => set({ activeTenantId: null, user, token, isAuthenticated: true }),
+      setActiveTenantId: (tenantId) => set({ activeTenantId: tenantId }),
+      logout: () => set({ activeTenantId: null, user: null, token: null, isAuthenticated: false }),
       setLoading: (v) => set({ isLoading: v }),
     }),
     {
       name: 'cpo-auth',
-      partialize: (s) => ({ user: s.user, token: s.token, isAuthenticated: s.isAuthenticated }),
+      partialize: (s) => ({
+        activeTenantId: s.activeTenantId,
+        user: s.user,
+        token: s.token,
+        isAuthenticated: s.isAuthenticated,
+      }),
     },
   ),
 )
