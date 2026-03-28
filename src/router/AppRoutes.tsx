@@ -13,7 +13,9 @@ import {
   ROAMING_ROLES,
   SETTINGS_ROLES,
   TEAM_ROLES,
+  getRoleHomePath,
 } from '@/core/auth/access'
+import { useAuthStore } from '@/core/auth/authStore'
 import { RequireAuth, RequireGuest } from './guards'
 import { PATHS } from './paths'
 
@@ -53,12 +55,24 @@ const SettingsPage      = lazy(() => import('@/pages/settings/SettingsPage').the
 const WhiteLabelPage    = lazy(() => import('@/pages/settings/WhiteLabelPage').then(m => ({ default: m.WhiteLabelPage })))
 const NotificationsPage = lazy(() => import('@/pages/notifications/NotificationsPage').then(m => ({ default: m.NotificationsPage })))
 
+const SUPER_ADMIN_ONLY = ['SUPER_ADMIN'] as const
+const CPO_ADMIN_ONLY = ['CPO_ADMIN'] as const
+const STATION_MANAGER_ONLY = ['STATION_MANAGER'] as const
+const FINANCE_ONLY = ['FINANCE'] as const
+const OPERATOR_ONLY = ['OPERATOR'] as const
+const TECHNICIAN_ONLY = ['TECHNICIAN'] as const
+
 function PageLoader() {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
       <div style={{ width: 32, height: 32, border: '3px solid #30363d', borderTopColor: '#3fb950', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
     </div>
   )
+}
+
+function RoleHomeRedirect() {
+  const userRole = useAuthStore((state) => state.user?.role)
+  return <Navigate to={getRoleHomePath(userRole)} replace />
 }
 
 export function AppRoutes() {
@@ -70,7 +84,13 @@ export function AppRoutes() {
         <Route path={PATHS.LOGIN} element={<RequireGuest><LoginPage /></RequireGuest>} />
 
         {/* Protected — Infrastructure */}
-        <Route path={PATHS.DASHBOARD}     element={<RequireAuth allowedRoles={ACTIVE_ROLES}><DashboardPage /></RequireAuth>} />
+        <Route path={PATHS.DASHBOARD} element={<RequireAuth allowedRoles={ACTIVE_ROLES}><RoleHomeRedirect /></RequireAuth>} />
+        <Route path={PATHS.DASHBOARD_SUPER_ADMIN} element={<RequireAuth allowedRoles={SUPER_ADMIN_ONLY}><DashboardPage /></RequireAuth>} />
+        <Route path={PATHS.DASHBOARD_CPO_ADMIN} element={<RequireAuth allowedRoles={CPO_ADMIN_ONLY}><DashboardPage /></RequireAuth>} />
+        <Route path={PATHS.DASHBOARD_STATION_MANAGER} element={<RequireAuth allowedRoles={STATION_MANAGER_ONLY}><DashboardPage /></RequireAuth>} />
+        <Route path={PATHS.DASHBOARD_FINANCE} element={<RequireAuth allowedRoles={FINANCE_ONLY}><DashboardPage /></RequireAuth>} />
+        <Route path={PATHS.DASHBOARD_OPERATOR} element={<RequireAuth allowedRoles={OPERATOR_ONLY}><DashboardPage /></RequireAuth>} />
+        <Route path={PATHS.DASHBOARD_TECHNICIAN} element={<RequireAuth allowedRoles={TECHNICIAN_ONLY}><DashboardPage /></RequireAuth>} />
         <Route path="/site-dashboard"     element={<RequireAuth allowedRoles={ACTIVE_ROLES}><SiteOwnerDashboard /></RequireAuth>} />
         <Route path={PATHS.STATIONS} element={<RequireAuth allowedRoles={INFRASTRUCTURE_ROLES}><StationsPage /></RequireAuth>} />
         <Route path="/stations/new" element={<RequireAuth allowedRoles={ASSET_MANAGER_ROLES}><CreateStationPage /></RequireAuth>} />

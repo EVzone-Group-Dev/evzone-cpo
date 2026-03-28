@@ -2,6 +2,12 @@ export const PATHS = {
   HOME: '/',
   LOGIN: '/login',
   DASHBOARD: '/dashboard',
+  DASHBOARD_SUPER_ADMIN: '/dashboard/super-admin',
+  DASHBOARD_CPO_ADMIN: '/dashboard/cpo-admin',
+  DASHBOARD_STATION_MANAGER: '/dashboard/station-manager',
+  DASHBOARD_FINANCE: '/dashboard/finance',
+  DASHBOARD_OPERATOR: '/dashboard/operator',
+  DASHBOARD_TECHNICIAN: '/dashboard/technician',
 
   // Infrastructure
   STATIONS: '/stations',
