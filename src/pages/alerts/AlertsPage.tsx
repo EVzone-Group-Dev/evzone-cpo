@@ -1,25 +1,29 @@
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
+import { useAlerts } from '@/core/hooks/usePlatformData'
 import { Bell } from 'lucide-react'
 
-const ALERTS = [
-  { id: 'A-1', type: 'Critical', message: 'Garden City station offline — grid power fault', station: 'Garden City', ts: '2025-03-27 05:02', acked: false },
-  { id: 'A-2', type: 'Warning', message: 'Load at 92% of grid limit — Westlands Hub', station: 'Westlands Hub', ts: '2025-03-27 08:45', acked: false },
-  { id: 'A-3', type: 'Info', message: 'Roaming partner "ChargeNow" sync complete — 12 CDRs sent', station: '—', ts: '2025-03-27 09:00', acked: true },
-  { id: 'A-4', type: 'Warning', message: 'CP-003 heartbeat stale for 6min', station: 'CBD Station', ts: '2025-03-27 09:15', acked: false },
-]
-
 export function AlertsPage() {
+  const { data: alerts, isLoading, error } = useAlerts()
+
+  if (isLoading) {
+    return <DashboardLayout pageTitle="Alerts"><div className="p-8 text-center text-subtle">Loading alert stream...</div></DashboardLayout>
+  }
+
+  if (error || !alerts) {
+    return <DashboardLayout pageTitle="Alerts"><div className="p-8 text-center text-danger">Unable to load alerts.</div></DashboardLayout>
+  }
+
   return (
     <DashboardLayout pageTitle="Alerts">
       <div className="space-y-3">
-        {ALERTS.map(a => (
-          <div key={a.id} className={`alert ${a.type === 'Critical' ? 'danger' : a.type === 'Warning' ? 'warning' : 'info'}`}>
+        {alerts.map((alert) => (
+          <div key={alert.id} className={`alert ${alert.type === 'Critical' ? 'danger' : alert.type === 'Warning' ? 'warning' : 'info'}`}>
             <Bell size={14} className="flex-shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
-              <div className="font-semibold text-sm">{a.message}</div>
-              <div className="text-xs opacity-80 mt-0.5">{a.station} · {a.ts}</div>
+              <div className="font-semibold text-sm">{alert.message}</div>
+              <div className="text-xs opacity-80 mt-0.5">{alert.station} · {alert.ts}</div>
             </div>
-            {a.acked && <span className="pill online text-[10px] flex-shrink-0">ACK'd</span>}
+            {alert.acked && <span className="pill online text-[10px] flex-shrink-0">ACK'd</span>}
           </div>
         ))}
       </div>

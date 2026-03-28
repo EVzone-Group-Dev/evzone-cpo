@@ -1,16 +1,11 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/core/auth/authStore'
+import { fetchJson } from '@/core/api/fetchJson'
+import { useDemoUsers } from '@/core/hooks/usePlatformData'
+import type { LoginResponse } from '@/core/types/mockApi'
 import { PATHS } from '@/router/paths'
 import { Zap } from 'lucide-react'
-import type { CPOUser } from '@/core/types/domain'
-
-// Demo credentials
-const DEMO_USERS: (CPOUser & { password: string })[] = [
-  { id: 'u1', name: 'Super Admin', email: 'admin@evzone.io', password: 'admin', role: 'SUPER_ADMIN', status: 'Active', mfaEnabled: false, createdAt: new Date().toISOString() },
-  { id: 'u2', name: 'CPO Manager', email: 'manager@evzone.io', password: 'manager', role: 'CPO_ADMIN', status: 'Active', mfaEnabled: false, createdAt: new Date().toISOString() },
-  { id: 'u3', name: 'Field Operator', email: 'operator@evzone.io', password: 'operator', role: 'OPERATOR', status: 'Active', mfaEnabled: false, createdAt: new Date().toISOString() },
-]
 
 export function LoginPage() {
   const [email, setEmail] = useState('admin@evzone.io')
@@ -19,18 +14,29 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false)
   const { setUser } = useAuthStore()
   const navigate = useNavigate()
+  const { data: demoUsers = [] } = useDemoUsers()
 
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault()
     setError('')
     setLoading(true)
-    await new Promise(r => setTimeout(r, 600))
-    const match = DEMO_USERS.find(u => u.email === email && u.password === password)
-    if (!match) { setError('Invalid credentials.'); setLoading(false); return }
-    const { password: _pw, ...user } = match
-    setUser(user, 'demo-token-' + user.id)
-    navigate(PATHS.DASHBOARD, { replace: true })
-    setLoading(false)
+
+    try {
+      const auth = await fetchJson<LoginResponse>('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      })
+
+      setUser(auth.user, auth.token)
+      navigate(PATHS.DASHBOARD, { replace: true })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to sign in.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -71,7 +77,7 @@ export function LoginPage() {
         {/* Demo credentials hint */}
         <div className="mt-4 card-glass text-[11px]" style={{ padding: '0.75rem 1rem', borderRadius: 10 }}>
           <p className="font-bold mb-1" style={{ color: 'var(--text-muted)' }}>Demo Accounts</p>
-          {DEMO_USERS.map(u => (
+          {demoUsers.map((u) => (
             <button
               key={u.email}
               type="button"
@@ -82,6 +88,9 @@ export function LoginPage() {
               {u.name} — {u.email}
             </button>
           ))}
+          {demoUsers.length === 0 && (
+            <p style={{ color: 'var(--text-subtle)' }}>Loading demo accounts...</p>
+          )}
         </div>
       </div>
     </div>

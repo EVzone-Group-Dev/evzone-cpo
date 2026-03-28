@@ -1,26 +1,31 @@
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
-
-const POLICIES = [
-  { id: 'LP-1', name: 'Westlands Hub Default', station: 'Westlands Hub', maxLoadKw: 80, curtailment: 95, priority: 'FIFO', active: true },
-  { id: 'LP-2', name: 'Airport Peak Hours', station: 'Airport East', maxLoadKw: 150, curtailment: 90, priority: 'Priority', active: true },
-  { id: 'LP-3', name: 'Garden City Night Mode', station: 'Garden City Mall', maxLoadKw: 40, curtailment: 80, priority: 'Fair-Share', active: false },
-]
+import { useLoadPolicies } from '@/core/hooks/usePlatformData'
 
 export function LoadPolicyPage() {
+  const { data: policies, isLoading, error } = useLoadPolicies()
+
+  if (isLoading) {
+    return <DashboardLayout pageTitle="Load Policies"><div className="p-8 text-center text-subtle">Loading load policies...</div></DashboardLayout>
+  }
+
+  if (error || !policies) {
+    return <DashboardLayout pageTitle="Load Policies"><div className="p-8 text-center text-danger">Unable to load load policies.</div></DashboardLayout>
+  }
+
   return (
     <DashboardLayout pageTitle="Load Policies">
       <div className="table-wrap">
         <table className="table">
           <thead><tr><th>Policy</th><th>Station</th><th>Max Load</th><th>Curtailment %</th><th>Priority Mode</th><th>Status</th></tr></thead>
           <tbody>
-            {POLICIES.map(p => (
-              <tr key={p.id}>
-                <td className="font-semibold text-sm">{p.name}</td>
-                <td className="text-sm">{p.station}</td>
-                <td className="text-sm">{p.maxLoadKw} kW</td>
-                <td className="text-sm">{p.curtailment}%</td>
-                <td><span className="pill pending">{p.priority}</span></td>
-                <td><span className={`pill ${p.active ? 'active' : 'offline'}`}>{p.active ? 'Active' : 'Inactive'}</span></td>
+            {policies.map((policy) => (
+              <tr key={policy.id}>
+                <td className="font-semibold text-sm">{policy.name}</td>
+                <td className="text-sm">{policy.station}</td>
+                <td className="text-sm">{policy.maxLoadKw} kW</td>
+                <td className="text-sm">{policy.curtailment}%</td>
+                <td><span className="pill pending">{policy.priority}</span></td>
+                <td><span className={`pill ${policy.active ? 'active' : 'offline'}`}>{policy.active ? 'Active' : 'Inactive'}</span></td>
               </tr>
             ))}
           </tbody>

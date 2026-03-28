@@ -1,37 +1,20 @@
 import { useQuery } from '@tanstack/react-query'
+import { fetchJson } from '@/core/api/fetchJson'
+import type { StationDetail, StationSummary } from '@/core/types/mockApi'
 
-export interface Station {
-  id: string
-  name: string
-  status: 'Online' | 'Offline' | 'Degraded' | 'Faulted'
-  address: string
-  city: string
-  country: string
-  capacity: number
-  chargePoints: any[]
-  lat: number
-  lng: number
-}
+export type Station = StationSummary
 
 export function useStations() {
   return useQuery<Station[]>({
     queryKey: ['stations'],
-    queryFn: async () => {
-      const res = await fetch('/api/stations')
-      if (!res.ok) throw new Error('Failed to fetch stations')
-      return res.json()
-    },
+    queryFn: () => fetchJson<Station[]>('/api/stations'),
   })
 }
 
 export function useStation(id?: string) {
-  return useQuery<Station>({
+  return useQuery<StationDetail>({
     queryKey: ['stations', id],
-    queryFn: async () => {
-      const res = await fetch(`/api/stations/${id}`)
-      if (!res.ok) throw new Error('Station not found')
-      return res.json()
-    },
+    queryFn: () => fetchJson<StationDetail>(`/api/stations/${id}`),
     enabled: !!id,
   })
 }

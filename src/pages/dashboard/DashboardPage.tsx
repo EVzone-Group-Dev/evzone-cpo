@@ -1,36 +1,30 @@
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
+import { useDashboardOverview } from '@/core/hooks/usePlatformData'
 import { useAuthStore } from '@/core/auth/authStore'
 import { Zap, Activity, AlertTriangle, BarChart3, TrendingUp, Cpu, Users, Globe2 } from 'lucide-react'
 
-interface KPI { label: string; value: string; delta?: string; up?: boolean; icon: React.ReactNode; color: string }
-
-const KPIS: KPI[] = [
-  { label: 'Active Sessions', value: '148', delta: '+12 vs yesterday', up: true,  icon: <Activity size={20} />, color: 'var(--ok)' },
-  { label: 'Charge Points Online', value: '312 / 340', delta: '91.8% uptime', up: true,  icon: <Cpu size={20} />, color: 'var(--info)' },
-  { label: 'Energy Today (kWh)', value: '4,821', delta: '+8.2% vs avg', up: true,  icon: <Zap size={20} />, color: 'var(--accent)' },
-  { label: 'Revenue Today', value: 'KES 142,400', delta: '+5.1% vs avg', up: true,  icon: <BarChart3 size={20} />, color: 'var(--warning)' },
-  { label: 'Open Incidents', value: '7', delta: '-3 resolved today', up: false, icon: <AlertTriangle size={20} />, color: 'var(--danger)' },
-  { label: 'Roaming Sessions', value: '34', delta: '3 OCPI partners', up: true,  icon: <Globe2 size={20} />, color: 'var(--info)' },
-  { label: 'Grid Load', value: '82%', delta: 'Peak shaving active', up: false, icon: <TrendingUp size={20} />, color: 'var(--warning)' },
-  { label: 'Active Operators', value: '12', delta: '3 on field', up: true,  icon: <Users size={20} />, color: 'var(--text-muted)' },
-]
-
-const RECENT_SESSIONS = [
-  { id: 'S-001', station: 'Westlands Hub', cp: 'CP-003', energy: '22.4 kWh', amount: 'KES 1,344', status: 'Active', method: 'App' },
-  { id: 'S-002', station: 'CBD Station', cp: 'CP-011', energy: '14.8 kWh', amount: 'KES 888', status: 'Completed', method: 'RFID' },
-  { id: 'S-003', station: 'Airport East', cp: 'CP-007', energy: '50.0 kWh', amount: 'KES 3,000', status: 'Active', method: 'Roaming' },
-  { id: 'S-004', station: 'Garden City', cp: 'CP-001', energy: '8.2 kWh', amount: 'KES 492', status: 'Completed', method: 'App' },
-  { id: 'S-005', station: 'Strathmore', cp: 'CP-022', energy: '0.0 kWh', amount: 'KES 0', status: 'Failed', method: 'RFID' },
-]
-
-const RECENT_INCIDENTS = [
-  { id: 'INC-044', station: 'Westlands Hub', severity: 'High', title: 'CP-003 connector fault', status: 'Open' },
-  { id: 'INC-043', station: 'CBD Station', severity: 'Medium', title: 'Heartbeat timeout CP-011', status: 'Acknowledged' },
-  { id: 'INC-042', station: 'Airport East', severity: 'Low', title: 'Firmware update pending', status: 'Open' },
-]
+const KPI_META = {
+  activity: { icon: <Activity size={20} />, color: 'var(--ok)' },
+  'charge-points': { icon: <Cpu size={20} />, color: 'var(--info)' },
+  energy: { icon: <Zap size={20} />, color: 'var(--accent)' },
+  revenue: { icon: <BarChart3 size={20} />, color: 'var(--warning)' },
+  incidents: { icon: <AlertTriangle size={20} />, color: 'var(--danger)' },
+  roaming: { icon: <Globe2 size={20} />, color: 'var(--info)' },
+  load: { icon: <TrendingUp size={20} />, color: 'var(--warning)' },
+  operators: { icon: <Users size={20} />, color: 'var(--text-muted)' },
+} as const
 
 export function DashboardPage() {
   const { user } = useAuthStore()
+  const { data, isLoading, error } = useDashboardOverview()
+
+  if (isLoading) {
+    return <DashboardLayout pageTitle="Operations Overview"><div className="p-8 text-center text-subtle">Loading network overview...</div></DashboardLayout>
+  }
+
+  if (error || !data) {
+    return <DashboardLayout pageTitle="Operations Overview"><div className="p-8 text-center text-danger">Unable to load dashboard data.</div></DashboardLayout>
+  }
 
   return (
     <DashboardLayout pageTitle="Operations Overview">
@@ -44,20 +38,22 @@ export function DashboardPage() {
 
       {/* KPI Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        {KPIS.map(kpi => (
-          <div key={kpi.label} className="kpi-card">
-            <div className="flex items-center gap-2">
-              <span style={{ color: kpi.color }}>{kpi.icon}</span>
-              <span className="label">{kpi.label}</span>
-            </div>
-            <div className="value">{kpi.value}</div>
-            {kpi.delta && (
-              <div className={kpi.up ? 'delta-up' : 'delta-down'}>
-                {kpi.up ? '↑' : '↓'} {kpi.delta}
+        {data.kpis.map((kpi) => {
+          const meta = KPI_META[kpi.iconKey]
+
+          return (
+            <div key={kpi.label} className="kpi-card">
+              <div className="flex items-center gap-2">
+                <span style={{ color: meta.color }}>{meta.icon}</span>
+                <span className="label">{kpi.label}</span>
               </div>
-            )}
-          </div>
-        ))}
+              <div className="value">{kpi.value}</div>
+              <div className={kpi.trend === 'up' ? 'delta-up' : 'delta-down'}>
+                {kpi.trend === 'up' ? '↑' : '↓'} {kpi.delta}
+              </div>
+            </div>
+          )
+        })}
       </div>
 
       {/* Two-column lower section */}
@@ -79,7 +75,7 @@ export function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {RECENT_SESSIONS.map(s => (
+                {data.recentSessions.map((s) => (
                   <tr key={s.id}>
                     <td>
                       <div className="text-xs font-semibold" style={{ color: 'var(--text)' }}>{s.station}</div>
@@ -106,7 +102,7 @@ export function DashboardPage() {
             Active Incidents
           </div>
           <div className="space-y-3">
-            {RECENT_INCIDENTS.map(inc => (
+            {data.recentIncidents.map((inc) => (
               <div key={inc.id} className="flex items-start gap-3 p-3 rounded-lg" style={{ background: 'var(--bg-muted)' }}>
                 <span className={`pill flex-shrink-0 ${inc.severity === 'High' ? 'faulted' : inc.severity === 'Medium' ? 'degraded' : 'pending'}`}>
                   {inc.severity}
