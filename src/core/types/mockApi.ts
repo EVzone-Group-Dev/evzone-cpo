@@ -1,4 +1,4 @@
-import type { CPORole, CPOUser } from '@/core/types/domain'
+import type { CPORole, CPOUser, ServiceMode } from '@/core/types/domain'
 
 export interface DemoUserHint {
   id: string
@@ -123,6 +123,12 @@ export interface StationChargePointSummary {
   type: string
 }
 
+export interface StationSwapSummary {
+  availableChargedPacks: number
+  cabinetCount: number
+  chargingPacks: number
+}
+
 export interface StationSummary {
   address: string
   capacity: number
@@ -133,7 +139,9 @@ export interface StationSummary {
   lat: number
   lng: number
   name: string
+  serviceMode: ServiceMode
   status: 'Online' | 'Offline' | 'Degraded' | 'Faulted'
+  swapSummary?: StationSwapSummary
 }
 
 export interface StationDetail extends StationSummary {
@@ -154,6 +162,88 @@ export interface StationDetail extends StationSummary {
     slaCompliance: string
   }
   uptimePercent30d: string
+}
+
+export interface SwapCabinetSummary {
+  availableChargedPacks: number
+  chargingPacks: number
+  id: string
+  lastHeartbeatLabel: string
+  model: string
+  reservedPacks: number
+  slotCount: number
+  status: 'Online' | 'Offline' | 'Degraded' | 'Maintenance'
+}
+
+export interface BatteryPackRecord {
+  chemistry: 'LFP' | 'NMC'
+  cycleCount: number
+  healthLabel: string
+  id: string
+  lastSeenLabel: string
+  slotLabel: string
+  socLabel: string
+  stationName: string
+  status: 'Ready' | 'Charging' | 'Reserved' | 'Installed' | 'Quarantined'
+}
+
+export interface SwapStationSummary {
+  address: string
+  avgSwapDurationLabel: string
+  cabinetCount: number
+  chargingPacks: number
+  city: string
+  country: string
+  id: string
+  lat: number
+  lng: number
+  name: string
+  readyPacks: number
+  serviceMode: Extract<ServiceMode, 'Swapping' | 'Hybrid'>
+  status: 'Online' | 'Offline' | 'Degraded' | 'Maintenance'
+}
+
+export interface SwapStationDetail extends SwapStationSummary {
+  alerts: Array<{
+    level: 'Critical' | 'Warning' | 'Info'
+    message: string
+  }>
+  cabinets: SwapCabinetSummary[]
+  gridBufferLabel: string
+  packs: BatteryPackRecord[]
+  recentSwaps: Array<{
+    durationLabel: string
+    id: string
+    riderLabel: string
+    returnedPackId: string
+    status: 'Completed' | 'Flagged' | 'In Progress'
+    timeLabel: string
+  }>
+}
+
+export interface BatterySwapSessionRecord {
+  cabinetId: string
+  healthCheck: 'Passed' | 'Review' | 'Failed'
+  id: string
+  initiatedAt: string
+  outgoingPackId: string
+  returnedPackId: string
+  revenue: string
+  riderLabel: string
+  stationName: string
+  status: 'Completed' | 'In Progress' | 'Flagged'
+  turnaroundLabel: string
+}
+
+export interface BatteryInventoryResponse {
+  balancingNote: string
+  metrics: Array<{
+    id: 'ready' | 'charging' | 'reserved' | 'quarantined'
+    label: string
+    tone: 'default' | 'ok' | 'warning' | 'danger'
+    value: string
+  }>
+  packs: BatteryPackRecord[]
 }
 
 export interface ChargePointSummary {

@@ -7,12 +7,10 @@ import type { TenantContextType } from '@/core/contexts/tenantSessionContext'
 import type { TenantContextResponse } from '@/core/types/mockApi'
 
 export function TenantProvider({ children }: { children: ReactNode }) {
-  const { activeTenantId, isAuthenticated, setActiveTenantId, token } = useAuthStore((state) => ({
-    activeTenantId: state.activeTenantId,
-    isAuthenticated: state.isAuthenticated,
-    setActiveTenantId: state.setActiveTenantId,
-    token: state.token,
-  }))
+  const activeTenantId = useAuthStore((state) => state.activeTenantId)
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
+  const setActiveTenantId = useAuthStore((state) => state.setActiveTenantId)
+  const token = useAuthStore((state) => state.token)
 
   const { data, isLoading, isSuccess } = useQuery<TenantContextResponse>({
     queryKey: ['tenancy', 'context', token, activeTenantId],

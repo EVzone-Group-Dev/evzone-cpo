@@ -13,6 +13,7 @@ describe('mapToOCPILocation', () => {
       lat: 0.3136,
       lng: 32.5811,
       capacity: 150,
+      serviceMode: 'Charging',
       status: 'Online',
       chargePoints: [
         { id: 'cp-9', status: 'Charging', type: 'DC Fast', lastHeartbeatLabel: '10s ago' },

@@ -2,6 +2,8 @@
 
 export type StationId = string
 export type ChargePointId = string
+export type SwapCabinetId = string
+export type BatteryPackId = string
 export type ConnectorId = number
 export type SessionId = string
 export type OrganizationId = string
@@ -12,6 +14,10 @@ export type StationStatus = 'Online' | 'Degraded' | 'Offline' | 'Maintenance'
 export type ConnectorType = 'CCS2' | 'CHAdeMO' | 'Type2' | 'GB/T' | 'NACS'
 export type PowerType = 'AC' | 'DC'
 export type OCPPVersion = '1.6' | '1.6J' | '2.0.1' | '2.1'
+export type ServiceMode = 'Charging' | 'Swapping' | 'Hybrid'
+export type SwapCabinetStatus = 'Online' | 'Degraded' | 'Offline' | 'Maintenance'
+export type BatteryPackStatus = 'Ready' | 'Charging' | 'Reserved' | 'In Use' | 'Quarantined'
+export type BatteryChemistry = 'LFP' | 'NMC'
 
 export interface Site {
   id: string
@@ -31,6 +37,7 @@ export interface Station {
   id: StationId
   name: string
   siteId?: string
+  serviceMode: ServiceMode
   address: string
   city: string
   country: string
@@ -38,6 +45,7 @@ export interface Station {
   longitude: number
   status: StationStatus
   chargePoints?: ChargePoint[]
+  swapCabinets?: SwapCabinet[]
   capacity: number // kW
   createdAt: string
 }
@@ -72,6 +80,36 @@ export interface Connector {
   currentSessionId?: SessionId
 }
 
+export interface SwapCabinet {
+  id: SwapCabinetId
+  stationId: StationId
+  name: string
+  model: string
+  manufacturer: string
+  slotCount: number
+  availableChargedPacks: number
+  chargingPacks: number
+  reservedPacks: number
+  status: SwapCabinetStatus
+  lastHeartbeat?: string
+}
+
+export interface BatteryPack {
+  id: BatteryPackId
+  serialNumber: string
+  chemistry: BatteryChemistry
+  nominalCapacityKwh: number
+  stateOfChargePercent: number
+  stateOfHealthPercent: number
+  cycleCount: number
+  status: BatteryPackStatus
+  stationId: StationId
+  cabinetId?: SwapCabinetId
+  slotNumber?: number
+  lastSwapAt?: string
+  installedVehicleId?: string
+}
+
 // ── Sessions ──────────────────────────────────────────────
 export type SessionStatus = 'Pending' | 'Active' | 'Completed' | 'Failed' | 'Cancelled'
 export type PaymentMethod = 'Card' | 'Roaming' | 'Wallet' | 'Mobile Money' | 'Cash'
@@ -95,6 +133,26 @@ export interface ChargingSession {
   meterStart?: number
   meterEnd?: number
   emspId?: string   // Which EMSP/roaming partner if applicable
+  failureReason?: string
+}
+
+export interface SwapSession {
+  id: SessionId
+  stationId: StationId
+  cabinetId: SwapCabinetId
+  outgoingPackId: BatteryPackId
+  returnedPackId?: BatteryPackId
+  start: string
+  end?: string
+  durationMinutes?: number
+  amount: number
+  currency: string
+  paymentMethod: PaymentMethod
+  authMethod?: AuthMethod
+  status: SessionStatus
+  operatorId?: UserId
+  returnedPackStateOfChargePercent?: number
+  returnedPackStateOfHealthPercent?: number
   failureReason?: string
 }
 

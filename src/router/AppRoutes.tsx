@@ -12,12 +12,16 @@ const StationDetailPage = lazy(() => import('@/pages/stations/StationDetailPage'
 const CreateStationPage = lazy(() => import('@/pages/stations/CreateStationPage').then(m => ({ default: m.CreateStationPage })))
 const ChargePointsPage  = lazy(() => import('@/pages/charge-points/ChargePointsPage').then(m => ({ default: m.ChargePointsPage })))
 const ChargePointDetailPage = lazy(() => import('@/pages/charge-points/ChargePointDetailPage').then(m => ({ default: m.ChargePointDetailPage })))
+const SwapStationsPage = lazy(() => import('@/pages/swapping/SwapStationsPage').then(m => ({ default: m.SwapStationsPage })))
+const SwapStationDetailPage = lazy(() => import('@/pages/swapping/SwapStationDetailPage').then(m => ({ default: m.SwapStationDetailPage })))
 const SessionsPage      = lazy(() => import('@/pages/sessions/SessionsPage').then(m => ({ default: m.SessionsPage })))
+const SwapSessionsPage = lazy(() => import('@/pages/swapping/SwapSessionsPage').then(m => ({ default: m.SwapSessionsPage })))
 const IncidentsPage     = lazy(() => import('@/pages/incidents/IncidentsPage').then(m => ({ default: m.IncidentsPage })))
 const AlertsPage        = lazy(() => import('@/pages/alerts/AlertsPage').then(m => ({ default: m.AlertsPage })))
 const TariffsPage       = lazy(() => import('@/pages/tariffs/TariffsPage').then(m => ({ default: m.TariffsPage })))
 const SmartChargingPage = lazy(() => import('@/pages/energy/SmartChargingPage').then(m => ({ default: m.SmartChargingPage })))
 const LoadPolicyPage    = lazy(() => import('@/pages/energy/LoadPolicyPage').then(m => ({ default: m.LoadPolicyPage })))
+const BatteryInventoryPage = lazy(() => import('@/pages/swapping/BatteryInventoryPage').then(m => ({ default: m.BatteryInventoryPage })))
 const OCPIPartnersPage  = lazy(() => import('@/pages/roaming/OCPIPartnersPage').then(m => ({ default: m.OCPIPartnersPage })))
 const OCPICDRsPage      = lazy(() => import('@/pages/roaming/OCPICDRsPage').then(m => ({ default: m.OCPICDRsPage })))
 const RoamingSessionsPage = lazy(() => import('@/pages/roaming/RoamingSessionsPage').then(m => ({ default: m.RoamingSessionsPage })))
@@ -59,15 +63,19 @@ export function AppRoutes() {
         <Route path="/stations/:id" element={<RequireAuth><StationDetailPage /></RequireAuth>} />
         <Route path={PATHS.CHARGE_POINTS} element={<RequireAuth><ChargePointsPage /></RequireAuth>} />
         <Route path="/charge-points/:id"  element={<RequireAuth><ChargePointDetailPage /></RequireAuth>} />
+        <Route path={PATHS.SWAP_STATIONS} element={<RequireAuth><SwapStationsPage /></RequireAuth>} />
+        <Route path="/swap-stations/:id" element={<RequireAuth><SwapStationDetailPage /></RequireAuth>} />
 
         {/* Operations */}
         <Route path={PATHS.SESSIONS}   element={<RequireAuth><SessionsPage /></RequireAuth>} />
+        <Route path={PATHS.SWAP_SESSIONS} element={<RequireAuth><SwapSessionsPage /></RequireAuth>} />
         <Route path={PATHS.INCIDENTS}  element={<RequireAuth><IncidentsPage /></RequireAuth>} />
         <Route path={PATHS.ALERTS}     element={<RequireAuth><AlertsPage /></RequireAuth>} />
 
         {/* Energy */}
         <Route path={PATHS.SMART_CHARGING} element={<RequireAuth><SmartChargingPage /></RequireAuth>} />
         <Route path={PATHS.LOAD_POLICY}    element={<RequireAuth><LoadPolicyPage /></RequireAuth>} />
+        <Route path={PATHS.BATTERY_INVENTORY} element={<RequireAuth><BatteryInventoryPage /></RequireAuth>} />
 
         {/* Roaming */}
         <Route path={PATHS.OCPI_PARTNERS}  element={<RequireAuth><OCPIPartnersPage /></RequireAuth>} />

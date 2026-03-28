@@ -1,4 +1,4 @@
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
@@ -9,9 +9,11 @@ const stationSchema = z.object({
   name: z.string().min(3, 'Name must be at least 3 characters'),
   address: z.string().min(5, 'Address is required'),
   city: z.string().min(2, 'City is required'),
+  serviceMode: z.enum(['Charging', 'Swapping', 'Hybrid']),
   capacity: z.number().min(10, 'Capacity must be at least 10kW'),
   lat: z.number().min(-90).max(90),
   lng: z.number().min(-180).max(180),
+  swapCabinets: z.number().min(0).max(24),
   type: z.enum(['AC', 'DC', 'Mixed']),
 })
 
@@ -19,13 +21,16 @@ type StationFormValues = z.infer<typeof stationSchema>
 
 export function CreateStationPage() {
   const navigate = useNavigate()
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<StationFormValues>({
+  const { control, register, handleSubmit, formState: { errors, isSubmitting } } = useForm<StationFormValues>({
     resolver: zodResolver(stationSchema),
     defaultValues: {
+      serviceMode: 'Charging',
+      swapCabinets: 0,
       type: 'AC',
       capacity: 50,
     }
   })
+  const serviceMode = useWatch({ control, name: 'serviceMode' }) ?? 'Charging'
 
   const onSubmit = async (data: StationFormValues) => {
     console.log('[CreateStation] Data:', data)
@@ -48,6 +53,16 @@ export function CreateStationPage() {
                   {errors.name && <p className="text-[10px] text-danger mt-1">{errors.name.message}</p>}
                 </div>
                 <div>
+                  <label className="form-label">Service Mode</label>
+                  <select {...register('serviceMode')} className="input transition-all">
+                    <option value="Charging">Charging</option>
+                    <option value="Swapping">Swapping</option>
+                    <option value="Hybrid">Hybrid</option>
+                  </select>
+                </div>
+              </div>
+              {serviceMode !== 'Swapping' && (
+                <div>
                   <label className="form-label">Primary Charge Type</label>
                   <select {...register('type')} className="input transition-all">
                     <option value="AC">AC (Destination)</option>
@@ -55,7 +70,7 @@ export function CreateStationPage() {
                     <option value="Mixed">Mixed Portfolio</option>
                   </select>
                 </div>
-              </div>
+              )}
               <div>
                 <label className="form-label">Full Address</label>
                 <input {...register('address')} className="input" placeholder="e.g. 123 Westlands Ave" />
@@ -87,10 +102,17 @@ export function CreateStationPage() {
 
             <div className="card space-y-4">
               <div className="section-title flex items-center gap-2"><Zap size={16} className="text-accent" /> Power Specifications</div>
-              <div>
-                <label className="form-label">Grid Capacity (kW)</label>
-                <input type="number" {...register('capacity', { valueAsNumber: true })} className="input" />
-                {errors.capacity && <p className="text-[10px] text-danger mt-1">{errors.capacity.message}</p>}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="form-label">{serviceMode === 'Swapping' ? 'Recharge Backbone (kW)' : 'Grid Capacity (kW)'}</label>
+                  <input type="number" {...register('capacity', { valueAsNumber: true })} className="input" />
+                  {errors.capacity && <p className="text-[10px] text-danger mt-1">{errors.capacity.message}</p>}
+                </div>
+                <div>
+                  <label className="form-label">Initial Swap Cabinets</label>
+                  <input type="number" {...register('swapCabinets', { valueAsNumber: true })} className="input" />
+                  {errors.swapCabinets && <p className="text-[10px] text-danger mt-1">{errors.swapCabinets.message}</p>}
+                </div>
               </div>
             </div>
 
@@ -112,7 +134,7 @@ export function CreateStationPage() {
               <div className="section-title flex items-center gap-2"><Shield size={16} className="text-accent" /> Security Protocol</div>
               <p className="text-xs text-subtle leading-relaxed mt-2">
                 New assets are initially provisioned in **Maintenance** mode.
-                OCPP communication must be verified before the station can transition to **Online**.
+                Charging sites require OCPP verification, while swap sites require cabinet heartbeat and battery safety checks before going **Online**.
               </p>
            </div>
            
@@ -120,11 +142,11 @@ export function CreateStationPage() {
               <div className="section-title">Deployment Steps</div>
               <div className="mt-4 space-y-4">
                  {[
-                   { step: 1, text: 'Register asset metadata', done: true },
-                   { step: 2, text: 'Physical installation & wiring', done: false },
-                   { step: 3, text: 'Endpoint configuration (WS/WSS)', done: false },
-                   { step: 4, text: 'OCPP authorization check', done: false },
-                 ].map(s => (
+                    { step: 1, text: 'Register asset metadata', done: true },
+                    { step: 2, text: 'Physical installation & wiring', done: false },
+                    { step: 3, text: serviceMode === 'Swapping' ? 'Cabinet telemetry onboarding' : 'Endpoint configuration (WS/WSS)', done: false },
+                    { step: 4, text: serviceMode === 'Swapping' ? 'Battery safety and inventory check' : 'OCPP authorization check', done: false },
+                  ].map(s => (
                    <div key={s.step} className="flex gap-3 items-center">
                       <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${s.done ? 'bg-ok/20 text-ok' : 'bg-bg-muted text-subtle border border-border'}`}>
                         {s.step}

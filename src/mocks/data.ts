@@ -2,6 +2,9 @@ import type { CPOUser } from '@/core/types/domain'
 import type {
   AlertRecord,
   AuditLogRecord,
+  BatteryInventoryResponse,
+  BatteryPackRecord,
+  BatterySwapSessionRecord,
   BillingResponse,
   ChargePointDetail,
   DashboardMode,
@@ -24,6 +27,7 @@ import type {
   SiteOwnerDashboardResponse,
   SmartChargingResponse,
   StationDetail,
+  SwapStationDetail,
   TariffRecord,
   TeamMember,
   TenantContextResponse,
@@ -244,6 +248,7 @@ const stations: Array<TenantScoped<StationDetail>> = [
   {
     id: 'st-1',
     name: 'Westlands Hub',
+    serviceMode: 'Hybrid',
     status: 'Online',
     address: 'Westlands Avenue',
     city: 'Nairobi',
@@ -255,6 +260,7 @@ const stations: Array<TenantScoped<StationDetail>> = [
       { id: 'cp-1', status: 'Charging', type: 'DC Fast', lastHeartbeatLabel: '12s ago' },
       { id: 'cp-2', status: 'Available', type: 'DC Fast', lastHeartbeatLabel: '18s ago' },
     ],
+    swapSummary: { cabinetCount: 1, availableChargedPacks: 9, chargingPacks: 3 },
     uptimePercent30d: '99.4%',
     dailyAverageKwh: '142 kWh',
     geofenceStatus: 'Live Geofence Active',
@@ -269,6 +275,7 @@ const stations: Array<TenantScoped<StationDetail>> = [
   {
     id: 'st-2',
     name: 'CBD Charging Station',
+    serviceMode: 'Charging',
     status: 'Degraded',
     address: 'Kenyatta Avenue',
     city: 'Nairobi',
@@ -291,6 +298,7 @@ const stations: Array<TenantScoped<StationDetail>> = [
   {
     id: 'st-3',
     name: 'Airport East',
+    serviceMode: 'Swapping',
     status: 'Online',
     address: 'Cargo Terminal Road',
     city: 'Nairobi',
@@ -299,6 +307,7 @@ const stations: Array<TenantScoped<StationDetail>> = [
     lat: -1.3198,
     lng: 36.9276,
     chargePoints: [],
+    swapSummary: { cabinetCount: 2, availableChargedPacks: 18, chargingPacks: 6 },
     uptimePercent30d: '99.8%',
     dailyAverageKwh: '188 kWh',
     geofenceStatus: 'Live Geofence Active',
@@ -313,6 +322,7 @@ const stations: Array<TenantScoped<StationDetail>> = [
   {
     id: 'st-4',
     name: 'Garden City Mall',
+    serviceMode: 'Charging',
     status: 'Offline',
     address: 'Thika Superhighway',
     city: 'Nairobi',
@@ -332,6 +342,180 @@ const stations: Array<TenantScoped<StationDetail>> = [
     ],
     tenantIds: ['tenant-global'],
   },
+]
+
+const swapStations: Array<TenantScoped<SwapStationDetail>> = [
+  {
+    id: 'swap-st-1',
+    name: 'Westlands Swap Annex',
+    address: 'Westlands Avenue',
+    city: 'Nairobi',
+    country: 'Kenya',
+    lat: -1.2631,
+    lng: 36.8042,
+    status: 'Online',
+    serviceMode: 'Hybrid',
+    cabinetCount: 1,
+    readyPacks: 9,
+    chargingPacks: 3,
+    avgSwapDurationLabel: '3m 40s',
+    gridBufferLabel: 'Recharge load capped at 72 kW during evening peak.',
+    alerts: [
+      { level: 'Info', message: 'Morning rider demand tracking within forecast.' },
+      { level: 'Warning', message: 'Cabinet 1 is two packs below reserve threshold.' },
+    ],
+    cabinets: [
+      {
+        id: 'cab-wl-1',
+        model: 'Gogoro GoStation 3.0',
+        status: 'Online',
+        slotCount: 16,
+        availableChargedPacks: 9,
+        chargingPacks: 3,
+        reservedPacks: 2,
+        lastHeartbeatLabel: '8s ago',
+      },
+    ],
+    packs: [
+      { id: 'PK-WL-001', chemistry: 'LFP', cycleCount: 184, healthLabel: '97% SoH', lastSeenLabel: '1m ago', slotLabel: 'Cab 1 / Slot 03', socLabel: '98% SoC', stationName: 'Westlands Swap Annex', status: 'Ready' },
+      { id: 'PK-WL-007', chemistry: 'LFP', cycleCount: 211, healthLabel: '95% SoH', lastSeenLabel: '2m ago', slotLabel: 'Cab 1 / Slot 07', socLabel: '63% SoC', stationName: 'Westlands Swap Annex', status: 'Charging' },
+      { id: 'PK-WL-011', chemistry: 'LFP', cycleCount: 226, healthLabel: '93% SoH', lastSeenLabel: '4m ago', slotLabel: 'Cab 1 / Slot 11', socLabel: '100% SoC', stationName: 'Westlands Swap Annex', status: 'Reserved' },
+      { id: 'PK-WL-014', chemistry: 'LFP', cycleCount: 308, healthLabel: '88% SoH', lastSeenLabel: '9m ago', slotLabel: 'Inspection Bay', socLabel: '42% SoC', stationName: 'Westlands Swap Annex', status: 'Quarantined' },
+    ],
+    recentSwaps: [
+      { id: 'SWP-901', riderLabel: 'Rider 14 / Boda EV', returnedPackId: 'PK-WL-207', durationLabel: '3m 14s', status: 'Completed', timeLabel: '4m ago' },
+      { id: 'SWP-900', riderLabel: 'Fleet 22 / Courier', returnedPackId: 'PK-WL-205', durationLabel: '4m 02s', status: 'Completed', timeLabel: '12m ago' },
+      { id: 'SWP-899', riderLabel: 'Rider 09 / Tuk', returnedPackId: 'PK-WL-203', durationLabel: '6m 11s', status: 'Flagged', timeLabel: '23m ago' },
+    ],
+    tenantIds: ['tenant-global', 'tenant-evzone-ke', 'tenant-westlands-mall'],
+  },
+  {
+    id: 'swap-st-2',
+    name: 'Airport East Battery Exchange',
+    address: 'Cargo Terminal Road',
+    city: 'Nairobi',
+    country: 'Kenya',
+    lat: -1.3195,
+    lng: 36.9281,
+    status: 'Online',
+    serviceMode: 'Swapping',
+    cabinetCount: 2,
+    readyPacks: 18,
+    chargingPacks: 6,
+    avgSwapDurationLabel: '2m 55s',
+    gridBufferLabel: 'Battery farm shifted to off-peak recharge profile.',
+    alerts: [
+      { level: 'Info', message: 'Airport courier fleet reservations are fully covered.' },
+      { level: 'Info', message: 'Returned-pack inspection queue cleared for the last 6 hours.' },
+    ],
+    cabinets: [
+      {
+        id: 'cab-air-1',
+        model: 'Ampersand Hub Rack',
+        status: 'Online',
+        slotCount: 18,
+        availableChargedPacks: 10,
+        chargingPacks: 4,
+        reservedPacks: 2,
+        lastHeartbeatLabel: '6s ago',
+      },
+      {
+        id: 'cab-air-2',
+        model: 'Ampersand Hub Rack',
+        status: 'Online',
+        slotCount: 18,
+        availableChargedPacks: 8,
+        chargingPacks: 2,
+        reservedPacks: 1,
+        lastHeartbeatLabel: '5s ago',
+      },
+    ],
+    packs: [
+      { id: 'PK-AIR-004', chemistry: 'LFP', cycleCount: 132, healthLabel: '98% SoH', lastSeenLabel: '30s ago', slotLabel: 'Cab 1 / Slot 04', socLabel: '100% SoC', stationName: 'Airport East Battery Exchange', status: 'Ready' },
+      { id: 'PK-AIR-009', chemistry: 'LFP', cycleCount: 145, healthLabel: '97% SoH', lastSeenLabel: '2m ago', slotLabel: 'Cab 1 / Slot 09', socLabel: '78% SoC', stationName: 'Airport East Battery Exchange', status: 'Charging' },
+      { id: 'PK-AIR-013', chemistry: 'LFP', cycleCount: 201, healthLabel: '94% SoH', lastSeenLabel: '1m ago', slotLabel: 'Cab 2 / Slot 02', socLabel: '100% SoC', stationName: 'Airport East Battery Exchange', status: 'Ready' },
+      { id: 'PK-AIR-018', chemistry: 'LFP', cycleCount: 244, healthLabel: '91% SoH', lastSeenLabel: '3m ago', slotLabel: 'Cab 2 / Slot 05', socLabel: '100% SoC', stationName: 'Airport East Battery Exchange', status: 'Installed' },
+      { id: 'PK-AIR-024', chemistry: 'NMC', cycleCount: 266, healthLabel: '89% SoH', lastSeenLabel: '7m ago', slotLabel: 'Cab 2 / Slot 11', socLabel: '100% SoC', stationName: 'Airport East Battery Exchange', status: 'Reserved' },
+    ],
+    recentSwaps: [
+      { id: 'SWP-948', riderLabel: 'Cargo Rider 8', returnedPackId: 'PK-AIR-119', durationLabel: '2m 41s', status: 'Completed', timeLabel: '2m ago' },
+      { id: 'SWP-947', riderLabel: 'Courier Van 3', returnedPackId: 'PK-AIR-117', durationLabel: '3m 03s', status: 'Completed', timeLabel: '10m ago' },
+      { id: 'SWP-946', riderLabel: 'Cargo Rider 2', returnedPackId: 'PK-AIR-116', durationLabel: '3m 28s', status: 'In Progress', timeLabel: '18m ago' },
+    ],
+    tenantIds: ['tenant-global', 'tenant-evzone-ke'],
+  },
+  {
+    id: 'swap-st-3',
+    name: 'Global Logistics Swap Yard',
+    address: 'Inland Container Access Road',
+    city: 'Nairobi',
+    country: 'Kenya',
+    lat: -1.2889,
+    lng: 36.9004,
+    status: 'Degraded',
+    serviceMode: 'Swapping',
+    cabinetCount: 3,
+    readyPacks: 11,
+    chargingPacks: 8,
+    avgSwapDurationLabel: '4m 10s',
+    gridBufferLabel: 'One rack is running on derated cooling until fan replacement.',
+    alerts: [
+      { level: 'Critical', message: 'Cabinet 3 cooling fan has fallen below safe threshold.' },
+      { level: 'Warning', message: 'Ready-pack inventory is 18% below the midday buffer plan.' },
+    ],
+    cabinets: [
+      {
+        id: 'cab-glo-1',
+        model: 'Tier-1 Fleet Rack',
+        status: 'Online',
+        slotCount: 20,
+        availableChargedPacks: 6,
+        chargingPacks: 3,
+        reservedPacks: 2,
+        lastHeartbeatLabel: '11s ago',
+      },
+      {
+        id: 'cab-glo-2',
+        model: 'Tier-1 Fleet Rack',
+        status: 'Degraded',
+        slotCount: 20,
+        availableChargedPacks: 5,
+        chargingPacks: 3,
+        reservedPacks: 1,
+        lastHeartbeatLabel: '19s ago',
+      },
+      {
+        id: 'cab-glo-3',
+        model: 'Tier-1 Fleet Rack',
+        status: 'Maintenance',
+        slotCount: 20,
+        availableChargedPacks: 0,
+        chargingPacks: 2,
+        reservedPacks: 0,
+        lastHeartbeatLabel: '2m ago',
+      },
+    ],
+    packs: [
+      { id: 'PK-GLO-003', chemistry: 'LFP', cycleCount: 344, healthLabel: '87% SoH', lastSeenLabel: '2m ago', slotLabel: 'Cab 2 / Slot 03', socLabel: '100% SoC', stationName: 'Global Logistics Swap Yard', status: 'Ready' },
+      { id: 'PK-GLO-006', chemistry: 'NMC', cycleCount: 389, healthLabel: '84% SoH', lastSeenLabel: '5m ago', slotLabel: 'Cab 1 / Slot 06', socLabel: '54% SoC', stationName: 'Global Logistics Swap Yard', status: 'Charging' },
+      { id: 'PK-GLO-012', chemistry: 'LFP', cycleCount: 412, healthLabel: '81% SoH', lastSeenLabel: '8m ago', slotLabel: 'Service Bench', socLabel: '28% SoC', stationName: 'Global Logistics Swap Yard', status: 'Quarantined' },
+      { id: 'PK-GLO-018', chemistry: 'LFP', cycleCount: 276, healthLabel: '92% SoH', lastSeenLabel: '1m ago', slotLabel: 'Cab 1 / Slot 18', socLabel: '100% SoC', stationName: 'Global Logistics Swap Yard', status: 'Reserved' },
+    ],
+    recentSwaps: [
+      { id: 'SWP-981', riderLabel: 'Fleet Rig 11', returnedPackId: 'PK-GLO-204', durationLabel: '4m 22s', status: 'Completed', timeLabel: '9m ago' },
+      { id: 'SWP-980', riderLabel: 'Fleet Rig 14', returnedPackId: 'PK-GLO-202', durationLabel: '7m 01s', status: 'Flagged', timeLabel: '22m ago' },
+      { id: 'SWP-979', riderLabel: 'Fleet Rig 06', returnedPackId: 'PK-GLO-198', durationLabel: '4m 11s', status: 'Completed', timeLabel: '40m ago' },
+    ],
+    tenantIds: ['tenant-global'],
+  },
+]
+
+const batterySwapSessions: Array<TenantScoped<BatterySwapSessionRecord>> = [
+  { id: 'BSS-301', stationName: 'Westlands Swap Annex', cabinetId: 'cab-wl-1', riderLabel: 'Rider 14 / Boda EV', outgoingPackId: 'PK-WL-001', returnedPackId: 'PK-WL-207', initiatedAt: '2026-03-29 08:14', turnaroundLabel: '3m 14s', revenue: 'KES 420', status: 'Completed', healthCheck: 'Passed', tenantIds: ['tenant-global', 'tenant-evzone-ke', 'tenant-westlands-mall'] },
+  { id: 'BSS-302', stationName: 'Airport East Battery Exchange', cabinetId: 'cab-air-1', riderLabel: 'Cargo Rider 8', outgoingPackId: 'PK-AIR-004', returnedPackId: 'PK-AIR-119', initiatedAt: '2026-03-29 08:11', turnaroundLabel: '2m 41s', revenue: 'KES 510', status: 'Completed', healthCheck: 'Passed', tenantIds: ['tenant-global', 'tenant-evzone-ke'] },
+  { id: 'BSS-303', stationName: 'Airport East Battery Exchange', cabinetId: 'cab-air-2', riderLabel: 'Cargo Rider 2', outgoingPackId: 'PK-AIR-013', returnedPackId: 'PK-AIR-116', initiatedAt: '2026-03-29 07:58', turnaroundLabel: '3m 28s', revenue: 'KES 505', status: 'In Progress', healthCheck: 'Review', tenantIds: ['tenant-global', 'tenant-evzone-ke'] },
+  { id: 'BSS-304', stationName: 'Global Logistics Swap Yard', cabinetId: 'cab-glo-2', riderLabel: 'Fleet Rig 14', outgoingPackId: 'PK-GLO-018', returnedPackId: 'PK-GLO-202', initiatedAt: '2026-03-29 07:36', turnaroundLabel: '7m 01s', revenue: 'KES 690', status: 'Flagged', healthCheck: 'Failed', tenantIds: ['tenant-global'] },
+  { id: 'BSS-305', stationName: 'Westlands Swap Annex', cabinetId: 'cab-wl-1', riderLabel: 'Courier 22', outgoingPackId: 'PK-WL-009', returnedPackId: 'PK-WL-205', initiatedAt: '2026-03-29 07:22', turnaroundLabel: '4m 02s', revenue: 'KES 430', status: 'Completed', healthCheck: 'Passed', tenantIds: ['tenant-global', 'tenant-evzone-ke', 'tenant-westlands-mall'] },
 ]
 
 const sessions: Array<TenantScoped<SessionRecord>> = [
@@ -1044,6 +1228,51 @@ function getChargePointCount(tenantId: TenantId) {
   return chargePoints.filter((record) => record.tenantIds.includes(tenantId)).length
 }
 
+function getSwapPacks(tenantId: TenantId) {
+  return swapStations
+    .filter((record) => record.tenantIds.includes(tenantId))
+    .flatMap((record) => record.packs)
+}
+
+function toSwapStationSummary(record: SwapStationDetail) {
+  const {
+    alerts,
+    cabinets,
+    gridBufferLabel,
+    packs,
+    recentSwaps,
+    ...summary
+  } = record
+
+  void alerts
+  void cabinets
+  void gridBufferLabel
+  void packs
+  void recentSwaps
+
+  return summary
+}
+
+function buildBatteryInventory(tenantId: TenantId): BatteryInventoryResponse {
+  const packs = getSwapPacks(tenantId)
+  const count = (status: BatteryPackRecord['status']) => packs.filter((pack) => pack.status === status).length
+
+  return {
+    metrics: [
+      { id: 'ready', label: 'Ready Packs', value: `${count('Ready')}`, tone: 'ok' },
+      { id: 'charging', label: 'Charging', value: `${count('Charging')}`, tone: 'default' },
+      { id: 'reserved', label: 'Reserved', value: `${count('Reserved') + count('Installed')}`, tone: 'warning' },
+      { id: 'quarantined', label: 'Quarantined', value: `${count('Quarantined')}`, tone: 'danger' },
+    ],
+    packs,
+    balancingNote: tenantId === 'tenant-westlands-mall'
+      ? 'Hosted-site inventory stays isolated to the Westlands hybrid swap annex and its rider reserve buffer.'
+      : tenantId === 'tenant-evzone-ke'
+        ? 'Kenya inventory balancing prioritizes airport logistics demand before reallocating packs to premium city sites.'
+        : 'Global battery balancing highlights reserve gaps across both public charging hubs and dedicated swap yards.',
+  }
+}
+
 function getTokenValue(authorizationHeader?: string | null) {
   if (!authorizationHeader) return null
   return authorizationHeader.startsWith('Bearer ') ? authorizationHeader.slice('Bearer '.length) : authorizationHeader
@@ -1094,6 +1323,10 @@ export function getStationById(id: string, tenantId: TenantId) { const station =
 export function listChargePoints(tenantId: TenantId) { return listTenantScoped(chargePoints, tenantId) }
 export function getChargePointById(id: string, tenantId: TenantId) { const chargePoint = chargePoints.find((record) => record.id === id && record.tenantIds.includes(tenantId)); return chargePoint ? stripTenantIds(chargePoint) : undefined }
 export function listSessions(tenantId: TenantId) { return listTenantScoped(sessions, tenantId) }
+export function listSwapStations(tenantId: TenantId) { return swapStations.filter((record) => record.tenantIds.includes(tenantId)).map((record) => toSwapStationSummary(stripTenantIds(record))) }
+export function getSwapStationById(id: string, tenantId: TenantId) { const station = swapStations.find((record) => record.id === id && record.tenantIds.includes(tenantId)); return station ? stripTenantIds(station) : undefined }
+export function listBatterySwapSessions(tenantId: TenantId) { return listTenantScoped(batterySwapSessions, tenantId) }
+export function getBatteryInventory(tenantId: TenantId) { return buildBatteryInventory(tenantId) }
 export function listAlerts(tenantId: TenantId) { return listTenantScoped(alerts, tenantId) }
 export function listTariffs(tenantId: TenantId) { return listTenantScoped(tariffs, tenantId) }
 export function getSmartCharging(tenantId: TenantId) { return smartChargingByTenant[tenantId] }

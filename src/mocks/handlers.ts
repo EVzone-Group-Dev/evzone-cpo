@@ -16,15 +16,19 @@ import {
   getSettlement,
   getSiteOwnerDashboard,
   getSmartCharging,
+  getSwapStationById,
+  getBatteryInventory,
   getStationById,
   getWebhooksModule,
   listAlerts,
   listAuditLogs,
+  listBatterySwapSessions,
   listChargePoints,
   listLoadPolicies,
   listPayouts,
   listRoamingPartners,
   listSessions,
+  listSwapStations,
   listStations,
   listTariffs,
   listTeamMembers,
@@ -107,6 +111,21 @@ export const handlers = [
     return HttpResponse.json(station)
   }),
 
+  http.get('/api/swapping/stations', ({ request }) => {
+    const access = getTenantId(request)
+    if (!access) return unauthorized()
+    return HttpResponse.json(listSwapStations(access.tenantId))
+  }),
+
+  http.get('/api/swapping/stations/:id', ({ params, request }) => {
+    const access = getTenantId(request)
+    if (!access) return unauthorized()
+
+    const station = getSwapStationById(String(params.id), access.tenantId)
+    if (!station) return HttpResponse.json({ message: 'Swap station not found.' }, { status: 404 })
+    return HttpResponse.json(station)
+  }),
+
   http.get('/api/charge-points', ({ request }) => {
     const access = getTenantId(request)
     if (!access) return unauthorized()
@@ -141,6 +160,18 @@ export const handlers = [
     const access = getTenantId(request)
     if (!access) return unauthorized()
     return HttpResponse.json(listSessions(access.tenantId))
+  }),
+
+  http.get('/api/swapping/sessions', ({ request }) => {
+    const access = getTenantId(request)
+    if (!access) return unauthorized()
+    return HttpResponse.json(listBatterySwapSessions(access.tenantId))
+  }),
+
+  http.get('/api/swapping/inventory', ({ request }) => {
+    const access = getTenantId(request)
+    if (!access) return unauthorized()
+    return HttpResponse.json(getBatteryInventory(access.tenantId))
   }),
 
   http.get('/api/incidents', ({ request }) => {

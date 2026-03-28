@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Zap, Cpu, Activity, AlertTriangle, Bell,
   DollarSign, BarChart3, Users, Settings, Globe2, FileText,
   Webhook, Puzzle, ShieldCheck, TrendingUp, ChevronLeft,
-  ChevronRight, LogOut, BookOpen, Gauge, Network,
+  ChevronRight, LogOut, BookOpen, Gauge, Network, RefreshCw, Package,
 } from 'lucide-react'
 
 interface NavGroup {
@@ -33,12 +33,14 @@ const NAV: NavGroup[] = [
     items: [
       { label: 'Stations',       icon: <Zap size={16} />,         path: PATHS.STATIONS },
       { label: 'Charge Points',  icon: <Cpu size={16} />,         path: PATHS.CHARGE_POINTS },
+      { label: 'Swap Stations',  icon: <RefreshCw size={16} />,   path: PATHS.SWAP_STATIONS },
     ],
   },
   {
     label: 'Operations',
     items: [
       { label: 'Sessions',   icon: <Activity size={16} />,      path: PATHS.SESSIONS },
+      { label: 'Swap Sessions', icon: <RefreshCw size={16} />,  path: PATHS.SWAP_SESSIONS },
       { label: 'Incidents',  icon: <AlertTriangle size={16} />, path: PATHS.INCIDENTS },
       { label: 'Alerts',     icon: <Bell size={16} />,          path: PATHS.ALERTS },
     ],
@@ -48,6 +50,7 @@ const NAV: NavGroup[] = [
     items: [
       { label: 'Smart Charging', icon: <Gauge size={16} />,    path: PATHS.SMART_CHARGING },
       { label: 'Load Policy',    icon: <TrendingUp size={16} />, path: PATHS.LOAD_POLICY },
+      { label: 'Battery Inventory', icon: <Package size={16} />, path: PATHS.BATTERY_INVENTORY },
     ],
   },
   {

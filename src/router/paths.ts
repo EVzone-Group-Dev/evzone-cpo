@@ -8,9 +8,12 @@ export const PATHS = {
   STATION_DETAIL: (id: string) => `/stations/${id}`,
   CHARGE_POINTS: '/charge-points',
   CHARGE_POINT_DETAIL: (id: string) => `/charge-points/${id}`,
+  SWAP_STATIONS: '/swap-stations',
+  SWAP_STATION_DETAIL: (id: string) => `/swap-stations/${id}`,
 
   // Operations
   SESSIONS: '/sessions',
+  SWAP_SESSIONS: '/swap-sessions',
   INCIDENTS: '/incidents',
   ALERTS: '/alerts',
   DISPATCHES: '/dispatches',
@@ -18,6 +21,7 @@ export const PATHS = {
   // Energy
   SMART_CHARGING: '/smart-charging',
   LOAD_POLICY: '/load-policy',
+  BATTERY_INVENTORY: '/battery-inventory',
 
   // Roaming
   OCPI_PARTNERS: '/roaming/partners',

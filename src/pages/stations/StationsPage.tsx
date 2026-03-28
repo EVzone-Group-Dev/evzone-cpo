@@ -89,6 +89,7 @@ export function StationsPage() {
                   <div className="flex items-center gap-1 text-xs text-subtle mt-1">
                     <MapPin size={12} /> {station.city}, {station.country}
                   </div>
+                  <div className="text-[10px] uppercase tracking-wide text-accent mt-2">{station.serviceMode} Site</div>
                 </div>
                 <span className={`pill ${station.status.toLowerCase()}`}>{station.status}</span>
               </div>
@@ -103,11 +104,23 @@ export function StationsPage() {
                 <div className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-ok shadow-[0_0_8px_var(--ok)]" />
                   <div>
-                    <div className="text-[10px] text-subtle uppercase leading-none">Connectors</div>
-                    <div className="text-sm font-semibold">{station.chargePoints?.length || 0} Units</div>
+                    <div className="text-[10px] text-subtle uppercase leading-none">Asset Mix</div>
+                    <div className="text-sm font-semibold">
+                      {station.chargePoints?.length || 0} CP
+                      {station.swapSummary ? ` / ${station.swapSummary.cabinetCount} Cabinets` : ''}
+                    </div>
                   </div>
                 </div>
               </div>
+              {station.swapSummary && (
+                <div className="mt-3 rounded-lg border border-border/60 bg-bg-muted/40 px-3 py-2">
+                  <div className="text-[10px] text-subtle uppercase tracking-wide">Swap Capacity</div>
+                  <div className="text-sm font-semibold">
+                    {station.swapSummary.availableChargedPacks} ready packs
+                    <span className="text-subtle font-normal"> · {station.swapSummary.chargingPacks} charging</span>
+                  </div>
+                </div>
+              )}
             </Link>
           ))}
           {filtered.length === 0 && (
