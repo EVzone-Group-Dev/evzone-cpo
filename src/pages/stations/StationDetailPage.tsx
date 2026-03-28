@@ -1,5 +1,6 @@
 import { Link, useParams } from 'react-router-dom'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
+import { canManageStations, useAuthStore } from '@/core/auth/authStore'
 import { MapPin, Cpu, Activity, Zap, Shield, Clock, RefreshCw } from 'lucide-react'
 import { useStation } from '@/core/hooks/useStations'
 import { MapComponent } from '@/components/common/MapComponent'
@@ -14,7 +15,9 @@ const STATION_CP_STATUS_CLASS = {
 
 export function StationDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const userRole = useAuthStore((state) => state.user?.role)
   const { data: station, isLoading, error } = useStation(id)
+  const canConfigureAssets = !!userRole && canManageStations(userRole)
 
   if (isLoading) {
     return <DashboardLayout pageTitle="Loading..."><div className="p-12 text-center text-subtle font-mono animate-pulse">Retrieving station telemetry...</div></DashboardLayout>
@@ -39,10 +42,12 @@ export function StationDetailPage() {
           <span className={`pill ${station.status.toLowerCase()}`}>{station.status}</span>
           <span className="pill pending">{station.serviceMode}</span>
         </div>
-        <div className="flex gap-2">
-          <button className="px-4 py-2 bg-bg-muted border border-border rounded-lg text-xs font-semibold hover:border-accent transition-all">Configure Assets</button>
-          <button className="px-4 py-2 bg-accent text-white rounded-lg text-xs font-semibold shadow-lg shadow-accent/20 hover:brightness-110 transition-all">Service Mode</button>
-        </div>
+        {canConfigureAssets && (
+          <div className="flex gap-2">
+            <button className="px-4 py-2 bg-bg-muted border border-border rounded-lg text-xs font-semibold hover:border-accent transition-all">Configure Assets</button>
+            <button className="px-4 py-2 bg-accent text-white rounded-lg text-xs font-semibold shadow-lg shadow-accent/20 hover:brightness-110 transition-all">Service Mode</button>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -1,10 +1,10 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { getRoleHomePath } from '@/core/auth/access'
 import { useAuthStore } from '@/core/auth/authStore'
 import { fetchJson } from '@/core/api/fetchJson'
 import { useDemoUsers } from '@/core/hooks/usePlatformData'
 import type { LoginResponse } from '@/core/types/mockApi'
-import { PATHS } from '@/router/paths'
 import { Zap } from 'lucide-react'
 
 export function LoginPage() {
@@ -31,7 +31,7 @@ export function LoginPage() {
       })
 
       setUser(auth.user, auth.token)
-      navigate(PATHS.DASHBOARD, { replace: true })
+      navigate(getRoleHomePath(auth.user.role), { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to sign in.')
     } finally {

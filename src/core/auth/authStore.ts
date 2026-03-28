@@ -49,7 +49,6 @@ const ROLE_HIERARCHY: Record<CPORole, number> = {
   FINANCE: 60,
   OPERATOR: 50,
   TECHNICIAN: 40,
-  VIEWER: 10,
 }
 
 export function hasMinRole(userRole: CPORole, minRole: CPORole): boolean {

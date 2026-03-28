@@ -2,7 +2,10 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { useDashboardOverview } from '@/core/hooks/usePlatformData'
 import { useAuthStore } from '@/core/auth/authStore'
 import { useTenant } from '@/core/hooks/useTenant'
+import { FinanceDashboard } from '@/pages/dashboard/FinanceDashboard'
 import { SiteOwnerDashboard } from '@/pages/dashboard/SiteOwnerDashboard'
+import { StationManagerDashboard } from '@/pages/dashboard/StationManagerDashboard'
+import { TechnicianDashboard } from '@/pages/dashboard/TechnicianDashboard'
 import { Zap, Activity, AlertTriangle, BarChart3, TrendingUp, Cpu, Users, Globe2 } from 'lucide-react'
 
 const KPI_META = {
@@ -19,10 +22,26 @@ const KPI_META = {
 export function DashboardPage() {
   const { user } = useAuthStore()
   const { activeTenant, dashboardMode, isLoading: isTenantLoading } = useTenant()
-  const { data, isLoading, error } = useDashboardOverview({ enabled: dashboardMode !== 'site' })
+  const usesOperationsDashboard = dashboardMode !== 'site'
+    && user?.role !== 'FINANCE'
+    && user?.role !== 'TECHNICIAN'
+    && user?.role !== 'STATION_MANAGER'
+  const { data, isLoading, error } = useDashboardOverview({ enabled: usesOperationsDashboard })
 
   if (isTenantLoading) {
     return <DashboardLayout pageTitle="Tenant Overview"><div className="p-8 text-center text-subtle">Loading tenant context...</div></DashboardLayout>
+  }
+
+  if (user?.role === 'FINANCE') {
+    return <FinanceDashboard />
+  }
+
+  if (user?.role === 'TECHNICIAN') {
+    return <TechnicianDashboard />
+  }
+
+  if (user?.role === 'STATION_MANAGER') {
+    return <StationManagerDashboard />
   }
 
   if (dashboardMode === 'site') {

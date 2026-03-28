@@ -236,7 +236,6 @@ export type CPORole =
   | 'OPERATOR'          // Field operator
   | 'TECHNICIAN'        // Maintenance only
   | 'FINANCE'           // Financial reports only
-  | 'VIEWER'            // Read-only
 
 export type UserStatus = 'Active' | 'Invited' | 'Suspended' | 'Pending'
 

@@ -1,5 +1,19 @@
 import { Suspense, lazy } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
+import {
+  ACTIVE_ROLES,
+  ADMIN_ROLES,
+  ASSET_MANAGER_ROLES,
+  ENERGY_ROLES,
+  FINANCE_ROLES,
+  INFRASTRUCTURE_ROLES,
+  OPERATIONS_ROLES,
+  PLATFORM_ADMIN_ROLES,
+  REPORTING_ROLES,
+  ROAMING_ROLES,
+  SETTINGS_ROLES,
+  TEAM_ROLES,
+} from '@/core/auth/access'
 import { RequireAuth, RequireGuest } from './guards'
 import { PATHS } from './paths'
 
@@ -56,53 +70,53 @@ export function AppRoutes() {
         <Route path={PATHS.LOGIN} element={<RequireGuest><LoginPage /></RequireGuest>} />
 
         {/* Protected — Infrastructure */}
-        <Route path={PATHS.DASHBOARD}     element={<RequireAuth><DashboardPage /></RequireAuth>} />
-        <Route path="/site-dashboard"     element={<RequireAuth><SiteOwnerDashboard /></RequireAuth>} />
-        <Route path={PATHS.STATIONS} element={<RequireAuth><StationsPage /></RequireAuth>} />
-        <Route path="/stations/new" element={<RequireAuth><CreateStationPage /></RequireAuth>} />
-        <Route path="/stations/:id" element={<RequireAuth><StationDetailPage /></RequireAuth>} />
-        <Route path={PATHS.CHARGE_POINTS} element={<RequireAuth><ChargePointsPage /></RequireAuth>} />
-        <Route path="/charge-points/:id"  element={<RequireAuth><ChargePointDetailPage /></RequireAuth>} />
-        <Route path={PATHS.SWAP_STATIONS} element={<RequireAuth><SwapStationsPage /></RequireAuth>} />
-        <Route path="/swap-stations/:id" element={<RequireAuth><SwapStationDetailPage /></RequireAuth>} />
+        <Route path={PATHS.DASHBOARD}     element={<RequireAuth allowedRoles={ACTIVE_ROLES}><DashboardPage /></RequireAuth>} />
+        <Route path="/site-dashboard"     element={<RequireAuth allowedRoles={ACTIVE_ROLES}><SiteOwnerDashboard /></RequireAuth>} />
+        <Route path={PATHS.STATIONS} element={<RequireAuth allowedRoles={INFRASTRUCTURE_ROLES}><StationsPage /></RequireAuth>} />
+        <Route path="/stations/new" element={<RequireAuth allowedRoles={ASSET_MANAGER_ROLES}><CreateStationPage /></RequireAuth>} />
+        <Route path="/stations/:id" element={<RequireAuth allowedRoles={INFRASTRUCTURE_ROLES}><StationDetailPage /></RequireAuth>} />
+        <Route path={PATHS.CHARGE_POINTS} element={<RequireAuth allowedRoles={INFRASTRUCTURE_ROLES}><ChargePointsPage /></RequireAuth>} />
+        <Route path="/charge-points/:id"  element={<RequireAuth allowedRoles={INFRASTRUCTURE_ROLES}><ChargePointDetailPage /></RequireAuth>} />
+        <Route path={PATHS.SWAP_STATIONS} element={<RequireAuth allowedRoles={INFRASTRUCTURE_ROLES}><SwapStationsPage /></RequireAuth>} />
+        <Route path="/swap-stations/:id" element={<RequireAuth allowedRoles={INFRASTRUCTURE_ROLES}><SwapStationDetailPage /></RequireAuth>} />
 
         {/* Operations */}
-        <Route path={PATHS.SESSIONS}   element={<RequireAuth><SessionsPage /></RequireAuth>} />
-        <Route path={PATHS.SWAP_SESSIONS} element={<RequireAuth><SwapSessionsPage /></RequireAuth>} />
-        <Route path={PATHS.INCIDENTS}  element={<RequireAuth><IncidentsPage /></RequireAuth>} />
-        <Route path={PATHS.ALERTS}     element={<RequireAuth><AlertsPage /></RequireAuth>} />
+        <Route path={PATHS.SESSIONS}   element={<RequireAuth allowedRoles={OPERATIONS_ROLES}><SessionsPage /></RequireAuth>} />
+        <Route path={PATHS.SWAP_SESSIONS} element={<RequireAuth allowedRoles={OPERATIONS_ROLES}><SwapSessionsPage /></RequireAuth>} />
+        <Route path={PATHS.INCIDENTS}  element={<RequireAuth allowedRoles={OPERATIONS_ROLES}><IncidentsPage /></RequireAuth>} />
+        <Route path={PATHS.ALERTS}     element={<RequireAuth allowedRoles={OPERATIONS_ROLES}><AlertsPage /></RequireAuth>} />
 
         {/* Energy */}
-        <Route path={PATHS.SMART_CHARGING} element={<RequireAuth><SmartChargingPage /></RequireAuth>} />
-        <Route path={PATHS.LOAD_POLICY}    element={<RequireAuth><LoadPolicyPage /></RequireAuth>} />
-        <Route path={PATHS.BATTERY_INVENTORY} element={<RequireAuth><BatteryInventoryPage /></RequireAuth>} />
+        <Route path={PATHS.SMART_CHARGING} element={<RequireAuth allowedRoles={ENERGY_ROLES}><SmartChargingPage /></RequireAuth>} />
+        <Route path={PATHS.LOAD_POLICY}    element={<RequireAuth allowedRoles={ENERGY_ROLES}><LoadPolicyPage /></RequireAuth>} />
+        <Route path={PATHS.BATTERY_INVENTORY} element={<RequireAuth allowedRoles={ENERGY_ROLES}><BatteryInventoryPage /></RequireAuth>} />
 
         {/* Roaming */}
-        <Route path={PATHS.OCPI_PARTNERS}  element={<RequireAuth><OCPIPartnersPage /></RequireAuth>} />
-        <Route path="/roaming/sessions"    element={<RequireAuth><RoamingSessionsPage /></RequireAuth>} />
-        <Route path="/roaming/commands"    element={<RequireAuth><OCPICommandsPage /></RequireAuth>} />
-        <Route path={PATHS.OCPI_CDRS}      element={<RequireAuth><OCPICDRsPage /></RequireAuth>} />
+        <Route path={PATHS.OCPI_PARTNERS}  element={<RequireAuth allowedRoles={ROAMING_ROLES}><OCPIPartnersPage /></RequireAuth>} />
+        <Route path="/roaming/sessions"    element={<RequireAuth allowedRoles={ROAMING_ROLES}><RoamingSessionsPage /></RequireAuth>} />
+        <Route path="/roaming/commands"    element={<RequireAuth allowedRoles={ROAMING_ROLES}><OCPICommandsPage /></RequireAuth>} />
+        <Route path={PATHS.OCPI_CDRS}      element={<RequireAuth allowedRoles={ROAMING_ROLES}><OCPICDRsPage /></RequireAuth>} />
 
         {/* Finance */}
-        <Route path={PATHS.TARIFFS}    element={<RequireAuth><TariffsPage /></RequireAuth>} />
-        <Route path={PATHS.BILLING}    element={<RequireAuth><BillingPage /></RequireAuth>} />
-        <Route path={PATHS.PAYOUTS}    element={<RequireAuth><PayoutsPage /></RequireAuth>} />
-        <Route path={PATHS.SETTLEMENT} element={<RequireAuth><SettlementPage /></RequireAuth>} />
+        <Route path={PATHS.TARIFFS}    element={<RequireAuth allowedRoles={FINANCE_ROLES}><TariffsPage /></RequireAuth>} />
+        <Route path={PATHS.BILLING}    element={<RequireAuth allowedRoles={FINANCE_ROLES}><BillingPage /></RequireAuth>} />
+        <Route path={PATHS.PAYOUTS}    element={<RequireAuth allowedRoles={FINANCE_ROLES}><PayoutsPage /></RequireAuth>} />
+        <Route path={PATHS.SETTLEMENT} element={<RequireAuth allowedRoles={FINANCE_ROLES}><SettlementPage /></RequireAuth>} />
 
         {/* Team */}
-        <Route path={PATHS.TEAM}       element={<RequireAuth><TeamPage /></RequireAuth>} />
+        <Route path={PATHS.TEAM}       element={<RequireAuth allowedRoles={TEAM_ROLES}><TeamPage /></RequireAuth>} />
 
         {/* Platform */}
-        <Route path={PATHS.REPORTS}       element={<RequireAuth><ReportsPage /></RequireAuth>} />
-        <Route path={PATHS.AUDIT_LOGS}    element={<RequireAuth><AuditLogsPage /></RequireAuth>} />
-        <Route path={PATHS.WEBHOOKS}      element={<RequireAuth><WebhooksPage /></RequireAuth>} />
-        <Route path={PATHS.INTEGRATIONS}  element={<RequireAuth><IntegrationsPage /></RequireAuth>} />
-        <Route path={PATHS.PROTOCOLS}     element={<RequireAuth><ProtocolsPage /></RequireAuth>} />
+        <Route path={PATHS.REPORTS}       element={<RequireAuth allowedRoles={REPORTING_ROLES}><ReportsPage /></RequireAuth>} />
+        <Route path={PATHS.AUDIT_LOGS}    element={<RequireAuth allowedRoles={FINANCE_ROLES}><AuditLogsPage /></RequireAuth>} />
+        <Route path={PATHS.WEBHOOKS}      element={<RequireAuth allowedRoles={PLATFORM_ADMIN_ROLES}><WebhooksPage /></RequireAuth>} />
+        <Route path={PATHS.INTEGRATIONS}  element={<RequireAuth allowedRoles={PLATFORM_ADMIN_ROLES}><IntegrationsPage /></RequireAuth>} />
+        <Route path={PATHS.PROTOCOLS}     element={<RequireAuth allowedRoles={PLATFORM_ADMIN_ROLES}><ProtocolsPage /></RequireAuth>} />
 
         {/* Settings */}
-        <Route path={PATHS.SETTINGS}      element={<RequireAuth><SettingsPage /></RequireAuth>} />
-        <Route path="/settings/white-label" element={<RequireAuth><WhiteLabelPage /></RequireAuth>} />
-        <Route path={PATHS.NOTIFICATIONS} element={<RequireAuth><NotificationsPage /></RequireAuth>} />
+        <Route path={PATHS.SETTINGS}      element={<RequireAuth allowedRoles={SETTINGS_ROLES}><SettingsPage /></RequireAuth>} />
+        <Route path="/settings/white-label" element={<RequireAuth allowedRoles={ADMIN_ROLES}><WhiteLabelPage /></RequireAuth>} />
+        <Route path={PATHS.NOTIFICATIONS} element={<RequireAuth allowedRoles={SETTINGS_ROLES}><NotificationsPage /></RequireAuth>} />
 
         {/* Catch-all */}
         <Route path="*" element={<Navigate to={PATHS.DASHBOARD} replace />} />

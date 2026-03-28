@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
+import { canManageStations, useAuthStore } from '@/core/auth/authStore'
 import { Search, Filter, Map as MapIcon, List, MapPin, Zap, Plus } from 'lucide-react'
 import { useStations, type Station } from '@/core/hooks/useStations'
 import { PATHS } from '@/router/paths'
@@ -10,8 +11,10 @@ export function StationsPage() {
   const [view, setView] = useState<'list' | 'map'>('list')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('All')
+  const userRole = useAuthStore((state) => state.user?.role)
   
   const { data: stations, isLoading, error } = useStations()
+  const canProvisionStations = !!userRole && canManageStations(userRole)
 
   const filtered = (stations || []).filter(s => 
     (statusFilter === 'All' || s.status === statusFilter) &&
@@ -58,9 +61,11 @@ export function StationsPage() {
               <option value="Faulted">Faulted</option>
             </select>
           </div>
-          <Link to="/stations/new" className="px-4 bg-accent text-white rounded-lg flex items-center gap-2 text-sm font-bold shadow-lg shadow-accent/20 hover:brightness-110 h-10 transition-all">
-            <Plus size={16} /> <span className="hidden sm:inline">Add Station</span>
-          </Link>
+          {canProvisionStations && (
+            <Link to="/stations/new" className="px-4 bg-accent text-white rounded-lg flex items-center gap-2 text-sm font-bold shadow-lg shadow-accent/20 hover:brightness-110 h-10 transition-all">
+              <Plus size={16} /> <span className="hidden sm:inline">Add Station</span>
+            </Link>
+          )}
         </div>
 
         <div className="flex bg-bg-muted rounded-lg p-1 border border-border">
