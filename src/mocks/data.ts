@@ -687,9 +687,60 @@ const reportsByTenant: Record<TenantId, ReportsResponse> = {
 }
 
 const protocolsByTenant: Record<TenantId, ProtocolEngineResponse> = {
-  'tenant-global': { endpoints: [{ module: 'Credentials', url: '/ocpi/cpo/2.2.1/credentials', status: 'Online' }, { module: 'Sessions', url: '/ocpi/cpo/2.2.1/sessions', status: 'Online' }], handshakeLogs: [{ level: 'info', message: '[14:20:01] INFO: Initializing global protocol checks' }, { level: 'accent', message: '[14:20:07] SUCCESS: Handshake complete.' }], complianceNote: 'Global protocol bench passed tenant-aware isolation checks.' },
-  'tenant-evzone-ke': { endpoints: [{ module: 'Credentials', url: '/ocpi/ke/2.2.1/credentials', status: 'Online' }, { module: 'Sessions', url: '/ocpi/ke/2.2.1/sessions', status: 'Online' }], handshakeLogs: [{ level: 'info', message: '[15:01:11] INFO: Validating EVzone Kenya tenant OCPI credentials...' }, { level: 'accent', message: '[15:01:13] SUCCESS: Tenant-scoped endpoint responded normally.' }], complianceNote: 'Kenya tenant endpoints are isolated from the platform control plane.' },
-  'tenant-westlands-mall': { endpoints: [{ module: 'Locations', url: '/ocpi/wml/2.2.1/locations', status: 'Online' }, { module: 'Sessions', url: '/ocpi/wml/2.2.1/sessions', status: 'Online' }], handshakeLogs: [{ level: 'info', message: '[15:22:41] INFO: Verifying hosted-site partner visibility...' }, { level: 'accent', message: '[15:22:43] SUCCESS: Westlands hosted endpoints are tenant-isolated.' }], complianceNote: 'Hosted-site protocol exposure is limited to the Westlands Mall tenant.' },
+  'tenant-global': {
+    headline: 'OCPI Contract Bench',
+    implementationStage: 'Mock Bench',
+    liveServicesDeployed: false,
+    supportedVersions: ['2.2.1'],
+    plannedVersions: ['2.3'],
+    statusNote: 'Endpoints shown here are mock contract surfaces and handshake simulations, not deployed OCPI services.',
+    endpoints: [
+      { module: 'Credentials', url: '/ocpi/cpo/2.2.1/credentials', status: 'Online' },
+      { module: 'Sessions', url: '/ocpi/cpo/2.2.1/sessions', status: 'Online' },
+    ],
+    handshakeLogs: [
+      { level: 'info', message: '[14:20:01] INFO: Initializing global protocol checks' },
+      { level: 'warning', message: '[14:20:04] NOTE: Mock bench mode; no live OCPI peer is connected.' },
+      { level: 'accent', message: '[14:20:07] SUCCESS: Contract validation completed.' },
+    ],
+    complianceNote: 'Global protocol bench passed tenant-aware isolation checks against the mocked contract surface.',
+  },
+  'tenant-evzone-ke': {
+    headline: 'Tenant OCPI Contract Bench',
+    implementationStage: 'Mock Bench',
+    liveServicesDeployed: false,
+    supportedVersions: ['2.2.1'],
+    plannedVersions: ['2.3'],
+    statusNote: 'The Kenya tenant exposes mocked OCPI contracts only. Production credentials exchange and transport services are not deployed yet.',
+    endpoints: [
+      { module: 'Credentials', url: '/ocpi/ke/2.2.1/credentials', status: 'Online' },
+      { module: 'Sessions', url: '/ocpi/ke/2.2.1/sessions', status: 'Online' },
+    ],
+    handshakeLogs: [
+      { level: 'info', message: '[15:01:11] INFO: Validating EVzone Kenya tenant OCPI credentials...' },
+      { level: 'warning', message: '[15:01:12] NOTE: Running against MSW contract fixtures only.' },
+      { level: 'accent', message: '[15:01:13] SUCCESS: Tenant-scoped contract validation responded normally.' },
+    ],
+    complianceNote: 'Kenya tenant OCPI routes are isolated from other tenants, but still operate as mocked contract endpoints.',
+  },
+  'tenant-westlands-mall': {
+    headline: 'Hosted-Site OCPI Contract Bench',
+    implementationStage: 'Mock Bench',
+    liveServicesDeployed: false,
+    supportedVersions: ['2.2.1'],
+    plannedVersions: ['2.3'],
+    statusNote: 'Hosted-site protocol visibility is simulated for tenant isolation checks only. No live OCPI service has been deployed for this portfolio.',
+    endpoints: [
+      { module: 'Locations', url: '/ocpi/wml/2.2.1/locations', status: 'Online' },
+      { module: 'Sessions', url: '/ocpi/wml/2.2.1/sessions', status: 'Online' },
+    ],
+    handshakeLogs: [
+      { level: 'info', message: '[15:22:41] INFO: Verifying hosted-site partner visibility...' },
+      { level: 'warning', message: '[15:22:42] NOTE: Contract bench mode is active; transport and auth are mocked.' },
+      { level: 'accent', message: '[15:22:43] SUCCESS: Westlands hosted endpoints are tenant-isolated in the mock bench.' },
+    ],
+    complianceNote: 'Hosted-site protocol exposure is limited to the Westlands Mall tenant in the mock contract bench.',
+  },
 }
 
 function getChargePointCount(tenantId: TenantId) {

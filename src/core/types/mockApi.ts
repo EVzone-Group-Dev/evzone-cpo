@@ -451,10 +451,18 @@ export interface ProtocolLogRecord {
   message: string
 }
 
+export type ProtocolImplementationStage = 'Mock Bench' | 'Pilot' | 'Live'
+
 export interface ProtocolEngineResponse {
   complianceNote: string
   endpoints: ProtocolEndpointRecord[]
   handshakeLogs: ProtocolLogRecord[]
+  headline: string
+  implementationStage: ProtocolImplementationStage
+  liveServicesDeployed: boolean
+  plannedVersions: string[]
+  statusNote: string
+  supportedVersions: string[]
 }
 
 export interface ModuleNotice {

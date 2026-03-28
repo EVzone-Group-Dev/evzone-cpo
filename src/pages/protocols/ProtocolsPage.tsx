@@ -1,5 +1,6 @@
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { useProtocolEngine } from '@/core/hooks/usePlatformData'
+import { useTenant } from '@/core/hooks/useTenant'
 import { Activity, Shield, Code, Send, CheckCircle2 } from 'lucide-react'
 
 const LOG_LEVEL_CLASS = {
@@ -15,6 +16,7 @@ const ENDPOINT_STATUS_CLASS = {
 } as const
 
 export function ProtocolsPage() {
+  const { activeTenant } = useTenant()
   const { data, isLoading, error } = useProtocolEngine()
 
   if (isLoading) {
@@ -31,10 +33,25 @@ export function ProtocolsPage() {
         <div className="card border-l-4 border-l-accent space-y-6">
           <div className="flex justify-between items-start">
             <div>
-              <h3 className="text-lg font-bold">OCPI 2.2.1 / 2.3 Ready</h3>
-              <p className="text-xs text-subtle">Global Interoperability Layer</p>
+              <h3 className="text-lg font-bold">{data.headline}</h3>
+              <p className="text-xs text-subtle">{data.implementationStage} · {activeTenant?.name ?? 'Tenant Scope'}</p>
             </div>
             <Activity className="text-accent animate-pulse" size={20} />
+          </div>
+
+          <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: 'var(--border)', background: 'var(--bg-muted)' }}>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`pill ${data.liveServicesDeployed ? 'online' : 'pending'}`}>
+                {data.liveServicesDeployed ? 'Live Services' : 'Mock Validation Only'}
+              </span>
+              {data.supportedVersions.map((version) => (
+                <span key={version} className="pill online">OCPI {version}</span>
+              ))}
+              {data.plannedVersions.map((version) => (
+                <span key={version} className="pill pending">Planned {version}</span>
+              ))}
+            </div>
+            <p className="text-xs text-subtle">{data.statusNote}</p>
           </div>
 
           <div className="space-y-4">
@@ -52,12 +69,33 @@ export function ProtocolsPage() {
             </div>
           </div>
 
+          {activeTenant && (
+            <div className="space-y-2">
+              <div className="section-title text-[10px] uppercase tracking-widest text-subtle">Tenant Context</div>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="rounded-lg border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg-muted)' }}>
+                  <div className="text-subtle">Region</div>
+                  <div className="font-semibold">{activeTenant.region}</div>
+                </div>
+                <div className="rounded-lg border p-3" style={{ borderColor: 'var(--border)', background: 'var(--bg-muted)' }}>
+                  <div className="text-subtle">Time Zone</div>
+                  <div className="font-semibold">{activeTenant.timeZone}</div>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="flex gap-4">
-            <button className="flex-1 py-2 bg-bg-muted rounded-lg text-xs font-bold hover:border-accent border border-border transition-all flex items-center justify-center gap-2">
-              <Code size={14} /> Open Swagger
+            <button
+              className={`flex-1 py-2 rounded-lg text-xs font-bold border transition-all flex items-center justify-center gap-2 ${data.liveServicesDeployed ? 'bg-bg-muted hover:border-accent' : 'opacity-70 cursor-not-allowed'}`}
+              style={{ borderColor: 'var(--border)' }}
+              disabled={!data.liveServicesDeployed}
+              title={data.liveServicesDeployed ? 'Open protocol docs' : 'Live API docs are not available in mock bench mode.'}
+            >
+              <Code size={14} /> {data.liveServicesDeployed ? 'Open Swagger' : 'Contracts Only'}
             </button>
             <button className="flex-1 py-2 bg-bg-muted rounded-lg text-xs font-bold hover:border-accent border border-border transition-all flex items-center justify-center gap-2">
-              <Shield size={14} /> Audit Trail
+              <Shield size={14} /> Bench Logs
             </button>
           </div>
         </div>

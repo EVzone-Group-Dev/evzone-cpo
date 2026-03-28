@@ -38,6 +38,50 @@ export interface OCPIResponse<T> {
   timestamp: string
 }
 
+export interface OCPIPartyContext {
+  countryCode: string
+  operatorName: string
+  partyId: string
+  timeZone: string
+}
+
+export interface OCPILocationConnector {
+  format: 'CABLE' | 'SOCKET'
+  id: string
+  last_updated: string
+  max_amperage: number
+  max_electric_power: number
+  max_voltage: number
+  power_type: 'AC_1_PHASE' | 'AC_3_PHASE' | 'DC'
+  standard: 'IEC_62196_T2' | 'IEC_62196_T2_COMBO'
+}
+
+export interface OCPILocationEVSE {
+  capabilities: string[]
+  connectors: OCPILocationConnector[]
+  evse_id: string
+  last_updated: string
+  status: string
+  uid: string
+}
+
+export interface OCPILocation {
+  address: string
+  city: string
+  coordinates: {
+    latitude: string
+    longitude: string
+  }
+  country: string
+  evses: OCPILocationEVSE[]
+  id: string
+  last_updated: string
+  name: string
+  operator: OCPIBusinessDetails
+  time_zone: string
+  type: string
+}
+
 export const OCPIStatusCode = {
   SUCCESS: 1000,
   CLIENT_ERROR: 2000,
