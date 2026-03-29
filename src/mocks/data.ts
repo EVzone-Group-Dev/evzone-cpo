@@ -7,6 +7,7 @@ import type {
   BatterySwapSessionRecord,
   BillingResponse,
   ChargePointDetail,
+  CreateChargePointRequest,
   DashboardMode,
   DashboardOverviewResponse,
   DemoUserHint,
@@ -225,6 +226,7 @@ const chargePoints: Array<TenantScoped<ChargePointDetail>> = [
     id: 'cp-1',
     stationId: 'st-1',
     stationName: 'Westlands Hub',
+    connectorType: 'DC Fast',
     model: 'ABB Terra 184',
     manufacturer: 'ABB',
     serialNumber: 'SN-001A',
@@ -245,6 +247,7 @@ const chargePoints: Array<TenantScoped<ChargePointDetail>> = [
     id: 'cp-2',
     stationId: 'st-1',
     stationName: 'Westlands Hub',
+    connectorType: 'DC Fast',
     model: 'ABB Terra 184',
     manufacturer: 'ABB',
     serialNumber: 'SN-001B',
@@ -265,6 +268,7 @@ const chargePoints: Array<TenantScoped<ChargePointDetail>> = [
     id: 'cp-3',
     stationId: 'st-2',
     stationName: 'CBD Charging Station',
+    connectorType: 'AC Type 2',
     model: 'Alfen Eve Pro',
     manufacturer: 'Alfen',
     serialNumber: 'SN-002A',
@@ -285,6 +289,7 @@ const chargePoints: Array<TenantScoped<ChargePointDetail>> = [
     id: 'cp-4',
     stationId: 'st-4',
     stationName: 'Garden City Mall',
+    connectorType: 'DC Fast',
     model: 'Wallbox Supernova',
     manufacturer: 'Wallbox',
     serialNumber: 'SN-004A',
@@ -578,9 +583,9 @@ const batterySwapSessions: Array<TenantScoped<BatterySwapSessionRecord>> = [
 ]
 
 const sessions: Array<TenantScoped<SessionRecord>> = [
-  { id: 'SES-001', station: 'Westlands Hub', cp: 'EVZ-WL-001', started: '2026-03-28 08:14', ended: '2026-03-28 09:02', energy: '22.4 kWh', amount: 'KES 1,344', status: 'Completed', method: 'App', emsp: 'EVzone eMSP', tenantIds: ['tenant-global', 'tenant-evzone-ke', 'tenant-westlands-mall'] },
-  { id: 'SES-002', station: 'CBD Charging Station', cp: 'EVZ-CBD-001', started: '2026-03-28 07:50', ended: null, energy: '31.0 kWh', amount: 'KES 1,860', status: 'Active', method: 'RFID', emsp: '-', tenantIds: ['tenant-global', 'tenant-evzone-ke'] },
-  { id: 'SES-003', station: 'Garden City Mall', cp: 'EVZ-GC-001', started: '2026-03-28 10:00', ended: '2026-03-28 10:05', energy: '0.0 kWh', amount: 'KES 0', status: 'Failed', method: 'RFID', emsp: '-', tenantIds: ['tenant-global'] },
+  { id: 'SES-001', station: 'Westlands Hub', chargePointId: 'cp-1', connectorType: 'DC Fast', cp: 'EVZ-WL-001', started: '2026-03-28 08:14', ended: '2026-03-28 09:02', energy: '22.4 kWh', amount: 'KES 1,344', status: 'Completed', method: 'App', emsp: 'EVzone eMSP', tenantIds: ['tenant-global', 'tenant-evzone-ke', 'tenant-westlands-mall'] },
+  { id: 'SES-002', station: 'CBD Charging Station', chargePointId: 'cp-3', connectorType: 'AC Type 2', cp: 'EVZ-CBD-001', started: '2026-03-28 07:50', ended: null, energy: '31.0 kWh', amount: 'KES 1,860', status: 'Active', method: 'RFID', emsp: '-', tenantIds: ['tenant-global', 'tenant-evzone-ke'] },
+  { id: 'SES-003', station: 'Garden City Mall', chargePointId: 'cp-4', connectorType: 'DC Fast', cp: 'EVZ-GC-001', started: '2026-03-28 10:00', ended: '2026-03-28 10:05', energy: '0.0 kWh', amount: 'KES 0', status: 'Failed', method: 'RFID', emsp: '-', tenantIds: ['tenant-global'] },
 ]
 
 const incidentRecords: Array<TenantScoped<IncidentCommandResponse['incidents'][number]>> = [
@@ -666,6 +671,15 @@ function stripTenantIds<T extends { tenantIds: TenantId[] }>(record: T): Omit<T,
 
 function listTenantScoped<T extends { tenantIds: TenantId[] }>(records: T[], tenantId: TenantId): Array<Omit<T, 'tenantIds'>> {
   return records.filter((record) => record.tenantIds.includes(tenantId)).map(stripTenantIds)
+}
+
+function getNextChargePointId() {
+  const highestId = chargePoints.reduce((highest, record) => {
+    const parsedId = Number(record.id.replace('cp-', ''))
+    return Number.isFinite(parsedId) ? Math.max(highest, parsedId) : highest
+  }, 0)
+
+  return `cp-${highestId + 1}`
 }
 
 function makeDashboardOverview(
@@ -1381,6 +1395,45 @@ export function listStations(tenantId: TenantId) { return listTenantScoped(stati
 export function getStationById(id: string, tenantId: TenantId) { const station = stations.find((record) => record.id === id && record.tenantIds.includes(tenantId)); return station ? stripTenantIds(station) : undefined }
 export function listChargePoints(tenantId: TenantId) { return listTenantScoped(chargePoints, tenantId) }
 export function getChargePointById(id: string, tenantId: TenantId) { const chargePoint = chargePoints.find((record) => record.id === id && record.tenantIds.includes(tenantId)); return chargePoint ? stripTenantIds(chargePoint) : undefined }
+export function createChargePoint(payload: CreateChargePointRequest, tenantId: TenantId) {
+  const stationRecord = stations.find((record) => record.id === payload.stationId && record.tenantIds.includes(tenantId))
+  if (!stationRecord) {
+    return null
+  }
+
+  const chargePointId = getNextChargePointId()
+  const createdRecord: TenantScoped<ChargePointDetail> = {
+    id: chargePointId,
+    stationId: payload.stationId,
+    stationName: stationRecord.name,
+    connectorType: payload.connectorType.trim(),
+    model: payload.model.trim(),
+    manufacturer: payload.manufacturer.trim(),
+    serialNumber: payload.serialNumber.trim(),
+    firmwareVersion: '1.0.0',
+    ocppId: payload.ocppId.trim(),
+    ocppVersion: payload.ocppVersion.trim(),
+    status: 'Online',
+    ocppStatus: 'Available',
+    maxCapacityKw: payload.maxCapacityKw,
+    lastHeartbeatLabel: 'just now',
+    stale: false,
+    roamingPublished: false,
+    remoteCommands: ['Remote Start Session', 'Soft Reset', 'Hard Reboot'],
+    unitHealth: { ocppConnection: 'Connected', lastHeartbeat: 'just now', errorCode: 'NoError' },
+    tenantIds: [tenantId],
+  }
+
+  chargePoints.push(createdRecord)
+  stationRecord.chargePoints.push({
+    id: chargePointId,
+    status: 'Available',
+    type: createdRecord.connectorType,
+    lastHeartbeatLabel: 'just now',
+  })
+
+  return stripTenantIds(createdRecord)
+}
 export function listSessions(tenantId: TenantId) { return listTenantScoped(sessions, tenantId) }
 export function listSwapStations(tenantId: TenantId) { return swapStations.filter((record) => record.tenantIds.includes(tenantId)).map((record) => toSwapStationSummary(stripTenantIds(record))) }
 export function getSwapStationById(id: string, tenantId: TenantId) { const station = swapStations.find((record) => record.id === id && record.tenantIds.includes(tenantId)); return station ? stripTenantIds(station) : undefined }

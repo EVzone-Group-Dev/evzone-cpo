@@ -13,6 +13,7 @@ export const PATHS = {
   STATIONS: '/stations',
   STATION_DETAIL: (id: string) => `/stations/${id}`,
   CHARGE_POINTS: '/charge-points',
+  CHARGE_POINT_NEW: '/charge-points/new',
   CHARGE_POINT_DETAIL: (id: string) => `/charge-points/${id}`,
   SWAP_STATIONS: '/swap-stations',
   SWAP_STATION_DETAIL: (id: string) => `/swap-stations/${id}`,

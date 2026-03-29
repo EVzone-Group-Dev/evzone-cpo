@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchJson } from '@/core/api/fetchJson'
 import { useTenant } from '@/core/hooks/useTenant'
 import type {
@@ -7,6 +7,7 @@ import type {
   BillingResponse,
   ChargePointDetail,
   ChargePointSummary,
+  CreateChargePointRequest,
   DashboardOverviewResponse,
   DemoUserHint,
   IncidentCommandResponse,
@@ -82,6 +83,23 @@ export function useChargePoint(id?: string) {
     queryKey: ['charge-points', tenantKey, id],
     queryFn: () => fetchJson<ChargePointDetail>(`/api/charge-points/${id}`),
     enabled,
+  })
+}
+
+export function useCreateChargePoint() {
+  const { tenantKey } = useTenantQueryContext()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: CreateChargePointRequest) =>
+      fetchJson<ChargePointDetail>('/api/charge-points', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['charge-points', tenantKey] })
+    },
   })
 }
 

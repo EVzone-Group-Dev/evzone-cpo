@@ -16,6 +16,7 @@ const StationsPage      = lazy(() => import('@/pages/stations/StationsPage').the
 const StationDetailPage = lazy(() => import('@/pages/stations/StationDetailPage').then(m => ({ default: m.StationDetailPage })))
 const CreateStationPage = lazy(() => import('@/pages/stations/CreateStationPage').then(m => ({ default: m.CreateStationPage })))
 const ChargePointsPage  = lazy(() => import('@/pages/charge-points/ChargePointsPage').then(m => ({ default: m.ChargePointsPage })))
+const CreateChargePointPage = lazy(() => import('@/pages/charge-points/CreateChargePointPage').then(m => ({ default: m.CreateChargePointPage })))
 const ChargePointDetailPage = lazy(() => import('@/pages/charge-points/ChargePointDetailPage').then(m => ({ default: m.ChargePointDetailPage })))
 const SwapStationsPage = lazy(() => import('@/pages/swapping/SwapStationsPage').then(m => ({ default: m.SwapStationsPage })))
 const SwapStationDetailPage = lazy(() => import('@/pages/swapping/SwapStationDetailPage').then(m => ({ default: m.SwapStationDetailPage })))
@@ -78,6 +79,7 @@ export function AppRoutes() {
         <Route path="/stations/new" element={<RequireAuth allowedRoles={ACCESS_POLICY.stationsWrite}><CreateStationPage /></RequireAuth>} />
         <Route path="/stations/:id" element={<RequireAuth allowedRoles={ACCESS_POLICY.stationsRead}><StationDetailPage /></RequireAuth>} />
         <Route path={PATHS.CHARGE_POINTS} element={<RequireAuth allowedRoles={ACCESS_POLICY.chargePointsRead}><ChargePointsPage /></RequireAuth>} />
+        <Route path={PATHS.CHARGE_POINT_NEW}  element={<RequireAuth allowedRoles={ACCESS_POLICY.chargePointsWrite}><CreateChargePointPage /></RequireAuth>} />
         <Route path="/charge-points/:id"  element={<RequireAuth allowedRoles={ACCESS_POLICY.chargePointsRead}><ChargePointDetailPage /></RequireAuth>} />
         <Route path={PATHS.SWAP_STATIONS} element={<RequireAuth allowedRoles={ACCESS_POLICY.swapStationsRead}><SwapStationsPage /></RequireAuth>} />
         <Route path="/swap-stations/:id" element={<RequireAuth allowedRoles={ACCESS_POLICY.swapStationsRead}><SwapStationDetailPage /></RequireAuth>} />

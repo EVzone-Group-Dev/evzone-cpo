@@ -6,6 +6,7 @@ import type { CPORole } from '@/core/types/domain'
 import { http, HttpResponse } from 'msw'
 import {
   authenticateDemoUser,
+  createChargePoint,
   getBatteryInventory,
   getBilling,
   getChargePointById,
@@ -195,6 +196,20 @@ export const handlers = [
     const chargePoint = getChargePointById(String(params.id), result.access.tenantId)
     if (!chargePoint) return HttpResponse.json({ message: 'Charge point not found.' }, { status: 404 })
     return HttpResponse.json(chargePoint)
+  }),
+
+  http.post('/api/charge-points', async ({ request }) => {
+    const result = authorize(request, ACCESS_POLICY.chargePointsWrite)
+    if (!result.ok) return result.response
+
+    const payload = await request.json() as Parameters<typeof createChargePoint>[0]
+    const chargePoint = createChargePoint(payload, result.access.tenantId)
+
+    if (!chargePoint) {
+      return HttpResponse.json({ message: 'Station not found for active tenant.' }, { status: 400 })
+    }
+
+    return HttpResponse.json(chargePoint, { status: 201 })
   }),
 
   http.post('/api/charge-points/:id/commands', async ({ params, request }) => {

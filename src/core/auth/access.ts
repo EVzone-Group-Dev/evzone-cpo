@@ -68,6 +68,7 @@ export const ACCESS_POLICY = {
   stationsRead: INFRASTRUCTURE_ROLES,
   stationsWrite: ASSET_MANAGER_ROLES,
   chargePointsRead: INFRASTRUCTURE_ROLES,
+  chargePointsWrite: ASSET_MANAGER_ROLES,
   swapStationsRead: INFRASTRUCTURE_ROLES,
   sessionsRead: OPERATIONS_ROLES,
   swapSessionsRead: OPERATIONS_ROLES,

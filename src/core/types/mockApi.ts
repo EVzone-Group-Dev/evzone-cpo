@@ -247,6 +247,7 @@ export interface BatteryInventoryResponse {
 }
 
 export interface ChargePointSummary {
+  connectorType: string
   firmwareVersion: string
   id: string
   lastHeartbeatLabel: string
@@ -275,6 +276,8 @@ export interface ChargePointDetail extends ChargePointSummary {
 
 export interface SessionRecord {
   amount: string
+  chargePointId: string
+  connectorType: string
   cp: string
   emsp: string
   ended: string | null
@@ -284,6 +287,17 @@ export interface SessionRecord {
   started: string
   station: string
   status: 'Active' | 'Completed' | 'Failed'
+}
+
+export interface CreateChargePointRequest {
+  connectorType: string
+  manufacturer: string
+  maxCapacityKw: number
+  model: string
+  ocppId: string
+  ocppVersion: string
+  serialNumber: string
+  stationId: string
 }
 
 export interface IncidentStat {
