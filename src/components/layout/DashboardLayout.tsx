@@ -1,9 +1,9 @@
-import type { ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { useAuthStore } from '@/core/auth/authStore'
 import { useTenant } from '@/core/hooks/useTenant'
-import { Bell, Settings } from 'lucide-react'
+import { Bell, LogOut, Settings } from 'lucide-react'
 import { PATHS } from '@/router/paths'
 
 interface Props {
@@ -13,8 +13,31 @@ interface Props {
 }
 
 export function DashboardLayout({ children, pageTitle, actions }: Props) {
-  const { user } = useAuthStore()
+  const { user, logout } = useAuthStore()
   const { activeTenant, availableTenants, canSwitchTenants, isLoading, setActiveTenantId } = useTenant()
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
+  const profileMenuRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!profileMenuRef.current?.contains(event.target as Node)) {
+        setIsProfileMenuOpen(false)
+      }
+    }
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsProfileMenuOpen(false)
+      }
+    }
+
+    window.addEventListener('mousedown', handlePointerDown)
+    window.addEventListener('keydown', handleEscape)
+    return () => {
+      window.removeEventListener('mousedown', handlePointerDown)
+      window.removeEventListener('keydown', handleEscape)
+    }
+  }, [])
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: 'var(--bg)' }}>
@@ -63,8 +86,45 @@ export function DashboardLayout({ children, pageTitle, actions }: Props) {
               <Settings size={16} />
             </Link>
             {user && (
-              <div className="w-7 h-7 rounded-full bg-[var(--accent-dim)] flex items-center justify-center text-[#0d1117] font-bold text-xs ml-1">
-                {user.name.charAt(0).toUpperCase()}
+              <div className="relative ml-1" ref={profileMenuRef}>
+                <button
+                  onClick={() => setIsProfileMenuOpen((current) => !current)}
+                  className="w-7 h-7 rounded-full bg-[var(--accent-dim)] flex items-center justify-center text-[#0d1117] font-bold text-xs border border-transparent hover:border-[var(--accent)] transition-colors"
+                  aria-label="Open profile menu"
+                >
+                  {user.name.charAt(0).toUpperCase()}
+                </button>
+                {isProfileMenuOpen && (
+                  <div className="absolute right-0 top-10 z-50 w-64 rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-2 shadow-2xl">
+                    <div className="px-3 py-2 border-b border-[var(--border)]">
+                      <div className="text-sm font-semibold text-[var(--text)]">{user.name}</div>
+                      <div className="text-[11px] text-[var(--text-subtle)]">{user.role}</div>
+                      {activeTenant && (
+                        <div className="text-[11px] text-[var(--accent)] mt-1">{activeTenant.name}</div>
+                      )}
+                    </div>
+                    <div className="pt-2 space-y-1">
+                      <Link
+                        to={PATHS.SETTINGS}
+                        className="nav-item"
+                        onClick={() => setIsProfileMenuOpen(false)}
+                      >
+                        <Settings size={16} />
+                        <span>Account Settings</span>
+                      </Link>
+                      <button
+                        onClick={() => {
+                          setIsProfileMenuOpen(false)
+                          logout()
+                        }}
+                        className="nav-item w-full text-left"
+                      >
+                        <LogOut size={16} />
+                        <span>Sign out</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -10,9 +10,9 @@ import type { CPORole } from '@/core/types/domain'
 import { PATHS } from '@/router/paths'
 import {
   LayoutDashboard, Zap, Cpu, Activity, AlertTriangle, Bell,
-  DollarSign, BarChart3, Users, Settings, Globe2, FileText,
+  DollarSign, BarChart3, Users, Globe2, FileText,
   Webhook, Puzzle, ShieldCheck, TrendingUp, ChevronLeft,
-  ChevronRight, LogOut, BookOpen, Gauge, Network, RefreshCw, Package,
+  ChevronRight, BookOpen, Gauge, Network, RefreshCw, Package, Settings, LogOut,
 } from 'lucide-react'
 
 interface NavGroup {
@@ -93,6 +93,7 @@ export function Sidebar() {
   const { user, logout } = useAuthStore()
   const { activeTenant } = useTenant()
   const [collapsed, setCollapsed] = useState(false)
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
   const userRole = user?.role
 
   return (
@@ -111,7 +112,10 @@ export function Sidebar() {
           </span>
         )}
         <button
-          onClick={() => setCollapsed(c => !c)}
+          onClick={() => {
+            setIsProfileMenuOpen(false)
+            setCollapsed((c) => !c)
+          }}
           className="ml-auto btn ghost icon"
           style={{ flexShrink: 0 }}
           title={collapsed ? 'Expand' : 'Collapse'}
@@ -151,30 +155,49 @@ export function Sidebar() {
       </nav>
 
       {/* User */}
-      <div className="border-t border-[var(--border)] px-3 py-3 space-y-1">
-        {canAccessRole(userRole, ACCESS_POLICY.settingsRead) && (
-          <Link to={PATHS.SETTINGS} className="nav-item" title={collapsed ? 'Settings' : undefined}>
-            <Settings size={16} />
-            {!collapsed && <span>Settings</span>}
-          </Link>
-        )}
-        <button onClick={logout} className="nav-item w-full text-left">
-          <LogOut size={16} />
-          {!collapsed && <span>Sign out</span>}
-        </button>
-        {!collapsed && user && (
-          <div className="flex items-center gap-2 px-2 pt-2">
-            <div className="w-7 h-7 rounded-full bg-[var(--accent-dim)] flex items-center justify-center text-[#0d1117] font-bold text-xs flex-shrink-0">
-              {user.name.charAt(0).toUpperCase()}
-            </div>
-            <div className="overflow-hidden">
-              <div className="text-xs font-semibold text-[var(--text)] truncate">{user.name}</div>
-              <div className="text-[10px] text-[var(--text-subtle)] truncate">{user.role}</div>
-              {activeTenant && (
-                <div className="text-[10px] text-[var(--accent)] truncate">{activeTenant.name}</div>
+      <div className="border-t border-[var(--border)] px-3 py-3 relative">
+        {user && (
+          <>
+            <button
+              onClick={() => setIsProfileMenuOpen((current) => !current)}
+              className={`w-full flex items-center gap-2 rounded-lg border border-transparent hover:border-[var(--border)] transition-colors ${collapsed ? 'justify-center px-0 py-1' : 'px-2 py-1.5'}`}
+              aria-label="Open sidebar profile menu"
+            >
+              <div className="w-7 h-7 rounded-full bg-[var(--accent-dim)] flex items-center justify-center text-[#0d1117] font-bold text-xs flex-shrink-0">
+                {user.name.charAt(0).toUpperCase()}
+              </div>
+              {!collapsed && (
+                <div className="overflow-hidden text-left">
+                  <div className="text-xs font-semibold text-[var(--text)] truncate">{user.name}</div>
+                  <div className="text-[10px] text-[var(--text-subtle)] truncate">{user.role}</div>
+                  {activeTenant && (
+                    <div className="text-[10px] text-[var(--accent)] truncate">{activeTenant.name}</div>
+                  )}
+                </div>
               )}
-            </div>
-          </div>
+            </button>
+            {isProfileMenuOpen && (
+              <div className={`mt-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] p-1 ${collapsed ? 'absolute right-3 bottom-14 w-44 z-50 shadow-2xl' : ''}`}>
+                {canAccessRole(userRole, ACCESS_POLICY.settingsRead) && (
+                  <Link
+                    to={PATHS.SETTINGS}
+                    className="nav-item"
+                    onClick={() => setIsProfileMenuOpen(false)}
+                  >
+                    <Settings size={16} />
+                    <span>Account Settings</span>
+                  </Link>
+                )}
+                <button
+                  onClick={logout}
+                  className="nav-item w-full text-left"
+                >
+                  <LogOut size={16} />
+                  <span>Sign out</span>
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </aside>
