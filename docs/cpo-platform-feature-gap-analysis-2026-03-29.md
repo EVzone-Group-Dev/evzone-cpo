@@ -59,12 +59,19 @@ Primary evidence used in this updated review:
 - `../ocpi-gateway/src/modules/ocpi/ocpi.service.ts`
 - `../ocpi-gateway/src/modules/commands/commands.service.ts`
 - `../ocpi-gateway/src/modules/charging-profiles/charging-profiles.service.ts`
+- `../ocpi-gateway/src/modules/sessions/sessions.service.ts`
+- `../ocpi-gateway/src/modules/cdrs/cdrs.service.ts`
+- `../ocpi-gateway/src/modules/tariffs/tariffs.service.ts`
+- `../ocpi-gateway/src/modules/locations/locations.service.ts`
+- `../ocpi-gateway/src/modules/tokens/tokens.service.ts`
 - `../ocpi-gateway/src/modules/hub-client-info/hub-client-info.service.ts`
 - `../ocpi-gateway/src/modules/ocpi/core/ocpi-event-publisher.service.ts`
+- `../ocpi-gateway/src/modules/partners/partners.service.ts`
 - `../ocpi-gateway/src/modules/partners/partner-observability.service.ts`
 - `../ocpi-gateway/src/modules/partners/partner-observability.consumer.ts`
 - `../ocpi-gateway/scripts/ocpi-event-publisher-selftest.ts`
 - `../ocpi-gateway/scripts/partner-observability-selftest.ts`
+- `../ocpi-gateway/scripts/partner-lifecycle-events-selftest.ts`
 - `../evzone-backend/apps/api/src/modules/ocpi-internal/ocpi-internal.controller.ts`
 - `../evzone-backend/apps/api/src/modules/ocpi-internal/ocpi-internal.controller.spec.ts`
 - `../evzone-backend/apps/worker/src/modules/commands/command-events.consumer.ts`
@@ -99,7 +106,7 @@ This is also real code, but it is not yet a full standalone roaming backbone.
 - `npm run lint`: passed
 - `npm run test`: passed
 
-The main caution here is completeness, not legitimacy. The code is useful and materially ahead of a mock-only implementation, the health endpoint is now dependency-aware, the command path now includes reservation handling through the backend into the CPMS command queue, the backend worker now retries transient OCPI callbacks while persisting callback delivery metadata for tracing, `ocpi-gateway` now emits real Kafka events for command and charging-profile flows, and the admin surface now includes Redis-backed partner observability summaries built from those events. But the gateway still depends heavily on backend `/internal/ocpi/*` contracts, Kafka event coverage is still partial rather than platform-wide, and there is still no evidence of OCPI `2.3.0` support or formal conformance automation yet.
+The main caution here is completeness, not legitimacy. The code is useful and materially ahead of a mock-only implementation, the health endpoint is now dependency-aware, the command path now includes reservation handling through the backend into the CPMS command queue, the backend worker now retries transient OCPI callbacks while persisting callback delivery metadata for tracing, `ocpi-gateway` now emits real Kafka events for commands, charging profiles, sessions, CDRs, tariffs, locations, tokens, credentials, and partner lifecycle changes, and the admin surface now includes Redis-backed partner observability summaries built from that broader traffic. But the gateway still depends heavily on backend `/internal/ocpi/*` contracts, Kafka event coverage is still partial rather than truly universal across every OCPI surface, and there is still no evidence of OCPI `2.3.0` support or formal conformance automation yet.
 
 ## What the market expects now
 
@@ -130,7 +137,7 @@ Legend:
 | White-label capability | Branded web/mobile experiences, operator branding control | Partial | `src/pages/settings/WhiteLabelPage.tsx` | Branding controls exist, but I still did not find evidence of tenant-branded app delivery pipelines or deployment automation. |
 | Smart charging and load management | Dynamic load balancing, peak shaving, policy control | Partial | `src/pages/energy/SmartChargingPage.tsx`, `src/pages/energy/LoadPolicyPage.tsx`, `../ocpp-gateway/apps/gateway/src/ocpp/command-dispatcher.service.ts`, `../ocpp-gateway/scripts/command-dispatcher-selftest.ts`, `../ocpi-gateway/src/modules/charging-profiles/charging-profiles.service.ts` | EVzone now has real protocol-side command coverage for charging profiles and composite schedule, but the end-to-end optimizer and broader smart-energy orchestration are still incomplete. |
 | Finance and revenue operations | Tariffs, invoicing, settlement, payout visibility | Partial | `src/pages/tariffs/TariffsPage.tsx`, `src/pages/finance/BillingPage.tsx`, `src/pages/finance/PayoutsPage.tsx`, `src/pages/finance/SettlementPage.tsx` | EVzone covers the finance workspace well, but there is still no clear direct-payment, terminal, or tax-engine workflow. |
-| Roaming and interoperability (OCPI) | OCPI partners, commands, CDRs, roaming settlements, hub connectivity | Partial | `src/pages/roaming/OCPIPartnersPage.tsx`, `src/pages/roaming/OCPICommandsPage.tsx`, `src/pages/roaming/OCPICDRsPage.tsx`, `../ocpi-gateway/src/modules/ocpi/ocpi.service.ts`, `../ocpi-gateway/src/modules/commands/commands.service.ts`, `../ocpi-gateway/src/modules/ocpi/core/ocpi-event-publisher.service.ts`, `../ocpi-gateway/src/modules/partners/partner-observability.service.ts`, `../evzone-backend/apps/api/src/modules/ocpi-internal/ocpi-internal.controller.ts`, `../evzone-backend/apps/worker/src/modules/commands/ocpi-command-callback.service.ts`, `../ocpi-gateway/docs/internal-ocpi-contracts.md` | This is no longer mock-only. EVzone has a real OCPI gateway with working internal command relay, emitted Kafka events for command and charging-profile flows, retrying backend callback delivery, and partner observability summaries, but it is still backend-dependent, limited to `2.2.1` and `2.1.1`, and not yet proven as a fully hardened roaming platform. |
+| Roaming and interoperability (OCPI) | OCPI partners, commands, CDRs, roaming settlements, hub connectivity | Partial | `src/pages/roaming/OCPIPartnersPage.tsx`, `src/pages/roaming/OCPICommandsPage.tsx`, `src/pages/roaming/OCPICDRsPage.tsx`, `../ocpi-gateway/src/modules/ocpi/ocpi.service.ts`, `../ocpi-gateway/src/modules/commands/commands.service.ts`, `../ocpi-gateway/src/modules/sessions/sessions.service.ts`, `../ocpi-gateway/src/modules/cdrs/cdrs.service.ts`, `../ocpi-gateway/src/modules/tariffs/tariffs.service.ts`, `../ocpi-gateway/src/modules/locations/locations.service.ts`, `../ocpi-gateway/src/modules/tokens/tokens.service.ts`, `../ocpi-gateway/src/modules/partners/partners.service.ts`, `../ocpi-gateway/src/modules/ocpi/core/ocpi-event-publisher.service.ts`, `../ocpi-gateway/src/modules/partners/partner-observability.service.ts`, `../evzone-backend/apps/api/src/modules/ocpi-internal/ocpi-internal.controller.ts`, `../evzone-backend/apps/worker/src/modules/commands/ocpi-command-callback.service.ts`, `../ocpi-gateway/docs/internal-ocpi-contracts.md` | This is no longer mock-only. EVzone has a real OCPI gateway with working internal command relay, broader Kafka event coverage across commands, charging profiles, sessions, CDRs, tariffs, locations, tokens, credentials, and partner lifecycle changes, retrying backend callback delivery, and partner observability summaries built from those flows, but it is still backend-dependent, limited to `2.2.1` and `2.1.1`, and not yet proven as a fully hardened roaming platform. |
 | APIs, webhooks, integrations, notifications, reporting | Extensibility, eventing, ERP/CRM/payment integrations, analytics | Partial | `src/pages/integrations/IntegrationsPage.tsx`, `src/pages/webhooks/WebhooksPage.tsx`, `src/pages/notifications/NotificationsPage.tsx`, `src/pages/reports/ReportsPage.tsx`, `../ocpp-gateway/README.md`, `../ocpi-gateway/docs/kafka-contracts.md` | EVzone has a strong admin surface and real event-oriented backend ideas, but I still did not find a clearly finished public developer ecosystem. |
 | Security and compliance | RBAC, MFA/2FA, logging, SSO, enterprise IAM, protocol conformance | Partial | `src/core/auth/access.ts`, `src/pages/audit/AuditLogsPage.tsx`, `../ocpp-gateway/apps/gateway/src/ocpp/charger-identity.service.ts`, `../ocpp-gateway/apps/gateway/src/ocpp/pki.service.ts` | Protocol-side security is materially stronger than the earlier review suggested. Enterprise IAM remains the gap: I did not find clear SSO or IdP integration evidence. |
 | Driver and fleet experience | Driver portal/app, route planning, loyalty, reimbursement, scheduling | Missing | Repo search found no clear implementation for driver apps, route planning, reimbursement, loyalty, or fleet scheduling flows | EVzone remains operator-centric rather than fleet-driver centric. |
@@ -179,8 +186,8 @@ Why it fits in part:
 - operational lint, build, and self-test scripts
 - reservation command relay into the backend command pipeline
 - retrying OCPI callback delivery with persisted callback metadata
-- real Kafka event emission for command and charging-profile flows
-- partner observability summaries and recent-event monitoring
+- real Kafka event emission across commands, charging profiles, sessions, CDRs, tariffs, locations, tokens, credentials, and partner lifecycle changes
+- partner observability summaries and recent-event monitoring across those roaming modules and handshake flows
 
 What currently limits it:
 
@@ -188,7 +195,7 @@ What currently limits it:
 - support stops at OCPI `2.2.1` and `2.1.1`, with no `2.3.0` evidence yet
 - the functional command set is still narrow compared with the full OCPI surface
 - I still did not find formal OCPI conformance automation in this review
-- Kafka is present architecturally, but not clearly exercised throughout functional flows
+- Kafka coverage is broader now, but still not yet universal across the full OCPI surface such as error events, hub-client-info flows, and formal conformance lifecycle instrumentation
 
 ## What EVzone already does unusually well
 
@@ -209,7 +216,7 @@ If the goal is to compete with serious modern CPO platforms, these are the bigge
 
 ### 1. Finish protocol depth rather than start protocol work from zero
 
-This is the biggest change from the earlier review. EVzone already has a strong OCPP gateway and a partial OCPI gateway, and the latest phase added broader outbound OCPP command depth plus a real reservation command path from OCPI through the backend into OCPP. The next step is to finish depth, conformance, and operational hardening.
+This is the biggest change from the earlier review. EVzone already has a strong OCPP gateway and a partial OCPI gateway, and the latest phases added broader outbound OCPP command depth, a real reservation command path from OCPI through the backend into OCPP, and much broader OCPI event coverage plus partner observability across roaming data flows, token handling, and credentials/partner lifecycle changes. The next step is to finish depth, conformance, and operational hardening.
 
 Target outcome:
 
@@ -288,7 +295,7 @@ If the goal is the shortest path from "strong EV operations platform" to "credib
 
 EVzone is now ahead of where the earlier frontend-only assessment placed it.
 
-The platform already has a real OCPP gateway and a partial OCPI gateway, and the current codebase now goes a step further by supporting reservation commands end-to-end across the OCPI, backend, and OCPP path. The main gap is no longer protocol existence. The main gap is protocol completeness, roaming depth, productized reservation and payment flows, advanced auth productization, and broader energy orchestration.
+The platform already has a real OCPP gateway and a partial OCPI gateway, and the current codebase now goes a step further by supporting reservation commands end-to-end across the OCPI, backend, and OCPP path while also emitting and observing a much broader OCPI operational event stream that now reaches tokens, credentials, and partner lifecycle changes too. The main gap is no longer protocol existence. The main gap is protocol completeness, roaming depth, productized reservation and payment flows, advanced auth productization, and broader energy orchestration.
 
 If those layers are finished well, EVzone can move from "strong operator platform with standout swapping support" to "serious next-generation CPO platform."
 
