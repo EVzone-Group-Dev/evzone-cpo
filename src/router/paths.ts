@@ -32,6 +32,8 @@ export const PATHS = {
 
   // Roaming
   OCPI_PARTNERS: '/roaming/partners',
+  OCPI_SESSIONS: '/roaming/sessions',
+  OCPI_COMMANDS: '/roaming/commands',
   OCPI_CDRS: '/roaming/cdrs',
 
   // Finance

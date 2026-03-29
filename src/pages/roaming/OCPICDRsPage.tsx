@@ -1,7 +1,15 @@
 import { useState } from 'react'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
-import { useOCPICdrs } from '@/core/hooks/usePlatformData'
-import { FileText, Download, Filter, Search, CheckCircle2, Clock, AlertTriangle, ArrowUpRight } from 'lucide-react'
+import {
+  useOCPICdrs,
+  useRoamingPartnerObservability,
+  useRoamingPartners,
+} from '@/core/hooks/usePlatformData'
+import { AlertTriangle, ArrowUpRight, CheckCircle2, Clock, Download, FileText, Filter, Search, ShieldCheck } from 'lucide-react'
+import {
+  buildRoamingPartnerTelemetry,
+  DELIVERY_STATUS_CLASS,
+} from './partnerObservability'
 
 const CDR_STATUS_CLASS = {
   Sent: 'pending',
@@ -20,6 +28,8 @@ export function OCPICDRsPage() {
   const [countryFilter, setCountryFilter] = useState('All')
   const [partnerFilter, setPartnerFilter] = useState('All')
   const { data, isLoading, error } = useOCPICdrs()
+  const { data: partners } = useRoamingPartners()
+  const { data: observability } = useRoamingPartnerObservability()
 
   if (isLoading) {
     return <DashboardLayout pageTitle="Charge Detail Records"><div className="p-8 text-center text-subtle">Loading roaming ledger...</div></DashboardLayout>
@@ -29,6 +39,8 @@ export function OCPICDRsPage() {
     return <DashboardLayout pageTitle="Charge Detail Records"><div className="p-8 text-center text-danger">Unable to load roaming ledger.</div></DashboardLayout>
   }
 
+  const telemetry = buildRoamingPartnerTelemetry(partners, observability)
+  const hasTelemetry = telemetry.views.length > 0
   const searchTerm = search.trim().toLowerCase()
   const countryOptions = ['All', ...Array.from(new Set(data.records.map((record) => record.country))).sort((left, right) => left.localeCompare(right))]
   const partnerOptions = ['All', ...Array.from(new Set(data.records.map((record) => record.emspName))).sort((left, right) => left.localeCompare(right))]
@@ -59,6 +71,28 @@ export function OCPICDRsPage() {
 
   return (
     <DashboardLayout pageTitle="Charge Detail Records">
+      {hasTelemetry && (
+        <div className={`card mb-6 ${telemetry.attentionPartners.length > 0 ? 'border-warning/20 bg-warning/5' : 'border-ok/20 bg-ok/5'}`}>
+          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+            <div>
+              <div className="section-title text-[10px] text-accent"><AlertTriangle size={14} /> Settlement Risk Watch</div>
+              <h2 className="text-lg font-bold mt-3">
+                {telemetry.attentionPartners.length > 0 ? 'Partner delivery health can now be correlated with CDR settlement flow' : 'Settlement feeds are riding on healthy partner delivery channels'}
+              </h2>
+              <p className="text-sm text-subtle mt-2">
+                {telemetry.attentionPartners.length > 0
+                  ? `${telemetry.attentionPartners.length} partners show retry or callback pressure that could slow exports, partner acceptance, or reconciliation.`
+                  : `${telemetry.healthyCount} partner feeds are healthy, with no settlement-facing delivery degradation in the current tenant scope.`}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2 text-[11px]">
+              <span className="pill pending">{telemetry.totalRetryQueueDepth} queued retries</span>
+              <span className={`pill ${telemetry.totalFailures24h > 0 ? 'faulted' : 'online'}`}>{telemetry.totalFailures24h} failed callbacks</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         {data.metrics.map((metric) => (
           <div key={metric.id} className="kpi-card">
@@ -171,54 +205,92 @@ export function OCPICDRsPage() {
                 </td>
               </tr>
             ) : (
-              filteredRecords.map((cdr) => (
-                <tr key={cdr.id} className="group hover:bg-bg-muted/30 transition-colors">
-                  <td>
-                    <div className="font-mono text-xs font-bold text-accent">{cdr.id}</div>
-                    <div className="text-[10px] text-subtle">Ref: {cdr.sessionId}</div>
-                  </td>
-                  <td>
-                    <div className="text-sm font-semibold">{cdr.emspName}</div>
-                    <div className="text-[10px] text-subtle font-mono uppercase">{cdr.country} / {cdr.partyId}</div>
-                  </td>
-                  <td>
-                    <div className="text-sm">{cdr.kwh} kWh</div>
-                    <div className="text-[10px] text-subtle flex items-center gap-1"><Clock size={10} /> 1h 15m</div>
-                  </td>
-                  <td>
-                    <div className="text-sm font-bold">{cdr.currency} {cdr.totalCost}</div>
-                    <div className="text-[9px] text-ok uppercase tracking-wider">Verified</div>
-                  </td>
-                  <td>
-                    <span className={`pill ${CDR_STATUS_CLASS[cdr.status]}`}>
-                      {cdr.status === 'Settled' && <CheckCircle2 size={10} className="mr-1" />}
-                      {cdr.status === 'Rejected' && <AlertTriangle size={10} className="mr-1" />}
-                      {cdr.status}
-                    </span>
-                  </td>
-                  <td className="text-right">
-                    <button className="p-2 text-subtle hover:text-accent transition-colors" title="View Details">
-                      <ArrowUpRight size={16} />
-                    </button>
-                  </td>
-                </tr>
-              ))
+              filteredRecords.map((cdr) => {
+                const partnerHealth = telemetry.byPartnerId.get(cdr.partnerId) ?? telemetry.byPartyId.get(cdr.partyId)
+
+                return (
+                  <tr key={cdr.id} className="group hover:bg-bg-muted/30 transition-colors">
+                    <td>
+                      <div className="font-mono text-xs font-bold text-accent">{cdr.id}</div>
+                      <div className="text-[10px] text-subtle">Ref: {cdr.sessionId}</div>
+                    </td>
+                    <td>
+                      <div className="text-sm font-semibold">{cdr.emspName}</div>
+                      <div className="text-[10px] text-subtle font-mono uppercase">{cdr.country} / {cdr.partyId}</div>
+                      {partnerHealth && (
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className={`pill ${DELIVERY_STATUS_CLASS[partnerHealth.deliveryStatus]}`}>{partnerHealth.deliveryStatus}</span>
+                          <span className="text-[10px] text-subtle">{partnerHealth.successRate} success</span>
+                        </div>
+                      )}
+                    </td>
+                    <td>
+                      <div className="text-sm">{cdr.kwh} kWh</div>
+                      <div className="text-[10px] text-subtle flex items-center gap-1"><Clock size={10} /> 1h 15m</div>
+                    </td>
+                    <td>
+                      <div className="text-sm font-bold">{cdr.currency} {cdr.totalCost}</div>
+                      <div className={`text-[9px] uppercase tracking-wider ${partnerHealth && partnerHealth.deliveryStatus !== 'Healthy' ? 'text-warning' : 'text-ok'}`}>
+                        {partnerHealth && partnerHealth.deliveryStatus !== 'Healthy'
+                          ? `${partnerHealth.retryQueueDepth} retries in partner queue`
+                          : 'Verified'}
+                      </div>
+                    </td>
+                    <td>
+                      <span className={`pill ${CDR_STATUS_CLASS[cdr.status]}`}>
+                        {cdr.status === 'Settled' && <CheckCircle2 size={10} className="mr-1" />}
+                        {cdr.status === 'Rejected' && <AlertTriangle size={10} className="mr-1" />}
+                        {cdr.status}
+                      </span>
+                    </td>
+                    <td className="text-right">
+                      <button className="p-2 text-subtle hover:text-accent transition-colors" title="View Details">
+                        <ArrowUpRight size={16} />
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })
             )}
           </tbody>
         </table>
       </div>
 
-      <div className="mt-6 p-4 bg-bg-muted/50 rounded-xl border border-border flex items-center gap-4">
-        <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center border border-accent/20">
-          <FileText className="text-accent" size={20} />
+      <div className={`mt-6 grid gap-4 ${hasTelemetry ? 'grid-cols-1 xl:grid-cols-2' : 'grid-cols-1'}`}>
+        <div className="p-4 bg-bg-muted/50 rounded-xl border border-border flex items-center gap-4">
+          <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center border border-accent/20">
+            <FileText className="text-accent" size={20} />
+          </div>
+          <div className="flex-1">
+            <div className="text-xs font-bold uppercase tracking-wider">Automated Settlement</div>
+            <p className="text-[10px] text-subtle">{data.automation.text}</p>
+          </div>
+          <button className="px-4 py-2 bg-accent/10 text-accent text-xs font-bold rounded-lg border border-accent/20 hover:bg-accent/20 transition-all">
+            {data.automation.cta}
+          </button>
         </div>
-        <div className="flex-1">
-          <div className="text-xs font-bold uppercase tracking-wider">Automated Settlement</div>
-          <p className="text-[10px] text-subtle">{data.automation.text}</p>
-        </div>
-        <button className="px-4 py-2 bg-accent/10 text-accent text-xs font-bold rounded-lg border border-accent/20 hover:bg-accent/20 transition-all">
-          {data.automation.cta}
-        </button>
+        {hasTelemetry && (
+          <div className="card bg-bg-muted/40">
+            <div className="section-title text-[10px] text-warning"><ShieldCheck size={14} /> Partner Delivery Influence</div>
+            <div className="mt-4 space-y-3">
+              {telemetry.attentionPartners.length > 0 ? telemetry.attentionPartners.slice(0, 3).map((partner) => (
+                <div key={partner.id} className="rounded-xl border border-border bg-bg-card/60 px-4 py-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <div className="text-sm font-semibold">{partner.name}</div>
+                      <div className="text-[10px] text-subtle">{partner.callbackFailures24h} failed callbacks · {partner.retryQueueDepth} queued retries</div>
+                    </div>
+                    <span className={`pill ${DELIVERY_STATUS_CLASS[partner.deliveryStatus]}`}>{partner.deliveryStatus}</span>
+                  </div>
+                </div>
+              )) : (
+                <div className="rounded-xl border border-ok/20 bg-ok/5 px-4 py-4 text-sm text-subtle">
+                  No active partner-delivery issues are currently threatening settlement exports in this scope.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   )

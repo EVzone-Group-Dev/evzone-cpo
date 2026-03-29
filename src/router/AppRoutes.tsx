@@ -97,8 +97,8 @@ export function AppRoutes() {
 
         {/* Roaming */}
         <Route path={PATHS.OCPI_PARTNERS}  element={<RequireAuth allowedRoles={ACCESS_POLICY.roamingRead}><OCPIPartnersPage /></RequireAuth>} />
-        <Route path="/roaming/sessions"    element={<RequireAuth allowedRoles={ACCESS_POLICY.roamingRead}><RoamingSessionsPage /></RequireAuth>} />
-        <Route path="/roaming/commands"    element={<RequireAuth allowedRoles={ACCESS_POLICY.roamingRead}><OCPICommandsPage /></RequireAuth>} />
+        <Route path={PATHS.OCPI_SESSIONS}  element={<RequireAuth allowedRoles={ACCESS_POLICY.roamingRead}><RoamingSessionsPage /></RequireAuth>} />
+        <Route path={PATHS.OCPI_COMMANDS}  element={<RequireAuth allowedRoles={ACCESS_POLICY.roamingRead}><OCPICommandsPage /></RequireAuth>} />
         <Route path={PATHS.OCPI_CDRS}      element={<RequireAuth allowedRoles={ACCESS_POLICY.roamingRead}><OCPICDRsPage /></RequireAuth>} />
 
         {/* Finance */}

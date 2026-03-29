@@ -63,6 +63,8 @@ const NAV: NavGroup[] = [
     label: 'Roaming (OCPI)',
     items: [
       { label: 'Partners', icon: <Network size={16} />, path: PATHS.OCPI_PARTNERS, allowedRoles: ACCESS_POLICY.roamingRead },
+      { label: 'Sessions', icon: <Activity size={16} />, path: PATHS.OCPI_SESSIONS, allowedRoles: ACCESS_POLICY.roamingRead },
+      { label: 'Commands', icon: <RefreshCw size={16} />, path: PATHS.OCPI_COMMANDS, allowedRoles: ACCESS_POLICY.roamingRead },
       { label: 'CDR Ledger', icon: <BookOpen size={16} />, path: PATHS.OCPI_CDRS, allowedRoles: ACCESS_POLICY.roamingRead },
     ],
   },

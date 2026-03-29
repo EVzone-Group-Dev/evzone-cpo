@@ -573,6 +573,7 @@ export interface RoamingSessionRecord {
   emspName: string
   energy: number
   id: string
+  partnerId: string
   partyId: string
   startTime: string
   stationName: string
@@ -603,6 +604,7 @@ export interface CdrRecord {
   end: string
   id: string
   kwh: number
+  partnerId: string
   partyId: string
   sessionId: string
   start: string
@@ -623,6 +625,7 @@ export interface CommandLog {
   command: string
   id: string
   partner: string
+  partnerId: string
   payload: string
   status: 'Accepted' | 'Rejected' | 'Timed Out'
   time: string

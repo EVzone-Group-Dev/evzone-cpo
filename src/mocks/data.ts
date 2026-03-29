@@ -1214,8 +1214,8 @@ const roamingSessionsByTenant: Record<TenantId, RoamingSessionsResponse> = {
       { id: 'utilisation', label: 'Roaming Utilization', value: '34%', note: 'Grid share: 450 kW', tone: 'warning' },
     ],
     sessions: [
-      { id: 'RS-901', stationName: 'Westlands Hub', emspName: 'Plugsurfing', partyId: 'PLG', status: 'Active', startTime: '10m ago', energy: 12.5, amount: 'KES 375' },
-      { id: 'RS-902', stationName: 'CBD Charging Station', emspName: 'Hubject', partyId: 'HBJ', status: 'Active', startTime: '45m ago', energy: 34.2, amount: 'KES 1,026' },
+      { id: 'RS-901', stationName: 'Westlands Hub', emspName: 'Plugsurfing', partnerId: 'p1', partyId: 'PLG', status: 'Active', startTime: '10m ago', energy: 12.5, amount: 'KES 375' },
+      { id: 'RS-902', stationName: 'CBD Charging Station', emspName: 'Hubject', partnerId: 'p2', partyId: 'HBJ', status: 'Active', startTime: '45m ago', energy: 34.2, amount: 'KES 1,026' },
     ],
     regionalReach: [{ region: 'East Africa', count: 420 }, { region: 'Europe', count: 1250 }],
     settlementAging: [30, 50, 70, 40, 90, 60, 40],
@@ -1227,7 +1227,7 @@ const roamingSessionsByTenant: Record<TenantId, RoamingSessionsResponse> = {
       { id: 'utilisation', label: 'Roaming Utilization', value: '28%', note: 'Operational stations only', tone: 'warning' },
     ],
     sessions: [
-      { id: 'RS-901', stationName: 'Westlands Hub', emspName: 'Plugsurfing', partyId: 'PLG', status: 'Active', startTime: '10m ago', energy: 12.5, amount: 'KES 375' },
+      { id: 'RS-901', stationName: 'Westlands Hub', emspName: 'Plugsurfing', partnerId: 'p1', partyId: 'PLG', status: 'Active', startTime: '10m ago', energy: 12.5, amount: 'KES 375' },
     ],
     regionalReach: [{ region: 'Kenya Domestic', count: 420 }, { region: 'Cross-border Direct', count: 180 }],
     settlementAging: [28, 41, 53, 37, 66, 44, 31],
@@ -1239,7 +1239,7 @@ const roamingSessionsByTenant: Record<TenantId, RoamingSessionsResponse> = {
       { id: 'utilisation', label: 'Roaming Utilization', value: '22%', note: 'Focused on mall traffic', tone: 'warning' },
     ],
     sessions: [
-      { id: 'RS-901', stationName: 'Westlands Hub', emspName: 'Plugsurfing', partyId: 'PLG', status: 'Active', startTime: '10m ago', energy: 12.5, amount: 'KES 375' },
+      { id: 'RS-901', stationName: 'Westlands Hub', emspName: 'Plugsurfing', partnerId: 'p1', partyId: 'PLG', status: 'Active', startTime: '10m ago', energy: 12.5, amount: 'KES 375' },
     ],
     regionalReach: [{ region: 'Hosted Site Roaming', count: 96 }, { region: 'Partner Walk-ins', count: 42 }],
     settlementAging: [18, 21, 24, 19, 22, 18, 16],
@@ -1255,8 +1255,8 @@ const ocpiCdrsByTenant: Record<TenantId, OCPICdrsResponse> = {
       { id: 'error-rate', label: 'Error Rate', value: '0.4%', tone: 'ok' },
     ],
     records: [
-      { id: 'CDR-29481', sessionId: 'SES-9120', emspName: 'Plugsurfing', partyId: 'PLG', country: 'NL', start: '2026-03-28 10:15', end: '2026-03-28 11:20', kwh: 42.5, totalCost: '1,240.00', currency: 'KES', status: 'Settled' },
-      { id: 'CDR-29482', sessionId: 'SES-9125', emspName: 'Hubject', partyId: 'HBJ', country: 'DE', start: '2026-03-28 14:02', end: '2026-03-28 14:45', kwh: 18.2, totalCost: '546.00', currency: 'KES', status: 'Accepted' },
+      { id: 'CDR-29481', sessionId: 'SES-9120', emspName: 'Plugsurfing', partnerId: 'p1', partyId: 'PLG', country: 'NL', start: '2026-03-28 10:15', end: '2026-03-28 11:20', kwh: 42.5, totalCost: '1,240.00', currency: 'KES', status: 'Settled' },
+      { id: 'CDR-29482', sessionId: 'SES-9125', emspName: 'Hubject', partnerId: 'p2', partyId: 'HBJ', country: 'DE', start: '2026-03-28 14:02', end: '2026-03-28 14:45', kwh: 18.2, totalCost: '546.00', currency: 'KES', status: 'Accepted' },
     ],
     automation: { text: 'CDRs are shared automatically with roaming partners after session completion.', cta: 'Review Global Rules' },
   },
@@ -1268,7 +1268,7 @@ const ocpiCdrsByTenant: Record<TenantId, OCPICdrsResponse> = {
       { id: 'error-rate', label: 'Error Rate', value: '0.5%', tone: 'ok' },
     ],
     records: [
-      { id: 'CDR-29481', sessionId: 'SES-9120', emspName: 'Plugsurfing', partyId: 'PLG', country: 'NL', start: '2026-03-28 10:15', end: '2026-03-28 11:20', kwh: 42.5, totalCost: '1,240.00', currency: 'KES', status: 'Settled' },
+      { id: 'CDR-29481', sessionId: 'SES-9120', emspName: 'Plugsurfing', partnerId: 'p1', partyId: 'PLG', country: 'NL', start: '2026-03-28 10:15', end: '2026-03-28 11:20', kwh: 42.5, totalCost: '1,240.00', currency: 'KES', status: 'Settled' },
     ],
     automation: { text: 'Kenya roaming CDRs are isolated to EVzone Kenya operations.', cta: 'Review Kenya Rules' },
   },
@@ -1280,7 +1280,7 @@ const ocpiCdrsByTenant: Record<TenantId, OCPICdrsResponse> = {
       { id: 'error-rate', label: 'Error Rate', value: '0.1%', tone: 'ok' },
     ],
     records: [
-      { id: 'CDR-29481', sessionId: 'SES-9120', emspName: 'Plugsurfing', partyId: 'PLG', country: 'NL', start: '2026-03-28 10:15', end: '2026-03-28 11:20', kwh: 42.5, totalCost: '1,240.00', currency: 'KES', status: 'Settled' },
+      { id: 'CDR-29481', sessionId: 'SES-9120', emspName: 'Plugsurfing', partnerId: 'p1', partyId: 'PLG', country: 'NL', start: '2026-03-28 10:15', end: '2026-03-28 11:20', kwh: 42.5, totalCost: '1,240.00', currency: 'KES', status: 'Settled' },
     ],
     automation: { text: 'Hosted-site CDRs stay isolated to the Westlands Mall tenant.', cta: 'Review Hosted Rules' },
   },
@@ -1288,19 +1288,19 @@ const ocpiCdrsByTenant: Record<TenantId, OCPICdrsResponse> = {
 
 const ocpiCommandsByTenant: Record<TenantId, OCPICommandsResponse> = {
   'tenant-global': {
-    partners: [{ id: 'plugsurfing', label: 'Plugsurfing (PLG)' }, { id: 'hubject', label: 'Hubject (HBJ)' }],
+    partners: [{ id: 'p1', label: 'Plugsurfing (PLG)' }, { id: 'p2', label: 'Hubject (HBJ)' }],
     logs: [
-      { id: '1', time: '14:20:10', command: 'START_SESSION', partner: 'Plugsurfing', status: 'Accepted', payload: '{ "location_id": "LOC-1" }' },
-      { id: '2', time: '14:25:45', command: 'STOP_SESSION', partner: 'Hubject', status: 'Rejected', payload: '{ "session_id": "SES-91" }' },
+      { id: '1', time: '14:20:10', command: 'START_SESSION', partnerId: 'p1', partner: 'Plugsurfing', status: 'Accepted', payload: '{ "location_id": "LOC-1" }' },
+      { id: '2', time: '14:25:45', command: 'STOP_SESSION', partnerId: 'p2', partner: 'Hubject', status: 'Rejected', payload: '{ "session_id": "SES-91" }' },
     ],
   },
   'tenant-evzone-ke': {
-    partners: [{ id: 'plugsurfing', label: 'Plugsurfing (PLG)' }, { id: 'hubject', label: 'Hubject (HBJ)' }],
-    logs: [{ id: '1', time: '14:20:10', command: 'START_SESSION', partner: 'Plugsurfing', status: 'Accepted', payload: '{ "location_id": "EVZ-WL" }' }],
+    partners: [{ id: 'p1', label: 'Plugsurfing (PLG)' }, { id: 'p2', label: 'Hubject (HBJ)' }],
+    logs: [{ id: '1', time: '14:20:10', command: 'START_SESSION', partnerId: 'p1', partner: 'Plugsurfing', status: 'Accepted', payload: '{ "location_id": "EVZ-WL" }' }],
   },
   'tenant-westlands-mall': {
-    partners: [{ id: 'plugsurfing', label: 'Plugsurfing (PLG)' }],
-    logs: [{ id: '1', time: '14:20:10', command: 'START_SESSION', partner: 'Plugsurfing', status: 'Accepted', payload: '{ "location_id": "WML-ENTRANCE-A" }' }],
+    partners: [{ id: 'p1', label: 'Plugsurfing (PLG)' }],
+    logs: [{ id: '1', time: '14:20:10', command: 'START_SESSION', partnerId: 'p1', partner: 'Plugsurfing', status: 'Accepted', payload: '{ "location_id": "WML-ENTRANCE-A" }' }],
   },
 }
 
