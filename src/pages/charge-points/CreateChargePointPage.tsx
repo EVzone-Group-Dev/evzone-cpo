@@ -34,7 +34,7 @@ export function CreateChargePointPage() {
   } = useForm<ChargePointFormValues>({
     resolver: zodResolver(chargePointSchema),
     defaultValues: {
-      connectorType: 'AC Type 2',
+      connectorType: 'Type 2',
       ocppVersion: '1.6J',
       maxCapacityKw: 22,
     },
@@ -116,11 +116,12 @@ export function CreateChargePointPage() {
             <div className="md:col-span-2">
               <label className="form-label">Connector Type</label>
               <select {...register('connectorType')} className={`input ${errors.connectorType ? 'border-danger' : ''}`}>
-                <option value="AC Type 2">AC Type 2</option>
-                <option value="DC Fast">DC Fast</option>
-                <option value="CCS2">CCS2</option>
+                <option value="Type 2">Type 2</option>
+                <option value="CCS 2">CCS 2</option>
+                <option value="CCS 1">CCS 1</option>
                 <option value="CHAdeMO">CHAdeMO</option>
                 <option value="NACS">NACS</option>
+                <option value="GB/T">GB/T</option>
               </select>
               {errors.connectorType && <p className="text-[10px] text-danger mt-1">{errors.connectorType.message}</p>}
             </div>

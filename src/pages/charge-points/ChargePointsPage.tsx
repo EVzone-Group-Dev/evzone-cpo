@@ -103,7 +103,9 @@ export function ChargePointsPage() {
                       <Link to={PATHS.CHARGE_POINT_DETAIL(cp.id)} className="text-xs font-bold hover:underline" style={{ color: 'var(--text)' }}>
                         {cp.model}
                       </Link>
-                      <div className="text-[11px]" style={{ color: 'var(--text-subtle)' }}>{cp.manufacturer} · {cp.serialNumber} · {cp.connectorType}</div>
+                      <div className="text-[11px]" style={{ color: 'var(--text-subtle)' }}>
+                        {cp.manufacturer} · {cp.serialNumber} · {(cp.connectorTypes?.length ? cp.connectorTypes.join(' / ') : cp.connectorType)}
+                      </div>
                     </div>
                   </div>
                 </td>

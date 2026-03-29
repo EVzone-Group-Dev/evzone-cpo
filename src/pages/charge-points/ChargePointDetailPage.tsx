@@ -52,6 +52,9 @@ export function ChargePointDetailPage() {
   }
 
   const roaming = roamingOverride ?? chargePoint.roamingPublished
+  const connectorTypes = chargePoint.connectorTypes?.length
+    ? chargePoint.connectorTypes
+    : [chargePoint.connectorType]
 
   const sendCmd = async (command: string) => {
     if (!id) {
@@ -94,7 +97,7 @@ export function ChargePointDetailPage() {
                 ['Manufacturer', chargePoint.manufacturer],
                 ['Serial Number', chargePoint.serialNumber],
                 ['Firmware', chargePoint.firmwareVersion],
-                ['Connector Type', chargePoint.connectorType],
+                ['Connector Types', connectorTypes.join(', ')],
                 ['OCPP ID', chargePoint.ocppId],
                 ['OCPP Version', chargePoint.ocppVersion],
                 ['Max Power', `${chargePoint.maxCapacityKw} kW`],

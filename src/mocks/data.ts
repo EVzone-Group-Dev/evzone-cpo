@@ -226,7 +226,8 @@ const chargePoints: Array<TenantScoped<ChargePointDetail>> = [
     id: 'cp-1',
     stationId: 'st-1',
     stationName: 'Westlands Hub',
-    connectorType: 'DC Fast',
+    connectorType: 'CCS 2',
+    connectorTypes: ['CCS 2', 'CHAdeMO', 'AC Type 2'],
     model: 'ABB Terra 184',
     manufacturer: 'ABB',
     serialNumber: 'SN-001A',
@@ -247,7 +248,8 @@ const chargePoints: Array<TenantScoped<ChargePointDetail>> = [
     id: 'cp-2',
     stationId: 'st-1',
     stationName: 'Westlands Hub',
-    connectorType: 'DC Fast',
+    connectorType: 'CCS 2',
+    connectorTypes: ['CCS 2', 'CHAdeMO', 'AC Type 2'],
     model: 'ABB Terra 184',
     manufacturer: 'ABB',
     serialNumber: 'SN-001B',
@@ -268,7 +270,8 @@ const chargePoints: Array<TenantScoped<ChargePointDetail>> = [
     id: 'cp-3',
     stationId: 'st-2',
     stationName: 'CBD Charging Station',
-    connectorType: 'AC Type 2',
+    connectorType: 'Type 2',
+    connectorTypes: ['Type 2'],
     model: 'Alfen Eve Pro',
     manufacturer: 'Alfen',
     serialNumber: 'SN-002A',
@@ -289,7 +292,8 @@ const chargePoints: Array<TenantScoped<ChargePointDetail>> = [
     id: 'cp-4',
     stationId: 'st-4',
     stationName: 'Garden City Mall',
-    connectorType: 'DC Fast',
+    connectorType: 'CCS 2',
+    connectorTypes: ['CCS 2 (x2)'],
     model: 'Wallbox Supernova',
     manufacturer: 'Wallbox',
     serialNumber: 'SN-004A',
@@ -583,9 +587,9 @@ const batterySwapSessions: Array<TenantScoped<BatterySwapSessionRecord>> = [
 ]
 
 const sessions: Array<TenantScoped<SessionRecord>> = [
-  { id: 'SES-001', station: 'Westlands Hub', chargePointId: 'cp-1', connectorType: 'DC Fast', cp: 'EVZ-WL-001', started: '2026-03-28 08:14', ended: '2026-03-28 09:02', energy: '22.4 kWh', amount: 'KES 1,344', status: 'Completed', method: 'App', emsp: 'EVzone eMSP', tenantIds: ['tenant-global', 'tenant-evzone-ke', 'tenant-westlands-mall'] },
-  { id: 'SES-002', station: 'CBD Charging Station', chargePointId: 'cp-3', connectorType: 'AC Type 2', cp: 'EVZ-CBD-001', started: '2026-03-28 07:50', ended: null, energy: '31.0 kWh', amount: 'KES 1,860', status: 'Active', method: 'RFID', emsp: '-', tenantIds: ['tenant-global', 'tenant-evzone-ke'] },
-  { id: 'SES-003', station: 'Garden City Mall', chargePointId: 'cp-4', connectorType: 'DC Fast', cp: 'EVZ-GC-001', started: '2026-03-28 10:00', ended: '2026-03-28 10:05', energy: '0.0 kWh', amount: 'KES 0', status: 'Failed', method: 'RFID', emsp: '-', tenantIds: ['tenant-global'] },
+  { id: 'SES-001', station: 'Westlands Hub', chargePointId: 'cp-1', connectorType: 'CCS 2', cp: 'EVZ-WL-001', started: '2026-03-28 08:14', ended: '2026-03-28 09:02', energy: '22.4 kWh', amount: 'KES 1,344', status: 'Completed', method: 'App', emsp: 'EVzone eMSP', tenantIds: ['tenant-global', 'tenant-evzone-ke', 'tenant-westlands-mall'] },
+  { id: 'SES-002', station: 'CBD Charging Station', chargePointId: 'cp-3', connectorType: 'Type 2', cp: 'EVZ-CBD-001', started: '2026-03-28 07:50', ended: null, energy: '31.0 kWh', amount: 'KES 1,860', status: 'Active', method: 'RFID', emsp: '-', tenantIds: ['tenant-global', 'tenant-evzone-ke'] },
+  { id: 'SES-003', station: 'Garden City Mall', chargePointId: 'cp-4', connectorType: 'CCS 2', cp: 'EVZ-GC-001', started: '2026-03-28 10:00', ended: '2026-03-28 10:05', energy: '0.0 kWh', amount: 'KES 0', status: 'Failed', method: 'RFID', emsp: '-', tenantIds: ['tenant-global'] },
 ]
 
 const incidentRecords: Array<TenantScoped<IncidentCommandResponse['incidents'][number]>> = [
@@ -1407,6 +1411,7 @@ export function createChargePoint(payload: CreateChargePointRequest, tenantId: T
     stationId: payload.stationId,
     stationName: stationRecord.name,
     connectorType: payload.connectorType.trim(),
+    connectorTypes: [payload.connectorType.trim()],
     model: payload.model.trim(),
     manufacturer: payload.manufacturer.trim(),
     serialNumber: payload.serialNumber.trim(),

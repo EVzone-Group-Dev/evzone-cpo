@@ -248,6 +248,7 @@ export interface BatteryInventoryResponse {
 
 export interface ChargePointSummary {
   connectorType: string
+  connectorTypes?: string[]
   firmwareVersion: string
   id: string
   lastHeartbeatLabel: string
