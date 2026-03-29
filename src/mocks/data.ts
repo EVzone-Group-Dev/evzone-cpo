@@ -28,6 +28,8 @@ import type {
   SiteOwnerDashboardResponse,
   SmartChargingResponse,
   StationDetail,
+  SwapPackInspectionRequest,
+  SwapPackTransitionRequest,
   SwapStationDetail,
   TariffRecord,
   TeamMember,
@@ -1311,6 +1313,59 @@ function getSwapPacks(tenantId: TenantId) {
     .flatMap((record) => record.packs)
 }
 
+const PACK_STATUS_TRANSITIONS: Record<BatteryPackRecord['status'], BatteryPackRecord['status'][]> = {
+  Ready: ['Charging', 'Reserved', 'Installed', 'Quarantined'],
+  Charging: ['Ready', 'Reserved', 'Quarantined'],
+  Reserved: ['Ready', 'Installed', 'Quarantined'],
+  Installed: ['Ready', 'Charging', 'Quarantined'],
+  Quarantined: ['Ready', 'Charging', 'Reserved'],
+}
+
+function extractCabinetIndex(slotLabel: string) {
+  const match = slotLabel.match(/Cab\\s+(\\d+)/i)
+  if (!match) {
+    return null
+  }
+
+  const parsed = Number(match[1])
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return null
+  }
+
+  return parsed - 1
+}
+
+function rebuildSwapStationPackAggregates(station: TenantScoped<SwapStationDetail>) {
+  station.readyPacks = station.packs.filter((pack) => pack.status === 'Ready').length
+  station.chargingPacks = station.packs.filter((pack) => pack.status === 'Charging').length
+
+  station.cabinets.forEach((cabinet, index) => {
+    const packsInCabinet = station.packs.filter((pack) => extractCabinetIndex(pack.slotLabel) === index)
+    cabinet.availableChargedPacks = packsInCabinet.filter((pack) => pack.status === 'Ready').length
+    cabinet.chargingPacks = packsInCabinet.filter((pack) => pack.status === 'Charging').length
+    cabinet.reservedPacks = packsInCabinet.filter((pack) => pack.status === 'Reserved').length
+  })
+}
+
+function findPackRecord(packId: string, tenantId: TenantId) {
+  for (const station of swapStations) {
+    if (!station.tenantIds.includes(tenantId)) {
+      continue
+    }
+
+    const pack = station.packs.find((candidate) => candidate.id === packId)
+    if (pack) {
+      return { station, pack }
+    }
+  }
+
+  return null
+}
+
+type SwapPackMutationResult =
+  | { ok: true; message: string; pack: BatteryPackRecord }
+  | { ok: false; message: string }
+
 function toSwapStationSummary(record: SwapStationDetail) {
   const {
     alerts,
@@ -1444,6 +1499,73 @@ export function listSwapStations(tenantId: TenantId) { return swapStations.filte
 export function getSwapStationById(id: string, tenantId: TenantId) { const station = swapStations.find((record) => record.id === id && record.tenantIds.includes(tenantId)); return station ? stripTenantIds(station) : undefined }
 export function listBatterySwapSessions(tenantId: TenantId) { return listTenantScoped(batterySwapSessions, tenantId) }
 export function getBatteryInventory(tenantId: TenantId) { return buildBatteryInventory(tenantId) }
+export function transitionSwapPack(packId: string, payload: SwapPackTransitionRequest, tenantId: TenantId): SwapPackMutationResult {
+  const resolved = findPackRecord(packId, tenantId)
+  if (!resolved) {
+    return { ok: false, message: 'Battery pack not found for the active tenant.' }
+  }
+
+  const nextStatus = payload.toStatus
+  const currentStatus = resolved.pack.status
+  if (nextStatus === currentStatus) {
+    return { ok: false, message: `Pack ${packId} is already in ${currentStatus} status.` }
+  }
+
+  const allowedTransitions = PACK_STATUS_TRANSITIONS[currentStatus]
+  if (!allowedTransitions.includes(nextStatus)) {
+    return { ok: false, message: `Cannot transition pack ${packId} from ${currentStatus} to ${nextStatus}.` }
+  }
+
+  resolved.pack.status = nextStatus
+  resolved.pack.lastSeenLabel = 'just now'
+  if (nextStatus === 'Quarantined') {
+    resolved.pack.inspectionStatus = 'Failed'
+    resolved.pack.lastInspectionLabel = 'just now'
+    resolved.pack.inspectionNote = payload.note ?? 'Auto quarantine via lifecycle transition.'
+  }
+
+  rebuildSwapStationPackAggregates(resolved.station)
+
+  return {
+    ok: true,
+    message: `Pack ${packId} transitioned to ${nextStatus}.`,
+    pack: { ...resolved.pack },
+  }
+}
+
+export function inspectSwapPack(packId: string, payload: SwapPackInspectionRequest, tenantId: TenantId): SwapPackMutationResult {
+  const resolved = findPackRecord(packId, tenantId)
+  if (!resolved) {
+    return { ok: false, message: 'Battery pack not found for the active tenant.' }
+  }
+
+  resolved.pack.inspectionStatus = payload.result
+  resolved.pack.inspectionNote = payload.note?.trim() || undefined
+  resolved.pack.lastInspectionLabel = 'just now'
+  resolved.pack.lastSeenLabel = 'just now'
+
+  if (payload.result === 'Failed') {
+    resolved.pack.status = 'Quarantined'
+    rebuildSwapStationPackAggregates(resolved.station)
+    return {
+      ok: true,
+      message: `Inspection failed. Pack ${packId} moved to Quarantined.`,
+      pack: { ...resolved.pack },
+    }
+  }
+
+  if (payload.result === 'Passed' && resolved.pack.status === 'Quarantined') {
+    resolved.pack.status = 'Ready'
+  }
+
+  rebuildSwapStationPackAggregates(resolved.station)
+
+  return {
+    ok: true,
+    message: `Inspection ${payload.result.toLowerCase()} recorded for ${packId}.`,
+    pack: { ...resolved.pack },
+  }
+}
 export function listAlerts(tenantId: TenantId) { return listTenantScoped(alerts, tenantId) }
 export function listTariffs(tenantId: TenantId) { return listTenantScoped(tariffs, tenantId) }
 export function getSmartCharging(tenantId: TenantId) { return smartChargingByTenant[tenantId] }

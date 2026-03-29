@@ -72,6 +72,7 @@ export const ACCESS_POLICY = {
   swapStationsRead: INFRASTRUCTURE_ROLES,
   sessionsRead: OPERATIONS_ROLES,
   swapSessionsRead: OPERATIONS_ROLES,
+  swapLifecycleWrite: OPERATIONS_ROLES,
   incidentsRead: OPERATIONS_ROLES,
   alertsRead: OPERATIONS_ROLES,
   smartChargingRead: ENERGY_ROLES,

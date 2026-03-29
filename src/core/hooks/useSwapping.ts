@@ -1,9 +1,13 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchJson } from '@/core/api/fetchJson'
 import { useTenant } from '@/core/hooks/useTenant'
 import type {
   BatteryInventoryResponse,
+  BatteryPackRecord,
   BatterySwapSessionRecord,
+  SwapPackInspectionRequest,
+  SwapPackMutationResponse,
+  SwapPackTransitionRequest,
   SwapStationDetail,
   SwapStationSummary,
 } from '@/core/types/mockApi'
@@ -48,4 +52,61 @@ export function useBatteryInventory() {
     queryFn: () => fetchJson<BatteryInventoryResponse>('/api/swapping/inventory'),
     enabled: isReady,
   })
+}
+
+interface TransitionPackPayload extends SwapPackTransitionRequest {
+  packId: string
+}
+
+interface InspectPackPayload extends SwapPackInspectionRequest {
+  packId: string
+}
+
+function useSwapMutationInvalidation(tenantKey: string) {
+  const queryClient = useQueryClient()
+
+  return () => {
+    queryClient.invalidateQueries({ queryKey: ['swap-stations', tenantKey] })
+    queryClient.invalidateQueries({ queryKey: ['swapping', 'inventory', tenantKey] })
+  }
+}
+
+export function useTransitionSwapPack() {
+  const { activeTenantId } = useTenant()
+  const tenantKey = activeTenantId ?? 'default'
+  const invalidate = useSwapMutationInvalidation(tenantKey)
+
+  return useMutation({
+    mutationFn: ({ packId, ...payload }: TransitionPackPayload) =>
+      fetchJson<SwapPackMutationResponse>(`/api/swapping/packs/${packId}/transition`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: invalidate,
+  })
+}
+
+export function useInspectSwapPack() {
+  const { activeTenantId } = useTenant()
+  const tenantKey = activeTenantId ?? 'default'
+  const invalidate = useSwapMutationInvalidation(tenantKey)
+
+  return useMutation({
+    mutationFn: ({ packId, ...payload }: InspectPackPayload) =>
+      fetchJson<SwapPackMutationResponse>(`/api/swapping/packs/${packId}/inspection`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: invalidate,
+  })
+}
+
+export const PACK_STATUS_FLOW: Record<BatteryPackRecord['status'], BatteryPackRecord['status'][]> = {
+  Ready: ['Charging', 'Reserved', 'Installed', 'Quarantined'],
+  Charging: ['Ready', 'Reserved', 'Quarantined'],
+  Reserved: ['Ready', 'Installed', 'Quarantined'],
+  Installed: ['Ready', 'Charging', 'Quarantined'],
+  Quarantined: ['Ready', 'Charging', 'Reserved'],
 }

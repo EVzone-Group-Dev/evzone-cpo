@@ -24,6 +24,58 @@ afterAll(() => {
 })
 
 describe('MSW RBAC authorization boundaries', () => {
+  it('records failed inspection and moves pack to quarantined status', async () => {
+    const inspectResponse = await fetch('/api/swapping/packs/PK-WL-001/inspection', {
+      method: 'POST',
+      headers: {
+        ...authHeaders('demo-token-u3', 'tenant-westlands-mall'),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        result: 'Failed',
+        note: 'Thermal anomaly detected.',
+      }),
+    })
+
+    expect(inspectResponse.status).toBe(200)
+    expect(await inspectResponse.json()).toMatchObject({
+      message: 'Inspection failed. Pack PK-WL-001 moved to Quarantined.',
+      pack: {
+        id: 'PK-WL-001',
+        status: 'Quarantined',
+        inspectionStatus: 'Failed',
+      },
+    })
+
+    const inventoryResponse = await fetch('/api/swapping/inventory', {
+      headers: authHeaders('demo-token-u3', 'tenant-westlands-mall'),
+    })
+
+    expect(inventoryResponse.status).toBe(200)
+    const inventory = await inventoryResponse.json() as { packs: Array<{ id: string; status: string; inspectionStatus?: string }> }
+    expect(inventory.packs.find((pack) => pack.id === 'PK-WL-001')).toMatchObject({
+      status: 'Quarantined',
+      inspectionStatus: 'Failed',
+    })
+  })
+
+  it('returns 403 when finance role tries swap lifecycle transition', async () => {
+    const response = await fetch('/api/swapping/packs/PK-WL-007/transition', {
+      method: 'POST',
+      headers: {
+        ...authHeaders('demo-token-u5', 'tenant-global'),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        toStatus: 'Quarantined',
+        note: 'Manual hold.',
+      }),
+    })
+
+    expect(response.status).toBe(403)
+    expect(await response.json()).toMatchObject({ message: 'Forbidden.', role: 'FINANCE' })
+  })
+
   it('creates a charge point and returns it in subsequent list reads', async () => {
     const createResponse = await fetch('/api/charge-points', {
       method: 'POST',

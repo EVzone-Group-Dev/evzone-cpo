@@ -1,7 +1,9 @@
+import { useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { MapComponent } from '@/components/common/MapComponent'
-import { useSwapStation } from '@/core/hooks/useSwapping'
+import { PACK_STATUS_FLOW, useInspectSwapPack, useSwapStation, useTransitionSwapPack } from '@/core/hooks/useSwapping'
+import type { BatteryPackRecord } from '@/core/types/mockApi'
 import { AlertTriangle, Clock, MapPin, Package, RefreshCw, Shield } from 'lucide-react'
 
 const CABINET_STATUS_CLASS = {
@@ -19,6 +21,12 @@ const PACK_STATUS_CLASS = {
   Quarantined: 'faulted',
 } as const
 
+const INSPECTION_CLASS = {
+  Passed: 'online',
+  Review: 'pending',
+  Failed: 'faulted',
+} as const
+
 const ALERT_CLASS = {
   Critical: 'text-danger',
   Warning: 'text-warning',
@@ -28,6 +36,28 @@ const ALERT_CLASS = {
 export function SwapStationDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { data: station, isLoading, error } = useSwapStation(id)
+  const transitionPack = useTransitionSwapPack()
+  const inspectPack = useInspectSwapPack()
+  const [selectedPackId, setSelectedPackId] = useState<string>('')
+  const [transitionTarget, setTransitionTarget] = useState<'' | BatteryPackRecord['status']>('')
+  const [transitionNote, setTransitionNote] = useState('')
+  const [inspectionResult, setInspectionResult] = useState<'Passed' | 'Review' | 'Failed'>('Passed')
+  const [inspectionNote, setInspectionNote] = useState('')
+  const [workflowFeedback, setWorkflowFeedback] = useState<string | null>(null)
+
+  const resolvedPackId = station?.packs.some((pack) => pack.id === selectedPackId)
+    ? selectedPackId
+    : (station?.packs[0]?.id ?? '')
+
+  const selectedPack = useMemo(
+    () => station?.packs.find((pack) => pack.id === resolvedPackId),
+    [resolvedPackId, station?.packs],
+  )
+
+  const availableTransitions = selectedPack ? PACK_STATUS_FLOW[selectedPack.status] : []
+  const resolvedTransitionTarget = availableTransitions.includes(transitionTarget as BatteryPackRecord['status'])
+    ? transitionTarget
+    : (availableTransitions[0] ?? '')
 
   if (isLoading) {
     return <DashboardLayout pageTitle="Swap Station"><div className="p-8 text-center text-subtle">Loading swap telemetry...</div></DashboardLayout>
@@ -35,6 +65,44 @@ export function SwapStationDetailPage() {
 
   if (error || !station) {
     return <DashboardLayout pageTitle="Swap Station"><div className="p-8 text-center text-danger">Swap station not found.</div></DashboardLayout>
+  }
+
+  const handleTransition = async () => {
+    if (!selectedPack || !resolvedTransitionTarget) {
+      return
+    }
+
+    try {
+      const response = await transitionPack.mutateAsync({
+        packId: selectedPack.id,
+        toStatus: resolvedTransitionTarget as BatteryPackRecord['status'],
+        note: transitionNote.trim() || undefined,
+      })
+
+      setWorkflowFeedback(`✓ ${response.message}`)
+      setTransitionNote('')
+    } catch (mutationError) {
+      setWorkflowFeedback(mutationError instanceof Error ? mutationError.message : 'Failed to transition battery pack.')
+    }
+  }
+
+  const handleInspection = async () => {
+    if (!selectedPack) {
+      return
+    }
+
+    try {
+      const response = await inspectPack.mutateAsync({
+        packId: selectedPack.id,
+        result: inspectionResult,
+        note: inspectionNote.trim() || undefined,
+      })
+
+      setWorkflowFeedback(`✓ ${response.message}`)
+      setInspectionNote('')
+    } catch (mutationError) {
+      setWorkflowFeedback(mutationError instanceof Error ? mutationError.message : 'Failed to record inspection.')
+    }
   }
 
   return (
@@ -100,13 +168,18 @@ export function SwapStationDetailPage() {
             <div className="table-wrap mt-4">
               <table className="table">
                 <thead>
-                  <tr><th>Pack</th><th>Status</th><th>SoC</th><th>Health</th><th>Cycles</th><th>Slot</th><th>Seen</th></tr>
+                  <tr><th>Pack</th><th>Status</th><th>Inspection</th><th>SoC</th><th>Health</th><th>Cycles</th><th>Slot</th><th>Seen</th></tr>
                 </thead>
                 <tbody>
                   {station.packs.map((pack) => (
                     <tr key={pack.id}>
                       <td className="font-mono text-xs">{pack.id}</td>
                       <td><span className={`pill ${PACK_STATUS_CLASS[pack.status]}`}>{pack.status}</span></td>
+                      <td>
+                        {pack.inspectionStatus
+                          ? <span className={`pill ${INSPECTION_CLASS[pack.inspectionStatus]}`}>{pack.inspectionStatus}</span>
+                          : <span className="text-xs text-subtle">Not inspected</span>}
+                      </td>
                       <td>{pack.socLabel}</td>
                       <td>{pack.healthLabel}</td>
                       <td>{pack.cycleCount}</td>
@@ -121,6 +194,57 @@ export function SwapStationDetailPage() {
         </div>
 
         <div className="space-y-6">
+          <div className="card">
+            <div className="section-title"><Shield size={16} className="text-accent" />Battery Lifecycle Workflow</div>
+            {workflowFeedback && (
+              <div className={`alert ${workflowFeedback.startsWith('✓') ? 'success' : 'danger'} text-xs mt-3`}>{workflowFeedback}</div>
+            )}
+            <div className="space-y-4 mt-4">
+              <div>
+                <label className="form-label">Select Pack</label>
+                <select className="input" value={resolvedPackId} onChange={(event) => setSelectedPackId(event.target.value)}>
+                  {station.packs.map((pack) => (
+                    <option key={pack.id} value={pack.id}>{pack.id}</option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedPack && (
+                <div className="rounded-lg border border-border bg-bg-muted/40 px-3 py-3 text-xs space-y-2">
+                  <div className="flex justify-between"><span className="text-subtle">Current Status</span><span className={`pill ${PACK_STATUS_CLASS[selectedPack.status]}`}>{selectedPack.status}</span></div>
+                  <div className="flex justify-between"><span className="text-subtle">Last Inspection</span><span>{selectedPack.lastInspectionLabel ?? 'Never'}</span></div>
+                  {selectedPack.inspectionNote && <div className="text-subtle">Note: {selectedPack.inspectionNote}</div>}
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <div className="text-xs font-semibold uppercase tracking-wide text-subtle">State Transition</div>
+                <select className="input" value={resolvedTransitionTarget} onChange={(event) => setTransitionTarget(event.target.value as BatteryPackRecord['status'])}>
+                  {availableTransitions.map((status) => (
+                    <option key={status} value={status}>{status}</option>
+                  ))}
+                </select>
+                <input className="input" placeholder="Transition note (optional)" value={transitionNote} onChange={(event) => setTransitionNote(event.target.value)} />
+                <button className="btn secondary w-full" onClick={handleTransition} disabled={!selectedPack || !resolvedTransitionTarget || transitionPack.isPending}>
+                  {transitionPack.isPending ? 'Applying...' : 'Apply Transition'}
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                <div className="text-xs font-semibold uppercase tracking-wide text-subtle">Inspection</div>
+                <select className="input" value={inspectionResult} onChange={(event) => setInspectionResult(event.target.value as 'Passed' | 'Review' | 'Failed')}>
+                  <option value="Passed">Passed</option>
+                  <option value="Review">Review</option>
+                  <option value="Failed">Failed (Quarantine)</option>
+                </select>
+                <input className="input" placeholder="Inspection note" value={inspectionNote} onChange={(event) => setInspectionNote(event.target.value)} />
+                <button className="btn secondary w-full" onClick={handleInspection} disabled={!selectedPack || inspectPack.isPending}>
+                  {inspectPack.isPending ? 'Recording...' : 'Record Inspection'}
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div className="card">
             <div className="section-title"><AlertTriangle size={16} className="text-warning" />Operational Alerts</div>
             <div className="space-y-3 mt-4">
@@ -152,13 +276,6 @@ export function SwapStationDetailPage() {
                 </div>
               ))}
             </div>
-          </div>
-
-          <div className="card border-l-4 border-l-ok">
-            <div className="section-title"><Shield size={16} className="text-ok" />Swap Integrity</div>
-            <p className="text-sm text-subtle mt-4">
-              Battery swapping requires cabinet availability, returned-pack inspection, and recharge balancing to stay within reserve thresholds.
-            </p>
           </div>
         </div>
       </div>

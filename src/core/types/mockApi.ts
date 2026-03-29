@@ -180,11 +180,29 @@ export interface BatteryPackRecord {
   cycleCount: number
   healthLabel: string
   id: string
+  inspectionNote?: string
+  inspectionStatus?: 'Passed' | 'Review' | 'Failed'
+  lastInspectionLabel?: string
   lastSeenLabel: string
   slotLabel: string
   socLabel: string
   stationName: string
   status: 'Ready' | 'Charging' | 'Reserved' | 'Installed' | 'Quarantined'
+}
+
+export interface SwapPackTransitionRequest {
+  note?: string
+  toStatus: BatteryPackRecord['status']
+}
+
+export interface SwapPackInspectionRequest {
+  note?: string
+  result: 'Passed' | 'Review' | 'Failed'
+}
+
+export interface SwapPackMutationResponse {
+  message: string
+  pack: BatteryPackRecord
 }
 
 export interface SwapStationSummary {

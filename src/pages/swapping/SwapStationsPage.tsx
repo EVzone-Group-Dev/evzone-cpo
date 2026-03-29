@@ -1,16 +1,80 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
-import { useSwapStations } from '@/core/hooks/useSwapping'
+import { useSwapSessions, useSwapStations } from '@/core/hooks/useSwapping'
 import { PATHS } from '@/router/paths'
-import { MapPin, RefreshCw, Search } from 'lucide-react'
+import { AlertTriangle, MapPin, RefreshCw, Search } from 'lucide-react'
 
 type Filter = 'All' | 'Online' | 'Degraded' | 'Offline' | 'Maintenance'
+
+type AlertSeverity = 'Critical' | 'Warning' | 'Info'
+
+interface OperationalAlert {
+  id: string
+  message: string
+  severity: AlertSeverity
+  stationId: string
+  stationName: string
+}
+
+const SEVERITY_CLASS: Record<AlertSeverity, string> = {
+  Critical: 'text-danger',
+  Warning: 'text-warning',
+  Info: 'text-subtle',
+}
+
+const KPI_TONE_CLASS = {
+  default: 'text-[var(--text)]',
+  ok: 'text-[var(--ok)]',
+  warning: 'text-[var(--warning)]',
+  danger: 'text-[var(--danger)]',
+} as const
+
+function parseTurnaroundLabel(label: string) {
+  const minutesMatch = label.match(/(\d+)m/)
+  const secondsMatch = label.match(/(\d+)s/)
+  const minutes = minutesMatch ? Number(minutesMatch[1]) : 0
+  const seconds = secondsMatch ? Number(secondsMatch[1]) : 0
+
+  if (minutes === 0 && seconds === 0) {
+    return null
+  }
+
+  return minutes * 60 + seconds
+}
+
+function formatDuration(seconds: number | null) {
+  if (seconds === null || !Number.isFinite(seconds)) {
+    return 'N/A'
+  }
+
+  const rounded = Math.max(0, Math.round(seconds))
+  const mins = Math.floor(rounded / 60)
+  const secs = rounded % 60
+  return `${mins}m ${secs.toString().padStart(2, '0')}s`
+}
+
+function calculatePercentile(values: number[], percentile: number) {
+  if (!values.length) {
+    return null
+  }
+
+  const sorted = [...values].sort((a, b) => a - b)
+  const index = Math.min(sorted.length - 1, Math.max(0, Math.ceil(percentile * sorted.length) - 1))
+  return sorted[index]
+}
+
+function severityRank(severity: AlertSeverity) {
+  if (severity === 'Critical') return 3
+  if (severity === 'Warning') return 2
+  return 1
+}
 
 export function SwapStationsPage() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<Filter>('All')
-  const { data: stations, isLoading, error } = useSwapStations()
+  const { data: stations, isLoading: stationsLoading, error: stationsError } = useSwapStations()
+  const { data: sessions, isLoading: sessionsLoading, error: sessionsError } = useSwapSessions()
 
   const filtered = (stations ?? []).filter((station) =>
     (filter === 'All' || station.status === filter) &&
@@ -23,21 +87,199 @@ export function SwapStationsPage() {
     chargingPacks: (stations ?? []).reduce((sum, station) => sum + station.chargingPacks, 0),
   }), [stations])
 
-  if (isLoading) {
+  const stationSessionStats = useMemo(() => {
+    const map = new Map<string, { completed: number; failed: number; finalized: number; turnarounds: number[] }>()
+
+    for (const session of sessions ?? []) {
+      const stat = map.get(session.stationName) ?? { completed: 0, failed: 0, finalized: 0, turnarounds: [] }
+      const turnaroundSeconds = parseTurnaroundLabel(session.turnaroundLabel)
+
+      if (session.status === 'Completed') {
+        stat.completed += 1
+      }
+
+      if (session.status === 'Flagged') {
+        stat.failed += 1
+      }
+
+      if (session.status !== 'In Progress') {
+        stat.finalized += 1
+        if (turnaroundSeconds !== null) {
+          stat.turnarounds.push(turnaroundSeconds)
+        }
+      }
+
+      map.set(session.stationName, stat)
+    }
+
+    return map
+  }, [sessions])
+
+  const operationsMetrics = useMemo(() => {
+    const finalized = Array.from(stationSessionStats.values()).reduce((sum, stat) => sum + stat.finalized, 0)
+    const completed = Array.from(stationSessionStats.values()).reduce((sum, stat) => sum + stat.completed, 0)
+    const failed = Array.from(stationSessionStats.values()).reduce((sum, stat) => sum + stat.failed, 0)
+    const allTurnarounds = Array.from(stationSessionStats.values()).flatMap((stat) => stat.turnarounds)
+    const medianTurnaround = calculatePercentile(allTurnarounds, 0.5)
+    const p95Turnaround = calculatePercentile(allTurnarounds, 0.95)
+    const successRate = finalized > 0 ? (completed / finalized) * 100 : 0
+    const swapsPerHour = finalized > 0 ? finalized / 24 : 0
+    const runwayHours = swapsPerHour > 0 ? totals.readyPacks / swapsPerHour : null
+
+    return [
+      {
+        id: 'success-rate',
+        label: 'Swap Success (24h)',
+        value: `${successRate.toFixed(1)}%`,
+        note: `${completed}/${finalized || 0} finalized`,
+        tone: successRate >= 95 ? 'ok' : successRate >= 85 ? 'warning' : 'danger',
+      },
+      {
+        id: 'median-turnaround',
+        label: 'Median Turnaround',
+        value: formatDuration(medianTurnaround),
+        note: 'Completed + flagged swaps',
+        tone: 'default',
+      },
+      {
+        id: 'p95-turnaround',
+        label: 'P95 Turnaround',
+        value: formatDuration(p95Turnaround),
+        note: 'Tail performance risk',
+        tone: p95Turnaround !== null && p95Turnaround > 360 ? 'warning' : 'default',
+      },
+      {
+        id: 'runway',
+        label: 'Ready-Pack Runway',
+        value: runwayHours === null ? 'N/A' : `${runwayHours.toFixed(1)}h`,
+        note: 'At current swap velocity',
+        tone: runwayHours !== null && runwayHours < 6 ? 'warning' : 'ok',
+      },
+      {
+        id: 'failed-swaps',
+        label: 'Failed Swaps (24h)',
+        value: failed.toString(),
+        note: 'Flagged sessions',
+        tone: failed > 0 ? 'danger' : 'ok',
+      },
+    ] as const
+  }, [stationSessionStats, totals.readyPacks])
+
+  const stationOperationalSummary = useMemo(() => {
+    const output = new Map<string, { failed: number; readyRunwayHours: number | null; successRate: number }>()
+
+    for (const station of stations ?? []) {
+      const stats = stationSessionStats.get(station.name) ?? { completed: 0, failed: 0, finalized: 0, turnarounds: [] }
+      const successRate = stats.finalized > 0 ? (stats.completed / stats.finalized) * 100 : 100
+      const swapsPerHour = stats.finalized > 0 ? stats.finalized / 24 : 0
+      const readyRunwayHours = swapsPerHour > 0 ? station.readyPacks / swapsPerHour : null
+
+      output.set(station.id, {
+        failed: stats.failed,
+        readyRunwayHours,
+        successRate,
+      })
+    }
+
+    return output
+  }, [stationSessionStats, stations])
+
+  const operationalAlerts = useMemo<OperationalAlert[]>(() => {
+    const alerts: OperationalAlert[] = []
+
+    for (const station of stations ?? []) {
+      const stats = stationSessionStats.get(station.name) ?? { completed: 0, failed: 0, finalized: 0, turnarounds: [] }
+
+      if (station.readyPacks < 8) {
+        alerts.push({
+          id: `${station.id}-ready-floor`,
+          stationId: station.id,
+          stationName: station.name,
+          severity: station.readyPacks < 5 ? 'Critical' : 'Warning',
+          message: `Ready pack reserve is low (${station.readyPacks} packs).`,
+        })
+      }
+
+      if (station.chargingPacks > station.readyPacks) {
+        alerts.push({
+          id: `${station.id}-imbalance`,
+          stationId: station.id,
+          stationName: station.name,
+          severity: 'Warning',
+          message: `Charging packs (${station.chargingPacks}) exceed ready packs (${station.readyPacks}).`,
+        })
+      }
+
+      if (station.status === 'Degraded' || station.status === 'Offline') {
+        alerts.push({
+          id: `${station.id}-status`,
+          stationId: station.id,
+          stationName: station.name,
+          severity: 'Critical',
+          message: `Station health is ${station.status.toLowerCase()} and requires attention.`,
+        })
+      }
+
+      if (stats.failed > 0) {
+        alerts.push({
+          id: `${station.id}-failed-swaps`,
+          stationId: station.id,
+          stationName: station.name,
+          severity: stats.failed > 1 ? 'Critical' : 'Warning',
+          message: `${stats.failed} failed swap${stats.failed > 1 ? 's' : ''} detected in the last 24h.`,
+        })
+      }
+    }
+
+    return alerts.sort((a, b) => severityRank(b.severity) - severityRank(a.severity)).slice(0, 6)
+  }, [stationSessionStats, stations])
+
+  if (stationsLoading || sessionsLoading) {
     return <DashboardLayout pageTitle="Swap Stations"><div className="p-8 text-center text-subtle">Loading swap infrastructure...</div></DashboardLayout>
   }
 
-  if (error) {
+  if (stationsError || sessionsError) {
     return <DashboardLayout pageTitle="Swap Stations"><div className="p-8 text-center text-danger">Unable to load swap stations.</div></DashboardLayout>
   }
 
   return (
     <DashboardLayout pageTitle="Swap Stations">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+        {operationsMetrics.map((metric) => (
+          <div key={metric.id} className="kpi-card">
+            <div className="label">{metric.label}</div>
+            <div className={`value ${KPI_TONE_CLASS[metric.tone]}`}>{metric.value}</div>
+            <div className="text-[10px] text-subtle">{metric.note}</div>
+          </div>
+        ))}
+      </div>
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="kpi-card"><div className="label">Sites</div><div className="value">{stations?.length ?? 0}</div></div>
         <div className="kpi-card"><div className="label">Cabinets</div><div className="value">{totals.cabinets}</div></div>
         <div className="kpi-card"><div className="label">Ready Packs</div><div className="value text-ok">{totals.readyPacks}</div></div>
         <div className="kpi-card"><div className="label">Charging Packs</div><div className="value text-warning">{totals.chargingPacks}</div></div>
+      </div>
+
+      <div className="card mb-6">
+        <div className="section-title"><AlertTriangle size={16} className="text-warning" />Operational Alerts</div>
+        {operationalAlerts.length === 0 ? (
+          <div className="text-sm text-subtle mt-4">No operational alerts right now.</div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+            {operationalAlerts.map((alert) => (
+              <Link
+                key={alert.id}
+                to={PATHS.SWAP_STATION_DETAIL(alert.stationId)}
+                className="rounded-lg border border-border bg-bg-muted/40 px-3 py-3 hover:border-accent transition-colors"
+              >
+                <div className={`text-[11px] uppercase tracking-wide font-semibold ${SEVERITY_CLASS[alert.severity]}`}>{alert.severity}</div>
+                <div className="text-sm mt-1">{alert.message}</div>
+                <div className="text-[11px] text-subtle mt-2">{alert.stationName}</div>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-3 mb-5">
@@ -53,44 +295,67 @@ export function SwapStationsPage() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        {filtered.map((station) => (
-          <Link key={station.id} to={PATHS.SWAP_STATION_DETAIL(station.id)} className="card hover:border-accent transition-all group">
-            <div className="flex items-start justify-between gap-3 mb-4">
-              <div>
-                <h3 className="font-bold text-base group-hover:text-accent transition-colors">{station.name}</h3>
-                <div className="flex items-center gap-1 text-xs text-subtle mt-1">
-                  <MapPin size={12} /> {station.address}, {station.city}
+        {filtered.map((station) => {
+          const stationOps = stationOperationalSummary.get(station.id) ?? { failed: 0, readyRunwayHours: null, successRate: 100 }
+
+          return (
+            <Link key={station.id} to={PATHS.SWAP_STATION_DETAIL(station.id)} className="card hover:border-accent transition-all group">
+              <div className="flex items-start justify-between gap-3 mb-4">
+                <div>
+                  <h3 className="font-bold text-base group-hover:text-accent transition-colors">{station.name}</h3>
+                  <div className="flex items-center gap-1 text-xs text-subtle mt-1">
+                    <MapPin size={12} /> {station.address}, {station.city}
+                  </div>
+                  <div className="text-[10px] uppercase tracking-wide text-accent mt-2">{station.serviceMode} Swap Site</div>
                 </div>
-                <div className="text-[10px] uppercase tracking-wide text-accent mt-2">{station.serviceMode} Swap Site</div>
+                <span className={`pill ${station.status === 'Online' ? 'online' : station.status === 'Degraded' ? 'degraded' : station.status === 'Maintenance' ? 'maintenance' : 'offline'}`}>{station.status}</span>
               </div>
-              <span className={`pill ${station.status === 'Online' ? 'online' : station.status === 'Degraded' ? 'degraded' : station.status === 'Maintenance' ? 'maintenance' : 'offline'}`}>{station.status}</span>
-            </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <div className="text-[10px] uppercase tracking-wide text-subtle">Cabinets</div>
-                <div className="text-lg font-bold">{station.cabinetCount}</div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-subtle">Cabinets</div>
+                  <div className="text-lg font-bold">{station.cabinetCount}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-subtle">Avg Turnaround</div>
+                  <div className="text-lg font-bold">{station.avgSwapDurationLabel}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-subtle">Ready Packs</div>
+                  <div className="text-lg font-bold text-ok">{station.readyPacks}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-subtle">Charging Packs</div>
+                  <div className="text-lg font-bold text-warning">{station.chargingPacks}</div>
+                </div>
               </div>
-              <div>
-                <div className="text-[10px] uppercase tracking-wide text-subtle">Avg Turnaround</div>
-                <div className="text-lg font-bold">{station.avgSwapDurationLabel}</div>
-              </div>
-              <div>
-                <div className="text-[10px] uppercase tracking-wide text-subtle">Ready Packs</div>
-                <div className="text-lg font-bold text-ok">{station.readyPacks}</div>
-              </div>
-              <div>
-                <div className="text-[10px] uppercase tracking-wide text-subtle">Charging Packs</div>
-                <div className="text-lg font-bold text-warning">{station.chargingPacks}</div>
-              </div>
-            </div>
 
-            <div className="mt-4 text-xs text-subtle flex items-center gap-2">
-              <RefreshCw size={12} className="text-accent" />
-              Cabinet, battery pack, and rider turnaround controls
-            </div>
-          </Link>
-        ))}
+              <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-border/50">
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-subtle">24h Success</div>
+                  <div className={`text-sm font-semibold ${stationOps.successRate >= 95 ? 'text-ok' : stationOps.successRate >= 85 ? 'text-warning' : 'text-danger'}`}>
+                    {stationOps.successRate.toFixed(1)}%
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-subtle">Failed 24h</div>
+                  <div className={`text-sm font-semibold ${stationOps.failed > 0 ? 'text-danger' : 'text-ok'}`}>{stationOps.failed}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-subtle">Runway</div>
+                  <div className={`text-sm font-semibold ${stationOps.readyRunwayHours !== null && stationOps.readyRunwayHours < 6 ? 'text-warning' : 'text-ok'}`}>
+                    {stationOps.readyRunwayHours === null ? 'N/A' : `${stationOps.readyRunwayHours.toFixed(1)}h`}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 text-xs text-subtle flex items-center gap-2">
+                <RefreshCw size={12} className="text-accent" />
+                Cabinet, battery pack, and rider turnaround controls
+              </div>
+            </Link>
+          )
+        })}
       </div>
     </DashboardLayout>
   )

@@ -26,6 +26,7 @@ import {
   getStationById,
   getSwapStationById,
   getWebhooksModule,
+  inspectSwapPack,
   listAlerts,
   listAuditLogs,
   listBatterySwapSessions,
@@ -38,6 +39,7 @@ import {
   listSwapStations,
   listTariffs,
   listTeamMembers,
+  transitionSwapPack,
   resolveTenantContext,
 } from './data'
 
@@ -243,6 +245,40 @@ export const handlers = [
     const result = authorize(request, ACCESS_POLICY.batteryInventoryRead)
     if (!result.ok) return result.response
     return HttpResponse.json(getBatteryInventory(result.access.tenantId))
+  }),
+
+  http.post('/api/swapping/packs/:id/transition', async ({ params, request }) => {
+    const result = authorize(request, ACCESS_POLICY.swapLifecycleWrite)
+    if (!result.ok) return result.response
+
+    const payload = await request.json() as Parameters<typeof transitionSwapPack>[1]
+    const transition = transitionSwapPack(String(params.id), payload, result.access.tenantId)
+
+    if (!transition.ok) {
+      return HttpResponse.json({ message: transition.message }, { status: 400 })
+    }
+
+    return HttpResponse.json({
+      message: transition.message,
+      pack: transition.pack,
+    })
+  }),
+
+  http.post('/api/swapping/packs/:id/inspection', async ({ params, request }) => {
+    const result = authorize(request, ACCESS_POLICY.swapLifecycleWrite)
+    if (!result.ok) return result.response
+
+    const payload = await request.json() as Parameters<typeof inspectSwapPack>[1]
+    const inspection = inspectSwapPack(String(params.id), payload, result.access.tenantId)
+
+    if (!inspection.ok) {
+      return HttpResponse.json({ message: inspection.message }, { status: 400 })
+    }
+
+    return HttpResponse.json({
+      message: inspection.message,
+      pack: inspection.pack,
+    })
   }),
 
   http.get('/api/incidents', ({ request }) => {
