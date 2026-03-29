@@ -33,6 +33,11 @@ import type {
   SwapPackInspectionRequest,
   SwapPackRetirementRequest,
   SwapPackTransitionRequest,
+  SwapDispatchActionRequest,
+  SwapDispatchRecord,
+  SwapRebalancingRecommendation,
+  SwapRebalancingResponse,
+  SwapDispatchStatus,
   SwapStationDetail,
   TariffRecord,
   TeamMember,
@@ -590,6 +595,28 @@ const batterySwapSessions: Array<TenantScoped<BatterySwapSessionRecord>> = [
   { id: 'BSS-304', stationName: 'Global Logistics Swap Yard', cabinetId: 'cab-glo-2', riderLabel: 'Fleet Rig 14', outgoingPackId: 'PK-GLO-018', returnedPackId: 'PK-GLO-202', initiatedAt: '2026-03-29 07:36', turnaroundLabel: '7m 01s', revenue: 'KES 690', status: 'Flagged', healthCheck: 'Failed', tenantIds: ['tenant-global'] },
   { id: 'BSS-305', stationName: 'Westlands Swap Annex', cabinetId: 'cab-wl-1', riderLabel: 'Courier 22', outgoingPackId: 'PK-WL-009', returnedPackId: 'PK-WL-205', initiatedAt: '2026-03-29 07:22', turnaroundLabel: '4m 02s', revenue: 'KES 430', status: 'Completed', healthCheck: 'Passed', tenantIds: ['tenant-global', 'tenant-evzone-ke', 'tenant-westlands-mall'] },
 ]
+
+const swapDispatchRecords: Array<TenantScoped<SwapDispatchRecord>> = [
+  {
+    id: 'DSP-001',
+    recommendationId: 'RB-swap-st-2-swap-st-3',
+    fromStationName: 'Airport East Battery Exchange',
+    toStationName: 'Global Logistics Swap Yard',
+    packs: 2,
+    confidencePercent: 88,
+    etaImpactLabel: '+3.0h runway at destination',
+    status: 'Completed',
+    history: [
+      { status: 'Proposed', timeLabel: '2026-03-28 09:10', actorLabel: 'Rebalancing Engine', note: 'Deficit detected at logistics yard.' },
+      { status: 'Approved', timeLabel: '2026-03-28 09:18', actorLabel: 'Ops Controller', note: 'Approved for immediate transfer.' },
+      { status: 'In Transit', timeLabel: '2026-03-28 09:40', actorLabel: 'Dispatch Rider', note: 'Two packs loaded and en route.' },
+      { status: 'Completed', timeLabel: '2026-03-28 10:15', actorLabel: 'Station Operator', note: 'Packs landed and verified.' },
+    ],
+    tenantIds: ['tenant-global'],
+  },
+]
+
+let swapDispatchCounter = 1
 
 const sessions: Array<TenantScoped<SessionRecord>> = [
   { id: 'SES-001', station: 'Westlands Hub', chargePointId: 'cp-1', connectorType: 'CCS 2', cp: 'EVZ-WL-001', started: '2026-03-28 08:14', ended: '2026-03-28 09:02', energy: '22.4 kWh', amount: 'KES 1,344', status: 'Completed', method: 'App', emsp: 'EVzone eMSP', tenantIds: ['tenant-global', 'tenant-evzone-ke', 'tenant-westlands-mall'] },
@@ -1316,6 +1343,187 @@ function getSwapPacks(tenantId: TenantId) {
     .flatMap((record) => record.packs)
 }
 
+function getSwapDispatches(tenantId: TenantId) {
+  return listTenantScoped(swapDispatchRecords, tenantId)
+}
+
+function getNextSwapDispatchId() {
+  const highestId = swapDispatchRecords.reduce((highest, record) => {
+    const parsedId = Number(record.id.replace('DSP-', ''))
+    return Number.isFinite(parsedId) ? Math.max(highest, parsedId) : highest
+  }, swapDispatchCounter)
+
+  swapDispatchCounter = highestId + 1
+  return `DSP-${String(swapDispatchCounter).padStart(3, '0')}`
+}
+
+function clampNumber(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value))
+}
+
+function buildSwapSessionStats(tenantId: TenantId) {
+  const stats = new Map<string, { completed: number; flagged: number; inProgress: number }>()
+
+  for (const session of listTenantScoped(batterySwapSessions, tenantId)) {
+    const current = stats.get(session.stationName) ?? { completed: 0, flagged: 0, inProgress: 0 }
+    if (session.status === 'Completed') {
+      current.completed += 1
+    } else if (session.status === 'Flagged') {
+      current.flagged += 1
+    } else {
+      current.inProgress += 1
+    }
+    stats.set(session.stationName, current)
+  }
+
+  return stats
+}
+
+interface StationBalanceProfile {
+  deficitScore: number
+  deficitUnits: number
+  demandTrendLabel: 'Rising' | 'Stable' | 'Cooling'
+  id: string
+  name: string
+  readyPacks: number
+  reserveFloor: number
+  runwayHours: number | null
+  surplusScore: number
+  surplusUnits: number
+  swapsPerHour: number
+}
+
+function computeStationBalanceProfiles(tenantId: TenantId): StationBalanceProfile[] {
+  const sessionsByStation = buildSwapSessionStats(tenantId)
+  const stationsForTenant = swapStations.filter((station) => station.tenantIds.includes(tenantId))
+
+  return stationsForTenant.map((station) => {
+    const sessionStats = sessionsByStation.get(station.name) ?? { completed: 0, flagged: 0, inProgress: 0 }
+    const reserveFloor = Math.max(6, station.cabinetCount * 4)
+    const demandScore = (sessionStats.completed * 2) + (sessionStats.inProgress * 3) + (sessionStats.flagged * 3)
+    const demandPressure = Math.max(1, Math.ceil(demandScore / 3))
+    const targetReadyFloor = reserveFloor + (demandPressure * 2)
+    const deficitUnits = Math.max(0, targetReadyFloor - station.readyPacks)
+    const surplusUnits = Math.max(0, station.readyPacks - targetReadyFloor)
+    const swapsPerHour = (sessionStats.completed + sessionStats.flagged + (sessionStats.inProgress * 0.5)) / 24
+    const runwayHours = swapsPerHour > 0 ? station.readyPacks / swapsPerHour : null
+    const availabilityPenalty = runwayHours !== null && runwayHours < 10 ? (10 - runwayHours) * 2.5 : 0
+    const statusPenalty = station.status === 'Offline' ? 18 : station.status === 'Degraded' ? 10 : 0
+    const deficitScore = (deficitUnits * 14) + (demandPressure * 6) + availabilityPenalty + statusPenalty
+    const surplusScore = (surplusUnits * 12) + (runwayHours !== null && runwayHours > 16 ? (runwayHours - 16) : 0)
+    const demandTrendLabel: StationBalanceProfile['demandTrendLabel'] =
+      sessionStats.inProgress + sessionStats.flagged >= 2
+        ? 'Rising'
+        : sessionStats.completed >= 2
+          ? 'Stable'
+          : 'Cooling'
+
+    return {
+      deficitScore,
+      deficitUnits,
+      demandTrendLabel,
+      id: station.id,
+      name: station.name,
+      readyPacks: station.readyPacks,
+      reserveFloor,
+      runwayHours,
+      surplusScore,
+      surplusUnits,
+      swapsPerHour,
+    }
+  })
+}
+
+function formatRunwayImpact(deltaHours: number | null) {
+  if (deltaHours === null || !Number.isFinite(deltaHours)) {
+    return 'Runway impact unavailable'
+  }
+
+  const sign = deltaHours >= 0 ? '+' : ''
+  return `${sign}${deltaHours.toFixed(1)}h runway at destination`
+}
+
+function buildRebalancingRecommendations(tenantId: TenantId): SwapRebalancingRecommendation[] {
+  const profiles = computeStationBalanceProfiles(tenantId)
+  const dispatchByRecommendation = new Map<string, SwapDispatchRecord>()
+
+  for (const dispatch of getSwapDispatches(tenantId)) {
+    dispatchByRecommendation.set(dispatch.recommendationId, dispatch)
+  }
+
+  const deficits = profiles
+    .filter((profile) => profile.deficitUnits > 0)
+    .sort((left, right) => right.deficitScore - left.deficitScore)
+    .map((profile) => ({ ...profile, remaining: profile.deficitUnits }))
+
+  const surpluses = profiles
+    .filter((profile) => profile.surplusUnits > 0)
+    .sort((left, right) => right.surplusScore - left.surplusScore)
+    .map((profile) => ({ ...profile, remaining: profile.surplusUnits }))
+
+  const recommendations: SwapRebalancingRecommendation[] = []
+
+  for (const deficit of deficits) {
+    for (const surplus of surpluses) {
+      if (deficit.remaining <= 0) {
+        break
+      }
+
+      if (surplus.remaining <= 0 || surplus.id === deficit.id) {
+        continue
+      }
+
+      const transferable = Math.min(deficit.remaining, surplus.remaining, 4)
+      if (transferable < 1) {
+        continue
+      }
+
+      const destinationRunwayCurrent = deficit.runwayHours
+      const destinationRunwayProjected = deficit.swapsPerHour > 0
+        ? (deficit.readyPacks + transferable) / deficit.swapsPerHour
+        : null
+      const runwayDelta = destinationRunwayProjected !== null && destinationRunwayCurrent !== null
+        ? destinationRunwayProjected - destinationRunwayCurrent
+        : null
+      const confidencePercent = Math.round(
+        clampNumber(56 + (Math.min(deficit.deficitScore, surplus.surplusScore) * 0.35) + (transferable * 4), 55, 96),
+      )
+      const recommendationId = `RB-${surplus.id}-${deficit.id}`
+      const existingDispatch = dispatchByRecommendation.get(recommendationId)
+
+      recommendations.push({
+        id: recommendationId,
+        fromStationId: surplus.id,
+        fromStationName: surplus.name,
+        toStationId: deficit.id,
+        toStationName: deficit.name,
+        packsSuggested: transferable,
+        confidencePercent,
+        etaImpactLabel: formatRunwayImpact(runwayDelta),
+        demandTrendLabel: deficit.demandTrendLabel,
+        priority: deficit.deficitScore >= 60 ? 'Critical' : deficit.deficitScore >= 35 ? 'High' : 'Medium',
+        reason: `Ready-pack gap ${deficit.deficitUnits} vs reserve floor ${deficit.reserveFloor}; source surplus ${surplus.surplusUnits}.`,
+        sourceSurplusScore: Math.round(surplus.surplusScore),
+        targetDeficitScore: Math.round(deficit.deficitScore),
+        status: existingDispatch?.status ?? 'Proposed',
+      })
+
+      deficit.remaining -= transferable
+      surplus.remaining -= transferable
+    }
+  }
+
+  return recommendations.slice(0, 8)
+}
+
+const DISPATCH_ACTION_TRANSITIONS: Record<SwapDispatchStatus, SwapDispatchActionRequest['action'][]> = {
+  Proposed: ['Approve', 'Reject'],
+  Approved: ['MarkInTransit', 'Reject'],
+  Rejected: [],
+  'In Transit': ['MarkCompleted'],
+  Completed: [],
+}
+
 const PACK_STATUS_TRANSITIONS: Record<BatteryPackRecord['status'], BatteryPackRecord['status'][]> = {
   Ready: ['Charging', 'Reserved', 'Installed', 'Quarantined'],
   Charging: ['Ready', 'Reserved', 'Quarantined'],
@@ -1464,6 +1672,10 @@ function findPackRecord(packId: string, tenantId: TenantId) {
 type SwapPackMutationResult =
   | { ok: true; message: string; pack: BatteryPackRecord }
   | { ok: false; message: string }
+
+type SwapDispatchMutationResult =
+  | { ok: true; message: string; dispatch: SwapDispatchRecord }
+  | { ok: false; message: string; notFound?: boolean }
 
 function toSwapStationSummary(record: SwapStationDetail) {
   const {
@@ -1643,6 +1855,95 @@ export function listSwapStations(tenantId: TenantId) { return swapStations.filte
 export function getSwapStationById(id: string, tenantId: TenantId) { const station = swapStations.find((record) => record.id === id && record.tenantIds.includes(tenantId)); return station ? stripTenantIds(station) : undefined }
 export function listBatterySwapSessions(tenantId: TenantId) { return listTenantScoped(batterySwapSessions, tenantId) }
 export function getBatteryInventory(tenantId: TenantId) { return buildBatteryInventory(tenantId) }
+export function getSwapRebalancing(tenantId: TenantId): SwapRebalancingResponse {
+  const recommendations = buildRebalancingRecommendations(tenantId)
+  const dispatches = getSwapDispatches(tenantId)
+    .sort((left, right) => right.id.localeCompare(left.id))
+
+  return {
+    generatedAtLabel: 'just now',
+    recommendations,
+    dispatches,
+  }
+}
+
+export function applySwapDispatchAction(recommendationId: string, payload: SwapDispatchActionRequest, tenantId: TenantId): SwapDispatchMutationResult {
+  const recommendations = buildRebalancingRecommendations(tenantId)
+  const recommendation = recommendations.find((candidate) => candidate.id === recommendationId)
+
+  if (!recommendation) {
+    return { ok: false, message: 'Rebalancing recommendation not found for this tenant.', notFound: true }
+  }
+
+  let dispatchRecord = swapDispatchRecords.find((record) => record.recommendationId === recommendationId && record.tenantIds.includes(tenantId))
+  const currentStatus: SwapDispatchStatus = dispatchRecord?.status ?? 'Proposed'
+  const allowedActions = DISPATCH_ACTION_TRANSITIONS[currentStatus]
+
+  if (!allowedActions.includes(payload.action)) {
+    return { ok: false, message: `Cannot apply ${payload.action} while dispatch is ${currentStatus}.` }
+  }
+
+  const nextStatus: SwapDispatchStatus =
+    payload.action === 'Approve'
+      ? 'Approved'
+      : payload.action === 'Reject'
+        ? 'Rejected'
+        : payload.action === 'MarkInTransit'
+          ? 'In Transit'
+          : 'Completed'
+
+  const defaultNote = payload.action === 'Approve'
+    ? 'Dispatch approved by operations.'
+    : payload.action === 'Reject'
+      ? 'Recommendation rejected by operations.'
+      : payload.action === 'MarkInTransit'
+        ? 'Dispatch rider has departed source station.'
+        : 'Dispatch received and closed at destination station.'
+
+  if (!dispatchRecord) {
+    dispatchRecord = {
+      id: getNextSwapDispatchId(),
+      recommendationId,
+      fromStationName: recommendation.fromStationName,
+      toStationName: recommendation.toStationName,
+      packs: recommendation.packsSuggested,
+      confidencePercent: recommendation.confidencePercent,
+      etaImpactLabel: recommendation.etaImpactLabel,
+      status: nextStatus as SwapDispatchRecord['status'],
+      history: [{
+        status: 'Proposed',
+        timeLabel: 'just now',
+        actorLabel: 'Rebalancing Engine',
+        note: recommendation.reason,
+      }],
+      tenantIds: [tenantId],
+    }
+    swapDispatchRecords.push(dispatchRecord)
+  } else {
+    dispatchRecord.status = nextStatus as SwapDispatchRecord['status']
+  }
+
+  dispatchRecord.history.push({
+    status: nextStatus,
+    timeLabel: 'just now',
+    actorLabel: 'Dispatch Operator',
+    note: payload.note?.trim() || defaultNote,
+  })
+
+  const message = payload.action === 'Approve'
+    ? `Dispatch approved for ${recommendation.packsSuggested} packs.`
+    : payload.action === 'Reject'
+      ? `Recommendation ${recommendationId} rejected.`
+      : payload.action === 'MarkInTransit'
+        ? `Dispatch ${dispatchRecord.id} is now in transit.`
+        : `Dispatch ${dispatchRecord.id} completed successfully.`
+
+  return {
+    ok: true,
+    message,
+    dispatch: stripTenantIds(dispatchRecord),
+  }
+}
 export function transitionSwapPack(packId: string, payload: SwapPackTransitionRequest, tenantId: TenantId): SwapPackMutationResult {
   const resolved = findPackRecord(packId, tenantId)
   if (!resolved) {

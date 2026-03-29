@@ -76,6 +76,102 @@ describe('MSW RBAC authorization boundaries', () => {
     expect(await response.json()).toMatchObject({ message: 'Forbidden.', role: 'FINANCE' })
   })
 
+  it('approves a rebalancing recommendation and persists dispatch status progression', async () => {
+    const recommendationsResponse = await fetch('/api/swapping/rebalancing', {
+      headers: authHeaders('demo-token-u2', 'tenant-evzone-ke'),
+    })
+
+    expect(recommendationsResponse.status).toBe(200)
+    const recommendationsPayload = await recommendationsResponse.json() as {
+      recommendations: Array<{ id: string; status: string }>
+    }
+    expect(recommendationsPayload.recommendations.length).toBeGreaterThan(0)
+
+    const recommendationId = recommendationsPayload.recommendations[0].id
+
+    const approveResponse = await fetch(`/api/swapping/rebalancing/${recommendationId}/action`, {
+      method: 'POST',
+      headers: {
+        ...authHeaders('demo-token-u2', 'tenant-evzone-ke'),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'Approve',
+        note: 'Route approved for next shift.',
+      }),
+    })
+
+    expect(approveResponse.status).toBe(200)
+    expect(await approveResponse.json()).toMatchObject({
+      message: expect.stringContaining('Dispatch approved'),
+      dispatch: {
+        recommendationId,
+        status: 'Approved',
+      },
+    })
+
+    const inTransitResponse = await fetch(`/api/swapping/rebalancing/${recommendationId}/action`, {
+      method: 'POST',
+      headers: {
+        ...authHeaders('demo-token-u2', 'tenant-evzone-ke'),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'MarkInTransit',
+      }),
+    })
+
+    expect(inTransitResponse.status).toBe(200)
+    expect(await inTransitResponse.json()).toMatchObject({
+      dispatch: {
+        recommendationId,
+        status: 'In Transit',
+      },
+    })
+
+    const finalReadResponse = await fetch('/api/swapping/rebalancing', {
+      headers: authHeaders('demo-token-u2', 'tenant-evzone-ke'),
+    })
+
+    expect(finalReadResponse.status).toBe(200)
+    const finalRead = await finalReadResponse.json() as {
+      dispatches: Array<{
+        recommendationId: string
+        status: string
+        history: Array<{ status: string }>
+      }>
+      recommendations: Array<{ id: string; status: string }>
+    }
+
+    expect(finalRead.recommendations.find((item) => item.id === recommendationId)).toMatchObject({
+      status: 'In Transit',
+    })
+    expect(finalRead.dispatches.find((item) => item.recommendationId === recommendationId)).toMatchObject({
+      status: 'In Transit',
+      history: expect.arrayContaining([
+        expect.objectContaining({ status: 'Proposed' }),
+        expect.objectContaining({ status: 'Approved' }),
+        expect.objectContaining({ status: 'In Transit' }),
+      ]),
+    })
+  })
+
+  it('returns 403 when finance role tries rebalancing dispatch actions', async () => {
+    const response = await fetch('/api/swapping/rebalancing/RB-swap-st-2-swap-st-3/action', {
+      method: 'POST',
+      headers: {
+        ...authHeaders('demo-token-u5', 'tenant-global'),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'Approve',
+      }),
+    })
+
+    expect(response.status).toBe(403)
+    expect(await response.json()).toMatchObject({ message: 'Forbidden.', role: 'FINANCE' })
+  })
+
   it('approves pack retirement and records the action in station detail timeline', async () => {
     const retireResponse = await fetch('/api/swapping/packs/PK-WL-014/retirement', {
       method: 'POST',

@@ -73,6 +73,7 @@ export const ACCESS_POLICY = {
   sessionsRead: OPERATIONS_ROLES,
   swapSessionsRead: OPERATIONS_ROLES,
   swapLifecycleWrite: OPERATIONS_ROLES,
+  swapDispatchWrite: OPERATIONS_ROLES,
   incidentsRead: OPERATIONS_ROLES,
   alertsRead: OPERATIONS_ROLES,
   smartChargingRead: ENERGY_ROLES,

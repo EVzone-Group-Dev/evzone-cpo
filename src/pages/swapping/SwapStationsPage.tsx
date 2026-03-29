@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
-import { useBatteryInventory, useSwapSessions, useSwapStations } from '@/core/hooks/useSwapping'
+import { useBatteryInventory, useSwapDispatchAction, useSwapRebalancing, useSwapSessions, useSwapStations } from '@/core/hooks/useSwapping'
 import { PATHS } from '@/router/paths'
 import { AlertTriangle, MapPin, RefreshCw, Search } from 'lucide-react'
 
@@ -39,6 +39,14 @@ const KPI_TONE_CLASS = {
   ok: 'text-[var(--ok)]',
   warning: 'text-[var(--warning)]',
   danger: 'text-[var(--danger)]',
+} as const
+
+const DISPATCH_STATUS_CLASS = {
+  Proposed: 'pending',
+  Approved: 'online',
+  Rejected: 'faulted',
+  'In Transit': 'active',
+  Completed: 'maintenance',
 } as const
 
 function parseTurnaroundLabel(label: string) {
@@ -108,9 +116,13 @@ function formatCurrency(value: number, currencyCode: string, digits = 0) {
 export function SwapStationsPage() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<Filter>('All')
+  const [dispatchNotes, setDispatchNotes] = useState<Record<string, string>>({})
+  const [dispatchFeedback, setDispatchFeedback] = useState<string | null>(null)
   const { data: stations, isLoading: stationsLoading, error: stationsError } = useSwapStations()
   const { data: sessions, isLoading: sessionsLoading, error: sessionsError } = useSwapSessions()
   const { data: inventory, isLoading: inventoryLoading, error: inventoryError } = useBatteryInventory()
+  const { data: rebalancing, isLoading: rebalancingLoading, error: rebalancingError } = useSwapRebalancing()
+  const dispatchAction = useSwapDispatchAction()
 
   const filtered = (stations ?? []).filter((station) =>
     (filter === 'All' || station.status === filter) &&
@@ -356,11 +368,28 @@ export function SwapStationsPage() {
     return alerts.sort((a, b) => severityRank(b.severity) - severityRank(a.severity)).slice(0, 6)
   }, [stationSessionStats, stations])
 
-  if (stationsLoading || sessionsLoading || inventoryLoading) {
+  const handleDispatchAction = async (
+    recommendationId: string,
+    action: 'Approve' | 'Reject' | 'MarkInTransit' | 'MarkCompleted',
+  ) => {
+    try {
+      const response = await dispatchAction.mutateAsync({
+        recommendationId,
+        action,
+        note: dispatchNotes[recommendationId]?.trim() || undefined,
+      })
+      setDispatchFeedback(`✓ ${response.message}`)
+      setDispatchNotes((current) => ({ ...current, [recommendationId]: '' }))
+    } catch (mutationError) {
+      setDispatchFeedback(mutationError instanceof Error ? mutationError.message : 'Failed to update dispatch workflow.')
+    }
+  }
+
+  if (stationsLoading || sessionsLoading || inventoryLoading || rebalancingLoading) {
     return <DashboardLayout pageTitle="Swap Stations"><div className="p-8 text-center text-subtle">Loading swap infrastructure...</div></DashboardLayout>
   }
 
-  if (stationsError || sessionsError || inventoryError) {
+  if (stationsError || sessionsError || inventoryError || rebalancingError) {
     return <DashboardLayout pageTitle="Swap Stations"><div className="p-8 text-center text-danger">Unable to load swap stations.</div></DashboardLayout>
   }
 
@@ -427,6 +456,119 @@ export function SwapStationsPage() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      <div className="card mb-6">
+        <div className="section-title">Rebalancing Recommendations</div>
+        {dispatchFeedback && (
+          <div className={`alert ${dispatchFeedback.startsWith('✓') ? 'success' : 'danger'} text-xs mt-3`}>
+            {dispatchFeedback}
+          </div>
+        )}
+        {(rebalancing?.recommendations.length ?? 0) === 0 ? (
+          <div className="text-sm text-subtle mt-4">No active rebalancing recommendations at the moment.</div>
+        ) : (
+          <div className="table-wrap mt-4">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Move</th>
+                  <th>Packs</th>
+                  <th>Priority</th>
+                  <th>Confidence</th>
+                  <th>ETA Impact</th>
+                  <th>Status</th>
+                  <th>Reason</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(rebalancing?.recommendations ?? []).map((recommendation) => (
+                  <tr key={recommendation.id}>
+                    <td>
+                      <div className="font-semibold text-xs">{recommendation.fromStationName}</div>
+                      <div className="text-[11px] text-subtle">to {recommendation.toStationName}</div>
+                      <div className="text-[11px] text-subtle">Trend: {recommendation.demandTrendLabel}</div>
+                    </td>
+                    <td>{recommendation.packsSuggested}</td>
+                    <td>
+                      <span className={`pill ${recommendation.priority === 'Critical' ? 'faulted' : recommendation.priority === 'High' ? 'pending' : 'online'}`}>
+                        {recommendation.priority}
+                      </span>
+                    </td>
+                    <td>{recommendation.confidencePercent}%</td>
+                    <td>{recommendation.etaImpactLabel}</td>
+                    <td><span className={`pill ${DISPATCH_STATUS_CLASS[recommendation.status]}`}>{recommendation.status}</span></td>
+                    <td className="text-xs text-subtle">{recommendation.reason}</td>
+                    <td className="min-w-[220px]">
+                      <div className="space-y-2">
+                        <input
+                          className="input text-xs"
+                          placeholder="Dispatch note (optional)"
+                          value={dispatchNotes[recommendation.id] ?? ''}
+                          onChange={(event) => setDispatchNotes((current) => ({ ...current, [recommendation.id]: event.target.value }))}
+                        />
+                        <div className="flex gap-2 flex-wrap">
+                          {recommendation.status === 'Proposed' && (
+                            <>
+                              <button className="btn secondary sm" onClick={() => handleDispatchAction(recommendation.id, 'Approve')} disabled={dispatchAction.isPending}>Approve</button>
+                              <button className="btn secondary sm" onClick={() => handleDispatchAction(recommendation.id, 'Reject')} disabled={dispatchAction.isPending}>Reject</button>
+                            </>
+                          )}
+                          {recommendation.status === 'Approved' && (
+                            <>
+                              <button className="btn secondary sm" onClick={() => handleDispatchAction(recommendation.id, 'MarkInTransit')} disabled={dispatchAction.isPending}>Mark In Transit</button>
+                              <button className="btn secondary sm" onClick={() => handleDispatchAction(recommendation.id, 'Reject')} disabled={dispatchAction.isPending}>Reject</button>
+                            </>
+                          )}
+                          {recommendation.status === 'In Transit' && (
+                            <button className="btn secondary sm" onClick={() => handleDispatchAction(recommendation.id, 'MarkCompleted')} disabled={dispatchAction.isPending}>Mark Completed</button>
+                          )}
+                          {(recommendation.status === 'Completed' || recommendation.status === 'Rejected') && (
+                            <span className="text-[11px] text-subtle">No further action required</span>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="card mb-6">
+        <div className="section-title">Dispatch Workflow</div>
+        {(rebalancing?.dispatches.length ?? 0) === 0 ? (
+          <div className="text-sm text-subtle mt-4">Dispatch log is empty. Approved recommendations will appear here.</div>
+        ) : (
+          <div className="space-y-4 mt-4">
+            {(rebalancing?.dispatches ?? []).map((dispatch) => (
+              <div key={dispatch.id} className="rounded-lg border border-border bg-bg-muted/40 px-4 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="font-semibold text-sm">{dispatch.id} · {dispatch.fromStationName} to {dispatch.toStationName}</div>
+                    <div className="text-[11px] text-subtle">{dispatch.packs} packs · {dispatch.etaImpactLabel} · {dispatch.confidencePercent}% confidence</div>
+                  </div>
+                  <span className={`pill ${DISPATCH_STATUS_CLASS[dispatch.status]}`}>{dispatch.status}</span>
+                </div>
+                <div className="mt-3 space-y-2">
+                  {dispatch.history.map((event, index) => (
+                    <div key={`${dispatch.id}-${event.status}-${event.timeLabel}-${index}`} className="rounded border border-border/70 px-3 py-2 text-xs">
+                      <div className="flex justify-between gap-3">
+                        <span className={`pill ${DISPATCH_STATUS_CLASS[event.status]}`}>{event.status}</span>
+                        <span className="text-subtle">{event.timeLabel}</span>
+                      </div>
+                      <div className="mt-1">{event.actorLabel}</div>
+                      {event.note && <div className="text-subtle mt-1">{event.note}</div>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="card mb-6">

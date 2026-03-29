@@ -237,6 +237,60 @@ export interface SwapPackMutationResponse {
   pack: BatteryPackRecord
 }
 
+export type SwapDispatchStatus = 'Proposed' | 'Approved' | 'Rejected' | 'In Transit' | 'Completed'
+
+export interface SwapRebalancingRecommendation {
+  confidencePercent: number
+  demandTrendLabel: 'Rising' | 'Stable' | 'Cooling'
+  etaImpactLabel: string
+  fromStationId: string
+  fromStationName: string
+  id: string
+  packsSuggested: number
+  priority: 'Critical' | 'High' | 'Medium'
+  reason: string
+  sourceSurplusScore: number
+  status: SwapDispatchStatus
+  targetDeficitScore: number
+  toStationId: string
+  toStationName: string
+}
+
+export interface SwapDispatchHistoryEvent {
+  actorLabel: string
+  note?: string
+  status: SwapDispatchStatus
+  timeLabel: string
+}
+
+export interface SwapDispatchRecord {
+  confidencePercent: number
+  etaImpactLabel: string
+  fromStationName: string
+  history: SwapDispatchHistoryEvent[]
+  id: string
+  packs: number
+  recommendationId: string
+  status: Exclude<SwapDispatchStatus, 'Proposed'>
+  toStationName: string
+}
+
+export interface SwapRebalancingResponse {
+  dispatches: SwapDispatchRecord[]
+  generatedAtLabel: string
+  recommendations: SwapRebalancingRecommendation[]
+}
+
+export interface SwapDispatchActionRequest {
+  action: 'Approve' | 'Reject' | 'MarkInTransit' | 'MarkCompleted'
+  note?: string
+}
+
+export interface SwapDispatchActionResponse {
+  dispatch: SwapDispatchRecord
+  message: string
+}
+
 export interface SwapStationSummary {
   address: string
   avgSwapDurationLabel: string

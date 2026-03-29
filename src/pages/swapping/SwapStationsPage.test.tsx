@@ -1,9 +1,15 @@
 import type { ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { SwapStationsPage } from '@/pages/swapping/SwapStationsPage'
-import { useBatteryInventory, useSwapSessions, useSwapStations } from '@/core/hooks/useSwapping'
+import {
+  useBatteryInventory,
+  useSwapDispatchAction,
+  useSwapRebalancing,
+  useSwapSessions,
+  useSwapStations,
+} from '@/core/hooks/useSwapping'
 
 vi.mock('@/components/layout/DashboardLayout', () => ({
   DashboardLayout: ({ children, pageTitle }: { children: ReactNode; pageTitle?: string }) => (
@@ -16,16 +22,22 @@ vi.mock('@/components/layout/DashboardLayout', () => ({
 
 vi.mock('@/core/hooks/useSwapping', () => ({
   useBatteryInventory: vi.fn(),
+  useSwapDispatchAction: vi.fn(),
+  useSwapRebalancing: vi.fn(),
   useSwapStations: vi.fn(),
   useSwapSessions: vi.fn(),
 }))
 
 describe('SwapStationsPage', () => {
   const mockedUseBatteryInventory = vi.mocked(useBatteryInventory)
+  const mockedUseSwapDispatchAction = vi.mocked(useSwapDispatchAction)
+  const mockedUseSwapRebalancing = vi.mocked(useSwapRebalancing)
   const mockedUseSwapStations = vi.mocked(useSwapStations)
   const mockedUseSwapSessions = vi.mocked(useSwapSessions)
 
-  it('renders operations KPIs and derived alerts from swap station/session data', () => {
+  it('renders operations KPIs, economics, and rebalancing dispatch workflow', async () => {
+    const mutateDispatch = vi.fn().mockResolvedValue({ message: 'Dispatch approved for 3 packs.' })
+
     mockedUseSwapStations.mockReturnValue({
       data: [
         {
@@ -171,6 +183,53 @@ describe('SwapStationsPage', () => {
       error: null,
     } as unknown as ReturnType<typeof useBatteryInventory>)
 
+    mockedUseSwapRebalancing.mockReturnValue({
+      data: {
+        generatedAtLabel: 'just now',
+        recommendations: [
+          {
+            id: 'RB-swap-st-2-swap-st-1',
+            fromStationId: 'swap-st-2',
+            fromStationName: 'Airport East Battery Exchange',
+            toStationId: 'swap-st-1',
+            toStationName: 'Westlands Swap Annex',
+            packsSuggested: 3,
+            confidencePercent: 84,
+            etaImpactLabel: '+4.2h runway at destination',
+            demandTrendLabel: 'Rising',
+            priority: 'High',
+            reason: 'Ready-pack gap 3 vs reserve floor 8; source surplus 6.',
+            sourceSurplusScore: 68,
+            targetDeficitScore: 57,
+            status: 'Proposed',
+          },
+        ],
+        dispatches: [
+          {
+            id: 'DSP-001',
+            recommendationId: 'RB-swap-st-2-swap-st-3',
+            fromStationName: 'Airport East Battery Exchange',
+            toStationName: 'Global Logistics Swap Yard',
+            packs: 2,
+            confidencePercent: 88,
+            etaImpactLabel: '+3.0h runway at destination',
+            status: 'Completed',
+            history: [
+              { status: 'Proposed', timeLabel: '2026-03-28 09:10', actorLabel: 'Rebalancing Engine', note: 'Deficit detected at logistics yard.' },
+              { status: 'Completed', timeLabel: '2026-03-28 10:15', actorLabel: 'Station Operator', note: 'Packs landed and verified.' },
+            ],
+          },
+        ],
+      },
+      isLoading: false,
+      error: null,
+    } as unknown as ReturnType<typeof useSwapRebalancing>)
+
+    mockedUseSwapDispatchAction.mockReturnValue({
+      mutateAsync: mutateDispatch,
+      isPending: false,
+    } as unknown as ReturnType<typeof useSwapDispatchAction>)
+
     render(
       <MemoryRouter>
         <SwapStationsPage />
@@ -191,5 +250,21 @@ describe('SwapStationsPage', () => {
     expect(screen.getByText('Station-Level Performance')).toBeInTheDocument()
     expect(screen.getByText('KES 620')).toBeInTheDocument()
     expect(screen.getByText('KES 77.5')).toBeInTheDocument()
+    expect(screen.getByText('Rebalancing Recommendations')).toBeInTheDocument()
+    expect(screen.getByText('Dispatch Workflow')).toBeInTheDocument()
+    expect(screen.getAllByText('Airport East Battery Exchange').length).toBeGreaterThan(0)
+    expect(screen.getByText('to Westlands Swap Annex')).toBeInTheDocument()
+    expect(screen.getByText('84%')).toBeInTheDocument()
+    expect(screen.getByText('DSP-001 · Airport East Battery Exchange to Global Logistics Swap Yard')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Approve' }))
+
+    await waitFor(() => {
+      expect(mutateDispatch).toHaveBeenCalledWith({
+        recommendationId: 'RB-swap-st-2-swap-st-1',
+        action: 'Approve',
+        note: undefined,
+      })
+    })
   })
 })

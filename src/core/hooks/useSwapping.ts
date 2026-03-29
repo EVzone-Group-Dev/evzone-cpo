@@ -5,10 +5,13 @@ import type {
   BatteryInventoryResponse,
   BatteryPackRecord,
   BatterySwapSessionRecord,
+  SwapDispatchActionRequest,
+  SwapDispatchActionResponse,
   SwapPackInspectionRequest,
   SwapPackMutationResponse,
   SwapPackRetirementRequest,
   SwapPackTransitionRequest,
+  SwapRebalancingResponse,
   SwapStationDetail,
   SwapStationSummary,
 } from '@/core/types/mockApi'
@@ -67,12 +70,17 @@ interface RetirementPackPayload extends SwapPackRetirementRequest {
   packId: string
 }
 
+interface DispatchActionPayload extends SwapDispatchActionRequest {
+  recommendationId: string
+}
+
 function useSwapMutationInvalidation(tenantKey: string) {
   const queryClient = useQueryClient()
 
   return () => {
     queryClient.invalidateQueries({ queryKey: ['swap-stations', tenantKey] })
     queryClient.invalidateQueries({ queryKey: ['swapping', 'inventory', tenantKey] })
+    queryClient.invalidateQueries({ queryKey: ['swapping', 'rebalancing', tenantKey] })
   }
 }
 
@@ -116,6 +124,32 @@ export function useRetireSwapPack() {
   return useMutation({
     mutationFn: ({ packId, ...payload }: RetirementPackPayload) =>
       fetchJson<SwapPackMutationResponse>(`/api/swapping/packs/${packId}/retirement`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: invalidate,
+  })
+}
+
+export function useSwapRebalancing() {
+  const { activeTenantId, isReady } = useTenant()
+
+  return useQuery<SwapRebalancingResponse>({
+    queryKey: ['swapping', 'rebalancing', activeTenantId ?? 'default'],
+    queryFn: () => fetchJson<SwapRebalancingResponse>('/api/swapping/rebalancing'),
+    enabled: isReady,
+  })
+}
+
+export function useSwapDispatchAction() {
+  const { activeTenantId } = useTenant()
+  const tenantKey = activeTenantId ?? 'default'
+  const invalidate = useSwapMutationInvalidation(tenantKey)
+
+  return useMutation({
+    mutationFn: ({ recommendationId, ...payload }: DispatchActionPayload) =>
+      fetchJson<SwapDispatchActionResponse>(`/api/swapping/rebalancing/${recommendationId}/action`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

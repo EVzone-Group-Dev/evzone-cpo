@@ -6,6 +6,7 @@ import type { CPORole } from '@/core/types/domain'
 import { http, HttpResponse } from 'msw'
 import {
   applySwapPackRetirementDecision,
+  applySwapDispatchAction,
   authenticateDemoUser,
   createChargePoint,
   getBatteryInventory,
@@ -19,6 +20,7 @@ import {
   getOCPICommands,
   getOCPICdrs,
   getProtocolEngine,
+  getSwapRebalancing,
   getReports,
   getRoamingSessions,
   getSettlement,
@@ -246,6 +248,29 @@ export const handlers = [
     const result = authorize(request, ACCESS_POLICY.batteryInventoryRead)
     if (!result.ok) return result.response
     return HttpResponse.json(getBatteryInventory(result.access.tenantId))
+  }),
+
+  http.get('/api/swapping/rebalancing', ({ request }) => {
+    const result = authorize(request, ACCESS_POLICY.swapStationsRead)
+    if (!result.ok) return result.response
+    return HttpResponse.json(getSwapRebalancing(result.access.tenantId))
+  }),
+
+  http.post('/api/swapping/rebalancing/:id/action', async ({ params, request }) => {
+    const result = authorize(request, ACCESS_POLICY.swapDispatchWrite)
+    if (!result.ok) return result.response
+
+    const payload = await request.json() as Parameters<typeof applySwapDispatchAction>[1]
+    const dispatch = applySwapDispatchAction(String(params.id), payload, result.access.tenantId)
+
+    if (!dispatch.ok) {
+      return HttpResponse.json({ message: dispatch.message }, { status: dispatch.notFound ? 404 : 400 })
+    }
+
+    return HttpResponse.json({
+      message: dispatch.message,
+      dispatch: dispatch.dispatch,
+    })
   }),
 
   http.post('/api/swapping/packs/:id/transition', async ({ params, request }) => {
