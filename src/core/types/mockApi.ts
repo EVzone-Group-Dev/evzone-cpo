@@ -175,6 +175,30 @@ export interface SwapCabinetSummary {
   status: 'Online' | 'Offline' | 'Degraded' | 'Maintenance'
 }
 
+export type BatteryPackStatus = 'Ready' | 'Charging' | 'Reserved' | 'Installed' | 'Quarantined' | 'Retired'
+
+export interface BatteryPackTimelineEvent {
+  id: string
+  summary: string
+  timeLabel: string
+  type: 'Swap' | 'Inspection' | 'Lifecycle' | 'Retirement'
+}
+
+export interface BatteryPackRetirementAssessment {
+  action: 'None' | 'Monitor' | 'Retire'
+  cycleThresholdBreached: boolean
+  evaluatedAtLabel: string
+  reason: string
+  sohThresholdBreached: boolean
+}
+
+export interface BatteryPackRetirementDecision {
+  action: 'Approved' | 'Deferred'
+  actorLabel: string
+  note?: string
+  timeLabel: string
+}
+
 export interface BatteryPackRecord {
   chemistry: 'LFP' | 'NMC'
   cycleCount: number
@@ -184,10 +208,13 @@ export interface BatteryPackRecord {
   inspectionStatus?: 'Passed' | 'Review' | 'Failed'
   lastInspectionLabel?: string
   lastSeenLabel: string
+  retirementAssessment?: BatteryPackRetirementAssessment
+  retirementDecision?: BatteryPackRetirementDecision
   slotLabel: string
   socLabel: string
   stationName: string
-  status: 'Ready' | 'Charging' | 'Reserved' | 'Installed' | 'Quarantined'
+  status: BatteryPackStatus
+  timeline?: BatteryPackTimelineEvent[]
 }
 
 export interface SwapPackTransitionRequest {
@@ -198,6 +225,11 @@ export interface SwapPackTransitionRequest {
 export interface SwapPackInspectionRequest {
   note?: string
   result: 'Passed' | 'Review' | 'Failed'
+}
+
+export interface SwapPackRetirementRequest {
+  action: 'ApproveRetirement' | 'DeferRetirement'
+  note?: string
 }
 
 export interface SwapPackMutationResponse {
@@ -256,7 +288,7 @@ export interface BatterySwapSessionRecord {
 export interface BatteryInventoryResponse {
   balancingNote: string
   metrics: Array<{
-    id: 'ready' | 'charging' | 'reserved' | 'quarantined'
+    id: 'ready' | 'charging' | 'reserved' | 'quarantined' | 'retired'
     label: string
     tone: 'default' | 'ok' | 'warning' | 'danger'
     value: string

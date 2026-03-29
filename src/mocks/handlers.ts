@@ -5,6 +5,7 @@ import {
 import type { CPORole } from '@/core/types/domain'
 import { http, HttpResponse } from 'msw'
 import {
+  applySwapPackRetirementDecision,
   authenticateDemoUser,
   createChargePoint,
   getBatteryInventory,
@@ -278,6 +279,23 @@ export const handlers = [
     return HttpResponse.json({
       message: inspection.message,
       pack: inspection.pack,
+    })
+  }),
+
+  http.post('/api/swapping/packs/:id/retirement', async ({ params, request }) => {
+    const result = authorize(request, ACCESS_POLICY.swapLifecycleWrite)
+    if (!result.ok) return result.response
+
+    const payload = await request.json() as Parameters<typeof applySwapPackRetirementDecision>[1]
+    const retirement = applySwapPackRetirementDecision(String(params.id), payload, result.access.tenantId)
+
+    if (!retirement.ok) {
+      return HttpResponse.json({ message: retirement.message }, { status: 400 })
+    }
+
+    return HttpResponse.json({
+      message: retirement.message,
+      pack: retirement.pack,
     })
   }),
 

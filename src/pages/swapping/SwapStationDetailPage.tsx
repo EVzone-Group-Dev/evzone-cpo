@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { MapComponent } from '@/components/common/MapComponent'
-import { PACK_STATUS_FLOW, useInspectSwapPack, useSwapStation, useTransitionSwapPack } from '@/core/hooks/useSwapping'
+import { PACK_STATUS_FLOW, useInspectSwapPack, useRetireSwapPack, useSwapStation, useTransitionSwapPack } from '@/core/hooks/useSwapping'
 import type { BatteryPackRecord } from '@/core/types/mockApi'
 import { AlertTriangle, Clock, MapPin, Package, RefreshCw, Shield } from 'lucide-react'
 
@@ -19,12 +19,19 @@ const PACK_STATUS_CLASS = {
   Reserved: 'maintenance',
   Installed: 'active',
   Quarantined: 'faulted',
+  Retired: 'offline',
 } as const
 
 const INSPECTION_CLASS = {
   Passed: 'online',
   Review: 'pending',
   Failed: 'faulted',
+} as const
+
+const RETIREMENT_CLASS = {
+  None: 'online',
+  Monitor: 'pending',
+  Retire: 'faulted',
 } as const
 
 const ALERT_CLASS = {
@@ -38,11 +45,13 @@ export function SwapStationDetailPage() {
   const { data: station, isLoading, error } = useSwapStation(id)
   const transitionPack = useTransitionSwapPack()
   const inspectPack = useInspectSwapPack()
+  const retirePack = useRetireSwapPack()
   const [selectedPackId, setSelectedPackId] = useState<string>('')
   const [transitionTarget, setTransitionTarget] = useState<'' | BatteryPackRecord['status']>('')
   const [transitionNote, setTransitionNote] = useState('')
   const [inspectionResult, setInspectionResult] = useState<'Passed' | 'Review' | 'Failed'>('Passed')
   const [inspectionNote, setInspectionNote] = useState('')
+  const [retirementNote, setRetirementNote] = useState('')
   const [workflowFeedback, setWorkflowFeedback] = useState<string | null>(null)
 
   const resolvedPackId = station?.packs.some((pack) => pack.id === selectedPackId)
@@ -102,6 +111,24 @@ export function SwapStationDetailPage() {
       setInspectionNote('')
     } catch (mutationError) {
       setWorkflowFeedback(mutationError instanceof Error ? mutationError.message : 'Failed to record inspection.')
+    }
+  }
+
+  const handleRetirementAction = async (action: 'ApproveRetirement' | 'DeferRetirement') => {
+    if (!selectedPack) {
+      return
+    }
+
+    try {
+      const response = await retirePack.mutateAsync({
+        packId: selectedPack.id,
+        action,
+        note: retirementNote.trim() || undefined,
+      })
+      setWorkflowFeedback(`✓ ${response.message}`)
+      setRetirementNote('')
+    } catch (mutationError) {
+      setWorkflowFeedback(mutationError instanceof Error ? mutationError.message : 'Failed to apply retirement action.')
     }
   }
 
@@ -213,6 +240,12 @@ export function SwapStationDetailPage() {
                 <div className="rounded-lg border border-border bg-bg-muted/40 px-3 py-3 text-xs space-y-2">
                   <div className="flex justify-between"><span className="text-subtle">Current Status</span><span className={`pill ${PACK_STATUS_CLASS[selectedPack.status]}`}>{selectedPack.status}</span></div>
                   <div className="flex justify-between"><span className="text-subtle">Last Inspection</span><span>{selectedPack.lastInspectionLabel ?? 'Never'}</span></div>
+                  {selectedPack.retirementDecision && (
+                    <div className="flex justify-between">
+                      <span className="text-subtle">Retirement Action</span>
+                      <span>{selectedPack.retirementDecision.action} ({selectedPack.retirementDecision.timeLabel})</span>
+                    </div>
+                  )}
                   {selectedPack.inspectionNote && <div className="text-subtle">Note: {selectedPack.inspectionNote}</div>}
                 </div>
               )}
@@ -241,6 +274,41 @@ export function SwapStationDetailPage() {
                 <button className="btn secondary w-full" onClick={handleInspection} disabled={!selectedPack || inspectPack.isPending}>
                   {inspectPack.isPending ? 'Recording...' : 'Record Inspection'}
                 </button>
+              </div>
+
+              <div className="space-y-2">
+                <div className="text-xs font-semibold uppercase tracking-wide text-subtle">Retirement Policy</div>
+                <div className="rounded-lg border border-border bg-bg-muted/40 px-3 py-3 text-xs space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-subtle">Recommendation</span>
+                    <span className={`pill ${RETIREMENT_CLASS[selectedPack?.retirementAssessment?.action ?? 'None']}`}>
+                      {selectedPack?.retirementAssessment?.action ?? 'None'}
+                    </span>
+                  </div>
+                  <div className="text-subtle">
+                    {selectedPack?.retirementAssessment?.reason ?? 'Retirement policy evaluation not available.'}
+                  </div>
+                  <div className="text-subtle">
+                    Rules: retire at {`>= 320`} cycles or {`<= 88%`} SoH, monitor at {`>= 280`} cycles or {`<= 92%`} SoH.
+                  </div>
+                </div>
+                <input className="input" placeholder="Retirement decision note" value={retirementNote} onChange={(event) => setRetirementNote(event.target.value)} />
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    className="btn secondary w-full"
+                    onClick={() => handleRetirementAction('DeferRetirement')}
+                    disabled={!selectedPack || selectedPack.status === 'Retired' || !selectedPack.retirementAssessment || selectedPack.retirementAssessment.action === 'None' || retirePack.isPending}
+                  >
+                    Defer
+                  </button>
+                  <button
+                    className="btn secondary w-full"
+                    onClick={() => handleRetirementAction('ApproveRetirement')}
+                    disabled={!selectedPack || !selectedPack.retirementAssessment || selectedPack.retirementAssessment.action !== 'Retire' || selectedPack.status === 'Retired' || retirePack.isPending}
+                  >
+                    {retirePack.isPending ? 'Applying...' : 'Approve Retirement'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -275,6 +343,27 @@ export function SwapStationDetailPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="section-title"><Clock size={16} className="text-accent" />Pack Timeline</div>
+            <div className="space-y-3 mt-4">
+              {(selectedPack?.timeline ?? []).length === 0 ? (
+                <div className="text-sm text-subtle">No lifecycle events recorded for this pack yet.</div>
+              ) : (
+                (selectedPack?.timeline ?? []).map((event) => (
+                  <div key={event.id} className="rounded-lg border px-3 py-3" style={{ borderColor: 'var(--border)', background: 'var(--bg-muted)' }}>
+                    <div className="flex justify-between items-center gap-2">
+                      <span className={`pill ${event.type === 'Retirement' ? 'faulted' : event.type === 'Inspection' ? 'pending' : event.type === 'Swap' ? 'active' : 'online'}`}>
+                        {event.type}
+                      </span>
+                      <span className="text-[11px] text-subtle">{event.timeLabel}</span>
+                    </div>
+                    <div className="text-sm mt-2">{event.summary}</div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

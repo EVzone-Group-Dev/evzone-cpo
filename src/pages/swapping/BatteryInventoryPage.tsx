@@ -3,7 +3,7 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { useBatteryInventory, useInspectSwapPack, useTransitionSwapPack } from '@/core/hooks/useSwapping'
 import { Package, Search } from 'lucide-react'
 
-type Filter = 'All' | 'Ready' | 'Charging' | 'Reserved' | 'Installed' | 'Quarantined'
+type Filter = 'All' | 'Ready' | 'Charging' | 'Reserved' | 'Installed' | 'Quarantined' | 'Retired'
 
 const METRIC_CLASS = {
   default: 'text-[var(--text)]',
@@ -18,6 +18,7 @@ const PACK_STATUS_CLASS = {
   Reserved: 'maintenance',
   Installed: 'active',
   Quarantined: 'faulted',
+  Retired: 'offline',
 } as const
 
 const INSPECTION_CLASS = {
@@ -99,7 +100,7 @@ export function BatteryInventoryPage() {
           <input className="input pl-9" placeholder="Search packs or stations..." value={search} onChange={(event) => setSearch(event.target.value)} />
         </div>
         <div className="flex gap-2 flex-wrap">
-          {(['All', 'Ready', 'Charging', 'Reserved', 'Installed', 'Quarantined'] as Filter[]).map((value) => (
+          {(['All', 'Ready', 'Charging', 'Reserved', 'Installed', 'Quarantined', 'Retired'] as Filter[]).map((value) => (
             <button key={value} onClick={() => setFilter(value)} className={`btn sm ${filter === value ? 'primary' : 'secondary'}`}>{value}</button>
           ))}
         </div>
@@ -129,7 +130,9 @@ export function BatteryInventoryPage() {
                   <td className="text-xs text-subtle">{pack.slotLabel}</td>
                   <td className="text-xs text-subtle">{pack.lastSeenLabel}</td>
                   <td>
-                    {pack.status === 'Quarantined' ? (
+                    {pack.status === 'Retired' ? (
+                      <span className="text-xs text-subtle">Retired</span>
+                    ) : pack.status === 'Quarantined' ? (
                       <button className="btn secondary sm" onClick={() => handleRelease(pack.id)} disabled={inspectPack.isPending}>Release Ready</button>
                     ) : (
                       <button className="btn secondary sm" onClick={() => handleQuarantine(pack.id)} disabled={transitionPack.isPending}>Quarantine</button>

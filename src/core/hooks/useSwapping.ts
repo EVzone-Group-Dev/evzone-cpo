@@ -7,6 +7,7 @@ import type {
   BatterySwapSessionRecord,
   SwapPackInspectionRequest,
   SwapPackMutationResponse,
+  SwapPackRetirementRequest,
   SwapPackTransitionRequest,
   SwapStationDetail,
   SwapStationSummary,
@@ -62,6 +63,10 @@ interface InspectPackPayload extends SwapPackInspectionRequest {
   packId: string
 }
 
+interface RetirementPackPayload extends SwapPackRetirementRequest {
+  packId: string
+}
+
 function useSwapMutationInvalidation(tenantKey: string) {
   const queryClient = useQueryClient()
 
@@ -103,10 +108,27 @@ export function useInspectSwapPack() {
   })
 }
 
+export function useRetireSwapPack() {
+  const { activeTenantId } = useTenant()
+  const tenantKey = activeTenantId ?? 'default'
+  const invalidate = useSwapMutationInvalidation(tenantKey)
+
+  return useMutation({
+    mutationFn: ({ packId, ...payload }: RetirementPackPayload) =>
+      fetchJson<SwapPackMutationResponse>(`/api/swapping/packs/${packId}/retirement`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: invalidate,
+  })
+}
+
 export const PACK_STATUS_FLOW: Record<BatteryPackRecord['status'], BatteryPackRecord['status'][]> = {
   Ready: ['Charging', 'Reserved', 'Installed', 'Quarantined'],
   Charging: ['Ready', 'Reserved', 'Quarantined'],
   Reserved: ['Ready', 'Installed', 'Quarantined'],
   Installed: ['Ready', 'Charging', 'Quarantined'],
-  Quarantined: ['Ready', 'Charging', 'Reserved'],
+  Quarantined: ['Ready', 'Charging', 'Reserved', 'Retired'],
+  Retired: [],
 }

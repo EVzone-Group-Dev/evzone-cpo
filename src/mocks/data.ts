@@ -4,6 +4,8 @@ import type {
   AuditLogRecord,
   BatteryInventoryResponse,
   BatteryPackRecord,
+  BatteryPackRetirementAssessment,
+  BatteryPackTimelineEvent,
   BatterySwapSessionRecord,
   BillingResponse,
   ChargePointDetail,
@@ -29,6 +31,7 @@ import type {
   SmartChargingResponse,
   StationDetail,
   SwapPackInspectionRequest,
+  SwapPackRetirementRequest,
   SwapPackTransitionRequest,
   SwapStationDetail,
   TariffRecord,
@@ -1318,7 +1321,103 @@ const PACK_STATUS_TRANSITIONS: Record<BatteryPackRecord['status'], BatteryPackRe
   Charging: ['Ready', 'Reserved', 'Quarantined'],
   Reserved: ['Ready', 'Installed', 'Quarantined'],
   Installed: ['Ready', 'Charging', 'Quarantined'],
-  Quarantined: ['Ready', 'Charging', 'Reserved'],
+  Quarantined: ['Ready', 'Charging', 'Reserved', 'Retired'],
+  Retired: [],
+}
+
+const RETIREMENT_POLICY = {
+  monitorCycleCount: 280,
+  monitorSohPercent: 92,
+  retireCycleCount: 320,
+  retireSohPercent: 88,
+} as const
+
+let packTimelineCounter = 1
+
+function nextTimelineEventId(packId: string) {
+  packTimelineCounter += 1
+  return `${packId}-evt-${packTimelineCounter}`
+}
+
+function parseSohPercent(healthLabel: string) {
+  const match = healthLabel.match(/(\d+(?:\.\d+)?)\s*%/)
+  if (!match) {
+    return null
+  }
+
+  const parsed = Number(match[1])
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function evaluatePackRetirementPolicy(pack: BatteryPackRecord): BatteryPackRetirementAssessment {
+  const sohPercent = parseSohPercent(pack.healthLabel)
+  const cycleThresholdBreached = pack.cycleCount >= RETIREMENT_POLICY.retireCycleCount
+  const sohThresholdBreached = sohPercent !== null && sohPercent <= RETIREMENT_POLICY.retireSohPercent
+  const cycleMonitorBreached = pack.cycleCount >= RETIREMENT_POLICY.monitorCycleCount
+  const sohMonitorBreached = sohPercent !== null && sohPercent <= RETIREMENT_POLICY.monitorSohPercent
+
+  if (cycleThresholdBreached || sohThresholdBreached) {
+    const reasons = [
+      cycleThresholdBreached ? `cycle count ${pack.cycleCount} >= ${RETIREMENT_POLICY.retireCycleCount}` : null,
+      sohThresholdBreached ? `SoH ${sohPercent?.toFixed(0)}% <= ${RETIREMENT_POLICY.retireSohPercent}%` : null,
+    ].filter(Boolean).join('; ')
+
+    return {
+      action: 'Retire',
+      cycleThresholdBreached,
+      sohThresholdBreached,
+      reason: `Retirement recommended: ${reasons}.`,
+      evaluatedAtLabel: 'just now',
+    }
+  }
+
+  if (cycleMonitorBreached || sohMonitorBreached) {
+    const reasons = [
+      cycleMonitorBreached ? `cycle count ${pack.cycleCount} >= ${RETIREMENT_POLICY.monitorCycleCount}` : null,
+      sohMonitorBreached ? `SoH ${sohPercent?.toFixed(0)}% <= ${RETIREMENT_POLICY.monitorSohPercent}%` : null,
+    ].filter(Boolean).join('; ')
+
+    return {
+      action: 'Monitor',
+      cycleThresholdBreached: false,
+      sohThresholdBreached: false,
+      reason: `Monitor closely: ${reasons}.`,
+      evaluatedAtLabel: 'just now',
+    }
+  }
+
+  return {
+    action: 'None',
+    cycleThresholdBreached: false,
+    sohThresholdBreached: false,
+    reason: 'Pack is operating within retirement policy thresholds.',
+    evaluatedAtLabel: 'just now',
+  }
+}
+
+function appendPackTimelineEvent(pack: BatteryPackRecord, event: Omit<BatteryPackTimelineEvent, 'id'>) {
+  const entry: BatteryPackTimelineEvent = {
+    id: nextTimelineEventId(pack.id),
+    ...event,
+  }
+
+  const existing = pack.timeline ?? []
+  pack.timeline = [entry, ...existing].slice(0, 16)
+}
+
+function refreshPackRetirementAssessment(pack: BatteryPackRecord) {
+  if (pack.status === 'Retired') {
+    pack.retirementAssessment = {
+      action: 'Retire',
+      cycleThresholdBreached: true,
+      sohThresholdBreached: true,
+      reason: 'Pack is retired and removed from active dispatch.',
+      evaluatedAtLabel: 'just now',
+    }
+    return
+  }
+
+  pack.retirementAssessment = evaluatePackRetirementPolicy(pack)
 }
 
 function extractCabinetIndex(slotLabel: string) {
@@ -1395,6 +1494,7 @@ function buildBatteryInventory(tenantId: TenantId): BatteryInventoryResponse {
       { id: 'charging', label: 'Charging', value: `${count('Charging')}`, tone: 'default' },
       { id: 'reserved', label: 'Reserved', value: `${count('Reserved') + count('Installed')}`, tone: 'warning' },
       { id: 'quarantined', label: 'Quarantined', value: `${count('Quarantined')}`, tone: 'danger' },
+      { id: 'retired', label: 'Retired', value: `${count('Retired')}`, tone: 'default' },
     ],
     packs,
     balancingNote: tenantId === 'tenant-westlands-mall'
@@ -1404,6 +1504,50 @@ function buildBatteryInventory(tenantId: TenantId): BatteryInventoryResponse {
         : 'Global battery balancing highlights reserve gaps across both public charging hubs and dedicated swap yards.',
   }
 }
+
+function initializeSwapPackLifecycleState() {
+  for (const station of swapStations) {
+    for (const pack of station.packs) {
+      if (!pack.timeline || pack.timeline.length === 0) {
+        const seeded: BatteryPackTimelineEvent[] = []
+        const relatedSessions = batterySwapSessions
+          .filter((session) => session.outgoingPackId === pack.id || session.returnedPackId === pack.id)
+          .slice(0, 2)
+
+        for (const session of relatedSessions) {
+          seeded.push({
+            id: nextTimelineEventId(pack.id),
+            type: 'Swap',
+            summary: `${session.id} ${session.status.toLowerCase()} (${session.turnaroundLabel}).`,
+            timeLabel: session.initiatedAt,
+          })
+        }
+
+        if (pack.status === 'Quarantined' || pack.inspectionStatus === 'Failed') {
+          seeded.push({
+            id: nextTimelineEventId(pack.id),
+            type: 'Inspection',
+            summary: 'Safety inspection failed. Pack moved to quarantine hold.',
+            timeLabel: pack.lastInspectionLabel ?? 'recently',
+          })
+        }
+
+        seeded.push({
+          id: nextTimelineEventId(pack.id),
+          type: 'Lifecycle',
+          summary: `Pack status is ${pack.status}.`,
+          timeLabel: pack.lastSeenLabel,
+        })
+
+        pack.timeline = seeded
+      }
+
+      refreshPackRetirementAssessment(pack)
+    }
+  }
+}
+
+initializeSwapPackLifecycleState()
 
 function getTokenValue(authorizationHeader?: string | null) {
   if (!authorizationHeader) return null
@@ -1523,6 +1667,21 @@ export function transitionSwapPack(packId: string, payload: SwapPackTransitionRe
     resolved.pack.lastInspectionLabel = 'just now'
     resolved.pack.inspectionNote = payload.note ?? 'Auto quarantine via lifecycle transition.'
   }
+  if (nextStatus === 'Retired') {
+    resolved.pack.retirementDecision = {
+      action: 'Approved',
+      actorLabel: 'Lifecycle Operator',
+      note: payload.note?.trim() || 'Retired through lifecycle transition.',
+      timeLabel: 'just now',
+    }
+  }
+
+  appendPackTimelineEvent(resolved.pack, {
+    type: 'Lifecycle',
+    summary: `Lifecycle transition applied: ${currentStatus} -> ${nextStatus}.`,
+    timeLabel: 'just now',
+  })
+  refreshPackRetirementAssessment(resolved.pack)
 
   rebuildSwapStationPackAggregates(resolved.station)
 
@@ -1543,9 +1702,21 @@ export function inspectSwapPack(packId: string, payload: SwapPackInspectionReque
   resolved.pack.inspectionNote = payload.note?.trim() || undefined
   resolved.pack.lastInspectionLabel = 'just now'
   resolved.pack.lastSeenLabel = 'just now'
+  appendPackTimelineEvent(resolved.pack, {
+    type: 'Inspection',
+    summary: `Inspection recorded as ${payload.result}.`,
+    timeLabel: 'just now',
+  })
 
   if (payload.result === 'Failed') {
+    const previousStatus = resolved.pack.status
     resolved.pack.status = 'Quarantined'
+    appendPackTimelineEvent(resolved.pack, {
+      type: 'Lifecycle',
+      summary: `Lifecycle transition applied: ${previousStatus} -> Quarantined.`,
+      timeLabel: 'just now',
+    })
+    refreshPackRetirementAssessment(resolved.pack)
     rebuildSwapStationPackAggregates(resolved.station)
     return {
       ok: true,
@@ -1556,13 +1727,86 @@ export function inspectSwapPack(packId: string, payload: SwapPackInspectionReque
 
   if (payload.result === 'Passed' && resolved.pack.status === 'Quarantined') {
     resolved.pack.status = 'Ready'
+    appendPackTimelineEvent(resolved.pack, {
+      type: 'Lifecycle',
+      summary: 'Lifecycle transition applied: Quarantined -> Ready.',
+      timeLabel: 'just now',
+    })
   }
 
+  refreshPackRetirementAssessment(resolved.pack)
   rebuildSwapStationPackAggregates(resolved.station)
 
   return {
     ok: true,
     message: `Inspection ${payload.result.toLowerCase()} recorded for ${packId}.`,
+    pack: { ...resolved.pack },
+  }
+}
+
+export function applySwapPackRetirementDecision(packId: string, payload: SwapPackRetirementRequest, tenantId: TenantId): SwapPackMutationResult {
+  const resolved = findPackRecord(packId, tenantId)
+  if (!resolved) {
+    return { ok: false, message: 'Battery pack not found for the active tenant.' }
+  }
+
+  refreshPackRetirementAssessment(resolved.pack)
+
+  if (resolved.pack.status === 'Retired') {
+    return { ok: false, message: `Pack ${packId} is already retired.` }
+  }
+
+  if (!resolved.pack.retirementAssessment || resolved.pack.retirementAssessment.action === 'None') {
+    return { ok: false, message: `Pack ${packId} does not currently meet retirement policy thresholds.` }
+  }
+
+  if (payload.action === 'DeferRetirement') {
+    resolved.pack.retirementDecision = {
+      action: 'Deferred',
+      actorLabel: 'Lifecycle Operator',
+      note: payload.note?.trim() || 'Retirement deferred pending additional diagnostics.',
+      timeLabel: 'just now',
+    }
+    appendPackTimelineEvent(resolved.pack, {
+      type: 'Retirement',
+      summary: 'Retirement recommendation deferred pending follow-up review.',
+      timeLabel: 'just now',
+    })
+    refreshPackRetirementAssessment(resolved.pack)
+    rebuildSwapStationPackAggregates(resolved.station)
+    return {
+      ok: true,
+      message: `Retirement for ${packId} deferred.`,
+      pack: { ...resolved.pack },
+    }
+  }
+
+  const previousStatus = resolved.pack.status
+  resolved.pack.status = 'Retired'
+  resolved.pack.lastSeenLabel = 'just now'
+  resolved.pack.retirementDecision = {
+    action: 'Approved',
+    actorLabel: 'Lifecycle Operator',
+    note: payload.note?.trim() || 'Retirement approved by policy workflow.',
+    timeLabel: 'just now',
+  }
+
+  appendPackTimelineEvent(resolved.pack, {
+    type: 'Retirement',
+    summary: 'Retirement approved and pack removed from active fleet dispatch.',
+    timeLabel: 'just now',
+  })
+  appendPackTimelineEvent(resolved.pack, {
+    type: 'Lifecycle',
+    summary: `Lifecycle transition applied: ${previousStatus} -> Retired.`,
+    timeLabel: 'just now',
+  })
+  refreshPackRetirementAssessment(resolved.pack)
+  rebuildSwapStationPackAggregates(resolved.station)
+
+  return {
+    ok: true,
+    message: `Pack ${packId} retired successfully.`,
     pack: { ...resolved.pack },
   }
 }

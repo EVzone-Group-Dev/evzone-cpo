@@ -76,6 +76,67 @@ describe('MSW RBAC authorization boundaries', () => {
     expect(await response.json()).toMatchObject({ message: 'Forbidden.', role: 'FINANCE' })
   })
 
+  it('approves pack retirement and records the action in station detail timeline', async () => {
+    const retireResponse = await fetch('/api/swapping/packs/PK-WL-014/retirement', {
+      method: 'POST',
+      headers: {
+        ...authHeaders('demo-token-u3', 'tenant-westlands-mall'),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'ApproveRetirement',
+        note: 'Capacity dropped below safety floor.',
+      }),
+    })
+
+    expect(retireResponse.status).toBe(200)
+    expect(await retireResponse.json()).toMatchObject({
+      message: 'Pack PK-WL-014 retired successfully.',
+      pack: {
+        id: 'PK-WL-014',
+        status: 'Retired',
+        retirementDecision: {
+          action: 'Approved',
+        },
+      },
+    })
+
+    const stationResponse = await fetch('/api/swapping/stations/swap-st-1', {
+      headers: authHeaders('demo-token-u3', 'tenant-westlands-mall'),
+    })
+
+    expect(stationResponse.status).toBe(200)
+    const station = await stationResponse.json() as {
+      packs: Array<{
+        id: string
+        status: string
+        timeline?: Array<{ type: string }>
+      }>
+    }
+    expect(station.packs.find((pack) => pack.id === 'PK-WL-014')).toMatchObject({
+      status: 'Retired',
+      timeline: expect.arrayContaining([
+        expect.objectContaining({ type: 'Retirement' }),
+      ]),
+    })
+  })
+
+  it('returns 403 when finance role tries swap retirement action', async () => {
+    const response = await fetch('/api/swapping/packs/PK-WL-014/retirement', {
+      method: 'POST',
+      headers: {
+        ...authHeaders('demo-token-u5', 'tenant-global'),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'ApproveRetirement',
+      }),
+    })
+
+    expect(response.status).toBe(403)
+    expect(await response.json()).toMatchObject({ message: 'Forbidden.', role: 'FINANCE' })
+  })
+
   it('creates a charge point and returns it in subsequent list reads', async () => {
     const createResponse = await fetch('/api/charge-points', {
       method: 'POST',
