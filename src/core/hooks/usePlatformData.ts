@@ -16,6 +16,8 @@ import type {
   NotificationsModuleResponse,
   OCPICdrsResponse,
   OCPICommandsResponse,
+  RoamingPartnerObservabilityDetail,
+  RoamingPartnerObservabilityResponse,
   PayoutRecord,
   ProtocolEngineResponse,
   ReportsResponse,
@@ -169,6 +171,26 @@ export function useRoamingPartners() {
   return useQuery<RoamingPartnerRecord[]>({
     queryKey: ['roaming', 'partners', tenantKey],
     queryFn: () => fetchJson<RoamingPartnerRecord[]>('/api/roaming/partners'),
+    enabled,
+  })
+}
+
+export function useRoamingPartnerObservability() {
+  const { enabled, tenantKey } = useTenantQueryContext()
+
+  return useQuery<RoamingPartnerObservabilityResponse>({
+    queryKey: ['roaming', 'partners', 'observability', tenantKey],
+    queryFn: () => fetchJson<RoamingPartnerObservabilityResponse>('/api/roaming/partners/observability'),
+    enabled,
+  })
+}
+
+export function useRoamingPartnerObservabilityDetail(id?: string) {
+  const { enabled, tenantKey } = useTenantQueryContext(!!id)
+
+  return useQuery<RoamingPartnerObservabilityDetail>({
+    queryKey: ['roaming', 'partners', 'observability', tenantKey, id],
+    queryFn: () => fetchJson<RoamingPartnerObservabilityDetail>(`/api/roaming/partners/${id}/observability`),
     enabled,
   })
 }

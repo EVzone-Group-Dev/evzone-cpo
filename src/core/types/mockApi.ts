@@ -506,6 +506,60 @@ export interface RoamingPartnerRecord {
   version: string
 }
 
+export interface PartnerObservabilityMetric {
+  id: 'healthy' | 'attention' | 'events' | 'failures'
+  label: string
+  note: string
+  tone: 'accent' | 'ok' | 'warning' | 'danger'
+  value: string
+}
+
+export interface RoamingPartnerObservabilitySummary {
+  callbackFailures24h: number
+  deliveryStatus: 'Healthy' | 'Retrying' | 'Degraded'
+  eventCoverage: string[]
+  id: string
+  lastEventAt: string
+  lastPartnerActivity: string
+  retryQueueDepth: number
+  successRate: string
+  totalEvents24h: number
+}
+
+export interface RoamingPartnerObservabilityEvent {
+  direction: 'Inbound' | 'Outbound'
+  id: string
+  module: string
+  status: 'Delivered' | 'Retried' | 'Failed'
+  summary: string
+  time: string
+}
+
+export interface RoamingPartnerObservabilityAlert {
+  detail: string
+  id: string
+  severity: 'Info' | 'Warning' | 'Critical'
+  title: string
+}
+
+export interface RoamingPartnerObservabilityDetail extends RoamingPartnerObservabilitySummary {
+  callbacks: {
+    avgLatency: string
+    delivered24h: number
+    failed24h: number
+    lastDelivery: string
+    lastHttpStatus: string
+  }
+  recentEvents: RoamingPartnerObservabilityEvent[]
+  warnings: RoamingPartnerObservabilityAlert[]
+}
+
+export interface RoamingPartnerObservabilityResponse {
+  metrics: PartnerObservabilityMetric[]
+  note: string
+  partners: RoamingPartnerObservabilitySummary[]
+}
+
 export interface RoamingMetric {
   id: 'incoming' | 'authorized' | 'utilisation'
   label: string

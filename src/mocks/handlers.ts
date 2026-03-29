@@ -21,6 +21,8 @@ import {
   getOCPICdrs,
   getProtocolEngine,
   getSwapRebalancing,
+  getRoamingPartnerObservability,
+  getRoamingPartnerObservabilityDetail,
   getReports,
   getRoamingSessions,
   getSettlement,
@@ -358,6 +360,21 @@ export const handlers = [
     const result = authorize(request, ACCESS_POLICY.roamingRead)
     if (!result.ok) return result.response
     return HttpResponse.json(listRoamingPartners(result.access.tenantId))
+  }),
+
+  http.get('/api/roaming/partners/observability', ({ request }) => {
+    const result = authorize(request, ACCESS_POLICY.roamingRead)
+    if (!result.ok) return result.response
+    return HttpResponse.json(getRoamingPartnerObservability(result.access.tenantId))
+  }),
+
+  http.get('/api/roaming/partners/:id/observability', ({ params, request }) => {
+    const result = authorize(request, ACCESS_POLICY.roamingRead)
+    if (!result.ok) return result.response
+
+    const observability = getRoamingPartnerObservabilityDetail(String(params.id), result.access.tenantId)
+    if (!observability) return HttpResponse.json({ message: 'Roaming partner observability not found.' }, { status: 404 })
+    return HttpResponse.json(observability)
   }),
 
   http.get('/api/roaming/sessions', ({ request }) => {

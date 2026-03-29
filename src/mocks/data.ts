@@ -20,6 +20,8 @@ import type {
   NotificationsModuleResponse,
   OCPICdrsResponse,
   OCPICommandsResponse,
+  RoamingPartnerObservabilityDetail,
+  RoamingPartnerObservabilityResponse,
   PayoutRecord,
   ProtocolEngineResponse,
   ReportsResponse,
@@ -680,6 +682,278 @@ const roamingPartners: Array<TenantScoped<RoamingPartnerRecord>> = [
   { id: 'p2', name: 'Hubject GmbH', type: 'HUB', status: 'Connected', country: 'DE', partyId: 'HBJ', lastSync: '2026-03-28 15:45', version: '2.2.1', tenantIds: ['tenant-global', 'tenant-evzone-ke'] },
 ]
 
+const roamingPartnerObservability: Array<TenantScoped<RoamingPartnerObservabilityDetail>> = [
+  {
+    id: 'p1',
+    deliveryStatus: 'Healthy',
+    eventCoverage: ['Commands', 'Sessions', 'CDRs', 'Tokens', 'Credentials', 'Tariffs'],
+    lastEventAt: '45s ago',
+    lastPartnerActivity: '2m ago',
+    retryQueueDepth: 0,
+    successRate: '99.2%',
+    totalEvents24h: 1642,
+    callbackFailures24h: 1,
+    callbacks: {
+      avgLatency: '420 ms',
+      delivered24h: 511,
+      failed24h: 1,
+      lastDelivery: '45s ago',
+      lastHttpStatus: '202 Accepted',
+    },
+    recentEvents: [
+      {
+        id: 'obs-p1-global-1',
+        module: 'Sessions',
+        direction: 'Outbound',
+        status: 'Delivered',
+        summary: 'PATCH /sessions/SES-9120 exported after roaming session progress update.',
+        time: '45s ago',
+      },
+      {
+        id: 'obs-p1-global-2',
+        module: 'Tokens',
+        direction: 'Inbound',
+        status: 'Delivered',
+        summary: 'Token authorization payload validated and forwarded to the backend token cache.',
+        time: '4m ago',
+      },
+      {
+        id: 'obs-p1-global-3',
+        module: 'Credentials',
+        direction: 'Outbound',
+        status: 'Retried',
+        summary: 'Credential heartbeat delivery retried once before peer acknowledgement.',
+        time: '18m ago',
+      },
+    ],
+    warnings: [
+      {
+        id: 'obs-p1-global-warning-1',
+        severity: 'Info',
+        title: 'Credential rotation window approaching',
+        detail: 'Token C rotation is due within 3 days, but no delivery degradation is currently visible.',
+      },
+    ],
+    tenantIds: ['tenant-global'],
+  },
+  {
+    id: 'p2',
+    deliveryStatus: 'Retrying',
+    eventCoverage: ['Commands', 'Sessions', 'CDRs', 'Locations', 'Tariffs', 'Tokens', 'Credentials', 'Partner Lifecycle'],
+    lastEventAt: '2m ago',
+    lastPartnerActivity: '4m ago',
+    retryQueueDepth: 3,
+    successRate: '96.8%',
+    totalEvents24h: 2314,
+    callbackFailures24h: 8,
+    callbacks: {
+      avgLatency: '610 ms',
+      delivered24h: 688,
+      failed24h: 8,
+      lastDelivery: '2m ago',
+      lastHttpStatus: '504 Gateway Timeout',
+    },
+    recentEvents: [
+      {
+        id: 'obs-p2-global-1',
+        module: 'CDRs',
+        direction: 'Outbound',
+        status: 'Failed',
+        summary: 'POST /cdrs callback timed out after the partner edge returned 504.',
+        time: '2m ago',
+      },
+      {
+        id: 'obs-p2-global-2',
+        module: 'Locations',
+        direction: 'Outbound',
+        status: 'Retried',
+        summary: 'Location delta export is draining through the retry queue after a transient peer outage.',
+        time: '6m ago',
+      },
+      {
+        id: 'obs-p2-global-3',
+        module: 'Commands',
+        direction: 'Inbound',
+        status: 'Delivered',
+        summary: 'START_SESSION command accepted and relayed to the backend command bridge.',
+        time: '12m ago',
+      },
+    ],
+    warnings: [
+      {
+        id: 'obs-p2-global-warning-1',
+        severity: 'Warning',
+        title: 'Retry backlog is growing',
+        detail: 'Three callback jobs are waiting on peer recovery, concentrated around CDR and location exports.',
+      },
+      {
+        id: 'obs-p2-global-warning-2',
+        severity: 'Info',
+        title: 'Partner traffic still flowing',
+        detail: 'Inbound commands and token checks are healthy even while outbound delivery retries remain elevated.',
+      },
+    ],
+    tenantIds: ['tenant-global'],
+  },
+  {
+    id: 'p1',
+    deliveryStatus: 'Healthy',
+    eventCoverage: ['Commands', 'Sessions', 'CDRs', 'Tokens', 'Credentials'],
+    lastEventAt: '1m ago',
+    lastPartnerActivity: '3m ago',
+    retryQueueDepth: 0,
+    successRate: '99.4%',
+    totalEvents24h: 982,
+    callbackFailures24h: 0,
+    callbacks: {
+      avgLatency: '380 ms',
+      delivered24h: 301,
+      failed24h: 0,
+      lastDelivery: '1m ago',
+      lastHttpStatus: '202 Accepted',
+    },
+    recentEvents: [
+      {
+        id: 'obs-p1-ke-1',
+        module: 'Commands',
+        direction: 'Inbound',
+        status: 'Delivered',
+        summary: 'RESERVE_NOW command relay completed for the Kenya operating scope.',
+        time: '1m ago',
+      },
+      {
+        id: 'obs-p1-ke-2',
+        module: 'Sessions',
+        direction: 'Outbound',
+        status: 'Delivered',
+        summary: 'Session progress export acknowledged by the roaming partner without retry.',
+        time: '9m ago',
+      },
+      {
+        id: 'obs-p1-ke-3',
+        module: 'Tokens',
+        direction: 'Inbound',
+        status: 'Delivered',
+        summary: 'Partner token cache refresh landed inside the tenant-scoped auth store.',
+        time: '22m ago',
+      },
+    ],
+    warnings: [
+      {
+        id: 'obs-p1-ke-warning-1',
+        severity: 'Info',
+        title: 'Kenya tenant is stable',
+        detail: 'No retry backlog or callback failures have been recorded in the last 24 hours.',
+      },
+    ],
+    tenantIds: ['tenant-evzone-ke'],
+  },
+  {
+    id: 'p2',
+    deliveryStatus: 'Degraded',
+    eventCoverage: ['Commands', 'Sessions', 'CDRs', 'Locations', 'Tariffs', 'Partner Lifecycle'],
+    lastEventAt: '3m ago',
+    lastPartnerActivity: '7m ago',
+    retryQueueDepth: 7,
+    successRate: '94.6%',
+    totalEvents24h: 1255,
+    callbackFailures24h: 6,
+    callbacks: {
+      avgLatency: '890 ms',
+      delivered24h: 344,
+      failed24h: 6,
+      lastDelivery: '3m ago',
+      lastHttpStatus: '502 Bad Gateway',
+    },
+    recentEvents: [
+      {
+        id: 'obs-p2-ke-1',
+        module: 'Partner Lifecycle',
+        direction: 'Outbound',
+        status: 'Failed',
+        summary: 'Partner capability sync stalled during a peer-side 502 window.',
+        time: '3m ago',
+      },
+      {
+        id: 'obs-p2-ke-2',
+        module: 'CDRs',
+        direction: 'Outbound',
+        status: 'Retried',
+        summary: 'Settlement export is being replayed after repeated upstream gateway failures.',
+        time: '11m ago',
+      },
+      {
+        id: 'obs-p2-ke-3',
+        module: 'Commands',
+        direction: 'Inbound',
+        status: 'Delivered',
+        summary: 'STOP_SESSION command relay succeeded despite outbound callback degradation.',
+        time: '15m ago',
+      },
+    ],
+    warnings: [
+      {
+        id: 'obs-p2-ke-warning-1',
+        severity: 'Critical',
+        title: 'Partner callback health is degraded',
+        detail: 'Failure rate has crossed the Kenya tenant threshold and requires partner follow-up before settlement drift grows.',
+      },
+      {
+        id: 'obs-p2-ke-warning-2',
+        severity: 'Warning',
+        title: 'Retry queue depth is above target',
+        detail: 'Seven pending deliveries are stacked behind partner edge instability across CDR and location flows.',
+      },
+    ],
+    tenantIds: ['tenant-evzone-ke'],
+  },
+  {
+    id: 'p1',
+    deliveryStatus: 'Healthy',
+    eventCoverage: ['Commands', 'Sessions', 'CDRs', 'Tokens'],
+    lastEventAt: '5m ago',
+    lastPartnerActivity: '12m ago',
+    retryQueueDepth: 0,
+    successRate: '99.8%',
+    totalEvents24h: 244,
+    callbackFailures24h: 0,
+    callbacks: {
+      avgLatency: '290 ms',
+      delivered24h: 88,
+      failed24h: 0,
+      lastDelivery: '5m ago',
+      lastHttpStatus: '202 Accepted',
+    },
+    recentEvents: [
+      {
+        id: 'obs-p1-westlands-1',
+        module: 'Sessions',
+        direction: 'Outbound',
+        status: 'Delivered',
+        summary: 'Hosted-site session update delivered successfully to the roaming partner.',
+        time: '5m ago',
+      },
+      {
+        id: 'obs-p1-westlands-2',
+        module: 'CDRs',
+        direction: 'Outbound',
+        status: 'Delivered',
+        summary: 'Latest hosted-site CDR export cleared immediately after settlement packaging.',
+        time: '27m ago',
+      },
+    ],
+    warnings: [
+      {
+        id: 'obs-p1-westlands-warning-1',
+        severity: 'Info',
+        title: 'Hosted-site feed is healthy',
+        detail: 'This portfolio is currently limited to a lighter set of modules, but all instrumented exports are green.',
+      },
+    ],
+    tenantIds: ['tenant-westlands-mall'],
+  },
+]
+
 const payouts: Array<TenantScoped<PayoutRecord>> = [
   { id: 'PAY-G-1', period: 'Mar 1-15, 2026', amount: 'KES 2,108,400', fee: 'KES 210,840', net: 'KES 1,897,560', status: 'Completed', sessions: 1420, tenantIds: ['tenant-global'] },
   { id: 'PAY-G-2', period: 'Mar 16-31, 2026', amount: 'KES 2,175,800', fee: 'KES 217,580', net: 'KES 1,958,220', status: 'Processing', sessions: 1505, tenantIds: ['tenant-global'] },
@@ -707,6 +981,74 @@ function stripTenantIds<T extends { tenantIds: TenantId[] }>(record: T): Omit<T,
 
 function listTenantScoped<T extends { tenantIds: TenantId[] }>(records: T[], tenantId: TenantId): Array<Omit<T, 'tenantIds'>> {
   return records.filter((record) => record.tenantIds.includes(tenantId)).map(stripTenantIds)
+}
+
+function toRoamingPartnerObservabilitySummary(
+  partner: RoamingPartnerObservabilityDetail,
+): RoamingPartnerObservabilityResponse['partners'][number] {
+  const { callbacks, recentEvents, warnings, ...summary } = partner
+  void callbacks
+  void recentEvents
+  void warnings
+  return summary
+}
+
+function getRoamingObservabilityNote(tenantId: TenantId) {
+  if (tenantId === 'tenant-westlands-mall') {
+    return 'Hosted-site roaming observability is now visible from Kafka-derived partner events and callback delivery traces for the Westlands portfolio.'
+  }
+
+  if (tenantId === 'tenant-evzone-ke') {
+    return 'Kenya roaming operations now surface partner health, retry pressure, and callback performance directly from the OCPI event stream.'
+  }
+
+  return 'Global partner observability fuses OCPI gateway event coverage with backend callback delivery signals so operations can spot retry pressure before roaming SLAs drift.'
+}
+
+function getRoamingPartnerObservabilityMetrics(
+  partners: RoamingPartnerObservabilityDetail[],
+): RoamingPartnerObservabilityResponse['metrics'] {
+  const healthyCount = partners.filter((partner) => partner.deliveryStatus === 'Healthy').length
+  const attentionCount = partners.length - healthyCount
+  const degradedCount = partners.filter((partner) => partner.deliveryStatus === 'Degraded').length
+  const retryingCount = partners.filter((partner) => partner.deliveryStatus === 'Retrying').length
+  const totalEvents = partners.reduce((sum, partner) => sum + partner.totalEvents24h, 0)
+  const totalFailures = partners.reduce((sum, partner) => sum + partner.callbackFailures24h, 0)
+
+  return [
+    {
+      id: 'healthy',
+      label: 'Healthy Partners',
+      value: `${healthyCount}/${partners.length}`,
+      note: partners.length === 0
+        ? 'No partner feeds are configured for this scope yet.'
+        : `${partners.length} active partner feeds instrumented.`,
+      tone: healthyCount === partners.length ? 'ok' : 'accent',
+    },
+    {
+      id: 'attention',
+      label: 'Needs Attention',
+      value: `${attentionCount}`,
+      note: attentionCount === 0
+        ? 'No retry backlog detected.'
+        : `${retryingCount} retrying, ${degradedCount} degraded.`,
+      tone: degradedCount > 0 ? 'danger' : 'warning',
+    },
+    {
+      id: 'events',
+      label: 'Events / 24h',
+      value: totalEvents.toLocaleString(),
+      note: 'Commands, sessions, CDRs, tokens, tariffs, and lifecycle flows.',
+      tone: 'accent',
+    },
+    {
+      id: 'failures',
+      label: 'Callback Failures',
+      value: `${totalFailures}`,
+      note: 'Last 24h delivery failures persisting after retry.',
+      tone: totalFailures > 0 ? 'warning' : 'ok',
+    },
+  ]
 }
 
 function getNextChargePointId() {
@@ -2116,6 +2458,19 @@ export function listTariffs(tenantId: TenantId) { return listTenantScoped(tariff
 export function getSmartCharging(tenantId: TenantId) { return smartChargingByTenant[tenantId] }
 export function listLoadPolicies(tenantId: TenantId) { return listTenantScoped(loadPolicies, tenantId) }
 export function listRoamingPartners(tenantId: TenantId) { return listTenantScoped(roamingPartners, tenantId) }
+export function getRoamingPartnerObservability(tenantId: TenantId): RoamingPartnerObservabilityResponse {
+  const partners = listTenantScoped(roamingPartnerObservability, tenantId)
+
+  return {
+    metrics: getRoamingPartnerObservabilityMetrics(partners),
+    note: getRoamingObservabilityNote(tenantId),
+    partners: partners.map(toRoamingPartnerObservabilitySummary),
+  }
+}
+export function getRoamingPartnerObservabilityDetail(id: string, tenantId: TenantId) {
+  const partner = roamingPartnerObservability.find((record) => record.id === id && record.tenantIds.includes(tenantId))
+  return partner ? stripTenantIds(partner) : undefined
+}
 export function getRoamingSessions(tenantId: TenantId) { return roamingSessionsByTenant[tenantId] }
 export function getOCPICdrs(tenantId: TenantId) { return ocpiCdrsByTenant[tenantId] }
 export function getOCPICommands(tenantId: TenantId) { return ocpiCommandsByTenant[tenantId] }
