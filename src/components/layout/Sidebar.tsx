@@ -125,7 +125,7 @@ export function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-2 space-y-1">
+      <nav className="sidebar-scroll flex-1 overflow-y-auto py-2 space-y-1">
         {NAV.map(group => {
           const visibleItems = group.items.filter((item) => canAccessRole(userRole, item.allowedRoles))
           if (visibleItems.length === 0) return null
