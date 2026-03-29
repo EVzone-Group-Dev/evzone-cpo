@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
-import { useSwapSessions, useSwapStations } from '@/core/hooks/useSwapping'
+import { useBatteryInventory, useSwapSessions, useSwapStations } from '@/core/hooks/useSwapping'
 import { PATHS } from '@/router/paths'
 import { AlertTriangle, MapPin, RefreshCw, Search } from 'lucide-react'
 
@@ -15,6 +15,17 @@ interface OperationalAlert {
   severity: AlertSeverity
   stationId: string
   stationName: string
+}
+
+interface StationEconomicsRow {
+  avgRevenuePerSwap: number
+  completedSwaps: number
+  id: string
+  packCount: number
+  revenue: number
+  status: Filter
+  stationName: string
+  yieldPerPackDay: number
 }
 
 const SEVERITY_CLASS: Record<AlertSeverity, string> = {
@@ -70,11 +81,36 @@ function severityRank(severity: AlertSeverity) {
   return 1
 }
 
+function parseCurrencyAmount(label: string) {
+  const sanitized = label.replace(/[^0-9.-]/g, '')
+  const parsed = Number(sanitized)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+function inferCurrencyCode(labels: string[]) {
+  for (const label of labels) {
+    const match = label.match(/[A-Z]{3}/)
+    if (match) {
+      return match[0]
+    }
+  }
+
+  return 'KES'
+}
+
+function formatCurrency(value: number, currencyCode: string, digits = 0) {
+  return `${currencyCode} ${value.toLocaleString('en-US', {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  })}`
+}
+
 export function SwapStationsPage() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<Filter>('All')
   const { data: stations, isLoading: stationsLoading, error: stationsError } = useSwapStations()
   const { data: sessions, isLoading: sessionsLoading, error: sessionsError } = useSwapSessions()
+  const { data: inventory, isLoading: inventoryLoading, error: inventoryError } = useBatteryInventory()
 
   const filtered = (stations ?? []).filter((station) =>
     (filter === 'All' || station.status === filter) &&
@@ -86,6 +122,21 @@ export function SwapStationsPage() {
     readyPacks: (stations ?? []).reduce((sum, station) => sum + station.readyPacks, 0),
     chargingPacks: (stations ?? []).reduce((sum, station) => sum + station.chargingPacks, 0),
   }), [stations])
+
+  const completedSessions = useMemo(
+    () => (sessions ?? []).filter((session) => session.status === 'Completed'),
+    [sessions],
+  )
+
+  const packCountByStation = useMemo(() => {
+    const map = new Map<string, number>()
+
+    for (const pack of inventory?.packs ?? []) {
+      map.set(pack.stationName, (map.get(pack.stationName) ?? 0) + 1)
+    }
+
+    return map
+  }, [inventory?.packs])
 
   const stationSessionStats = useMemo(() => {
     const map = new Map<string, { completed: number; failed: number; finalized: number; turnarounds: number[] }>()
@@ -184,6 +235,77 @@ export function SwapStationsPage() {
     return output
   }, [stationSessionStats, stations])
 
+  const economicsMetrics = useMemo(() => {
+    const totalRevenue = completedSessions.reduce((sum, session) => sum + parseCurrencyAmount(session.revenue), 0)
+    const stationCount = stations?.length ?? 0
+    const totalPacks = inventory?.packs.length ?? 0
+    const yieldPerPackDay = totalPacks > 0 ? totalRevenue / totalPacks : 0
+    const revenuePerStationDay = stationCount > 0 ? totalRevenue / stationCount : 0
+    const swapsPerPackDay = totalPacks > 0 ? completedSessions.length / totalPacks : 0
+    const currencyCode = inferCurrencyCode(completedSessions.map((session) => session.revenue))
+
+    return {
+      cards: [
+        {
+          id: 'economics-revenue-station',
+          label: 'Revenue / Station / Day',
+          value: formatCurrency(revenuePerStationDay, currencyCode),
+          note: `${stationCount} active station${stationCount === 1 ? '' : 's'}`,
+          tone: revenuePerStationDay >= 1500 ? 'ok' : revenuePerStationDay >= 800 ? 'warning' : 'default',
+        },
+        {
+          id: 'economics-yield-pack',
+          label: 'Yield / Pack / Day',
+          value: formatCurrency(yieldPerPackDay, currencyCode, 1),
+          note: `${totalPacks} tracked pack${totalPacks === 1 ? '' : 's'}`,
+          tone: yieldPerPackDay >= 120 ? 'ok' : yieldPerPackDay >= 70 ? 'warning' : 'default',
+        },
+        {
+          id: 'economics-swaps-pack',
+          label: 'Swaps / Pack / Day',
+          value: swapsPerPackDay.toFixed(2),
+          note: `${completedSessions.length} completed swaps`,
+          tone: swapsPerPackDay >= 0.7 ? 'ok' : swapsPerPackDay >= 0.4 ? 'warning' : 'default',
+        },
+      ] as const,
+      currencyCode,
+    }
+  }, [completedSessions, inventory?.packs.length, stations?.length])
+
+  const stationEconomics = useMemo<StationEconomicsRow[]>(() => {
+    const revenueByStation = new Map<string, number>()
+    const completedByStation = new Map<string, number>()
+
+    for (const session of completedSessions) {
+      completedByStation.set(session.stationName, (completedByStation.get(session.stationName) ?? 0) + 1)
+      revenueByStation.set(
+        session.stationName,
+        (revenueByStation.get(session.stationName) ?? 0) + parseCurrencyAmount(session.revenue),
+      )
+    }
+
+    return (stations ?? [])
+      .map((station) => {
+        const completedSwaps = completedByStation.get(station.name) ?? 0
+        const revenue = revenueByStation.get(station.name) ?? 0
+        const packCount = packCountByStation.get(station.name) ?? (station.readyPacks + station.chargingPacks)
+        const yieldPerPackDay = packCount > 0 ? revenue / packCount : 0
+        const avgRevenuePerSwap = completedSwaps > 0 ? revenue / completedSwaps : 0
+
+        return {
+          avgRevenuePerSwap,
+          completedSwaps,
+          id: station.id,
+          packCount,
+          revenue,
+          status: station.status,
+          stationName: station.name,
+          yieldPerPackDay,
+        }
+      })
+      .sort((left, right) => right.revenue - left.revenue)
+  }, [completedSessions, packCountByStation, stations])
+
   const operationalAlerts = useMemo<OperationalAlert[]>(() => {
     const alerts: OperationalAlert[] = []
 
@@ -234,11 +356,11 @@ export function SwapStationsPage() {
     return alerts.sort((a, b) => severityRank(b.severity) - severityRank(a.severity)).slice(0, 6)
   }, [stationSessionStats, stations])
 
-  if (stationsLoading || sessionsLoading) {
+  if (stationsLoading || sessionsLoading || inventoryLoading) {
     return <DashboardLayout pageTitle="Swap Stations"><div className="p-8 text-center text-subtle">Loading swap infrastructure...</div></DashboardLayout>
   }
 
-  if (stationsError || sessionsError) {
+  if (stationsError || sessionsError || inventoryError) {
     return <DashboardLayout pageTitle="Swap Stations"><div className="p-8 text-center text-danger">Unable to load swap stations.</div></DashboardLayout>
   }
 
@@ -259,6 +381,52 @@ export function SwapStationsPage() {
         <div className="kpi-card"><div className="label">Cabinets</div><div className="value">{totals.cabinets}</div></div>
         <div className="kpi-card"><div className="label">Ready Packs</div><div className="value text-ok">{totals.readyPacks}</div></div>
         <div className="kpi-card"><div className="label">Charging Packs</div><div className="value text-warning">{totals.chargingPacks}</div></div>
+      </div>
+
+      <div className="card mb-6">
+        <div className="section-title">Swap Economics Dashboard</div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+          {economicsMetrics.cards.map((metric) => (
+            <div key={metric.id} className="kpi-card">
+              <div className="label">{metric.label}</div>
+              <div className={`value ${KPI_TONE_CLASS[metric.tone]}`}>{metric.value}</div>
+              <div className="text-[10px] text-subtle">{metric.note}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="card mb-6">
+        <div className="section-title">Station-Level Performance</div>
+        <div className="table-wrap mt-4">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Station</th>
+                <th>Completed Swaps / Day</th>
+                <th>Revenue / Day</th>
+                <th>Packs</th>
+                <th>Yield / Pack / Day</th>
+                <th>Avg Revenue / Swap</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stationEconomics.map((station) => (
+                <tr key={station.id}>
+                  <td>
+                    <div className="font-semibold">{station.stationName}</div>
+                    <div className="text-[11px] text-subtle">{station.status}</div>
+                  </td>
+                  <td>{station.completedSwaps}</td>
+                  <td>{formatCurrency(station.revenue, economicsMetrics.currencyCode)}</td>
+                  <td>{station.packCount}</td>
+                  <td>{formatCurrency(station.yieldPerPackDay, economicsMetrics.currencyCode, 1)}</td>
+                  <td>{formatCurrency(station.avgRevenuePerSwap, economicsMetrics.currencyCode, 1)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div className="card mb-6">

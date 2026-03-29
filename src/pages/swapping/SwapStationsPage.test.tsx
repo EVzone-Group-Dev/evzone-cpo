@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { SwapStationsPage } from '@/pages/swapping/SwapStationsPage'
-import { useSwapSessions, useSwapStations } from '@/core/hooks/useSwapping'
+import { useBatteryInventory, useSwapSessions, useSwapStations } from '@/core/hooks/useSwapping'
 
 vi.mock('@/components/layout/DashboardLayout', () => ({
   DashboardLayout: ({ children, pageTitle }: { children: ReactNode; pageTitle?: string }) => (
@@ -15,11 +15,13 @@ vi.mock('@/components/layout/DashboardLayout', () => ({
 }))
 
 vi.mock('@/core/hooks/useSwapping', () => ({
+  useBatteryInventory: vi.fn(),
   useSwapStations: vi.fn(),
   useSwapSessions: vi.fn(),
 }))
 
 describe('SwapStationsPage', () => {
+  const mockedUseBatteryInventory = vi.mocked(useBatteryInventory)
   const mockedUseSwapStations = vi.mocked(useSwapStations)
   const mockedUseSwapSessions = vi.mocked(useSwapSessions)
 
@@ -133,6 +135,42 @@ describe('SwapStationsPage', () => {
       error: null,
     } as unknown as ReturnType<typeof useSwapSessions>)
 
+    mockedUseBatteryInventory.mockReturnValue({
+      data: {
+        balancingNote: 'Balanced',
+        metrics: [
+          { id: 'ready', label: 'Ready', value: '10', tone: 'ok' },
+          { id: 'charging', label: 'Charging', value: '10', tone: 'warning' },
+          { id: 'reserved', label: 'Reserved', value: '0', tone: 'default' },
+          { id: 'quarantined', label: 'Quarantined', value: '0', tone: 'danger' },
+        ],
+        packs: [
+          { id: 'PK-001', stationName: 'Westlands Swap Annex', status: 'Ready', chemistry: 'LFP', socLabel: '80%', healthLabel: '95%', cycleCount: 110, slotLabel: 'Cab 1 / Slot 1', lastSeenLabel: '1m ago' },
+          { id: 'PK-002', stationName: 'Westlands Swap Annex', status: 'Charging', chemistry: 'LFP', socLabel: '63%', healthLabel: '94%', cycleCount: 120, slotLabel: 'Cab 1 / Slot 2', lastSeenLabel: '1m ago' },
+          { id: 'PK-003', stationName: 'Westlands Swap Annex', status: 'Ready', chemistry: 'LFP', socLabel: '88%', healthLabel: '97%', cycleCount: 108, slotLabel: 'Cab 1 / Slot 3', lastSeenLabel: '2m ago' },
+          { id: 'PK-004', stationName: 'Westlands Swap Annex', status: 'Charging', chemistry: 'LFP', socLabel: '41%', healthLabel: '90%', cycleCount: 130, slotLabel: 'Cab 1 / Slot 4', lastSeenLabel: '2m ago' },
+          { id: 'PK-005', stationName: 'Westlands Swap Annex', status: 'Ready', chemistry: 'LFP', socLabel: '91%', healthLabel: '98%', cycleCount: 95, slotLabel: 'Cab 1 / Slot 5', lastSeenLabel: '3m ago' },
+          { id: 'PK-006', stationName: 'Westlands Swap Annex', status: 'Charging', chemistry: 'LFP', socLabel: '53%', healthLabel: '92%', cycleCount: 140, slotLabel: 'Cab 1 / Slot 6', lastSeenLabel: '4m ago' },
+          { id: 'PK-007', stationName: 'Westlands Swap Annex', status: 'Ready', chemistry: 'LFP', socLabel: '79%', healthLabel: '93%', cycleCount: 150, slotLabel: 'Cab 1 / Slot 7', lastSeenLabel: '5m ago' },
+          { id: 'PK-008', stationName: 'Westlands Swap Annex', status: 'Ready', chemistry: 'LFP', socLabel: '84%', healthLabel: '95%', cycleCount: 111, slotLabel: 'Cab 1 / Slot 8', lastSeenLabel: '6m ago' },
+          { id: 'PK-009', stationName: 'Airport East Battery Exchange', status: 'Ready', chemistry: 'LFP', socLabel: '76%', healthLabel: '91%', cycleCount: 160, slotLabel: 'Cab 2 / Slot 1', lastSeenLabel: '1m ago' },
+          { id: 'PK-010', stationName: 'Airport East Battery Exchange', status: 'Charging', chemistry: 'LFP', socLabel: '52%', healthLabel: '89%', cycleCount: 170, slotLabel: 'Cab 2 / Slot 2', lastSeenLabel: '2m ago' },
+          { id: 'PK-011', stationName: 'Airport East Battery Exchange', status: 'Ready', chemistry: 'LFP', socLabel: '82%', healthLabel: '90%', cycleCount: 180, slotLabel: 'Cab 2 / Slot 3', lastSeenLabel: '3m ago' },
+          { id: 'PK-012', stationName: 'Airport East Battery Exchange', status: 'Charging', chemistry: 'LFP', socLabel: '44%', healthLabel: '88%', cycleCount: 190, slotLabel: 'Cab 2 / Slot 4', lastSeenLabel: '4m ago' },
+          { id: 'PK-013', stationName: 'Airport East Battery Exchange', status: 'Ready', chemistry: 'LFP', socLabel: '86%', healthLabel: '92%', cycleCount: 155, slotLabel: 'Cab 2 / Slot 5', lastSeenLabel: '5m ago' },
+          { id: 'PK-014', stationName: 'Airport East Battery Exchange', status: 'Charging', chemistry: 'LFP', socLabel: '48%', healthLabel: '87%', cycleCount: 200, slotLabel: 'Cab 2 / Slot 6', lastSeenLabel: '6m ago' },
+          { id: 'PK-015', stationName: 'Airport East Battery Exchange', status: 'Ready', chemistry: 'LFP', socLabel: '81%', healthLabel: '89%', cycleCount: 175, slotLabel: 'Cab 2 / Slot 7', lastSeenLabel: '7m ago' },
+          { id: 'PK-016', stationName: 'Airport East Battery Exchange', status: 'Ready', chemistry: 'LFP', socLabel: '93%', healthLabel: '94%', cycleCount: 145, slotLabel: 'Cab 2 / Slot 8', lastSeenLabel: '8m ago' },
+          { id: 'PK-017', stationName: 'Airport East Battery Exchange', status: 'Charging', chemistry: 'LFP', socLabel: '37%', healthLabel: '86%', cycleCount: 210, slotLabel: 'Cab 2 / Slot 9', lastSeenLabel: '9m ago' },
+          { id: 'PK-018', stationName: 'Airport East Battery Exchange', status: 'Ready', chemistry: 'LFP', socLabel: '77%', healthLabel: '88%', cycleCount: 185, slotLabel: 'Cab 2 / Slot 10', lastSeenLabel: '10m ago' },
+          { id: 'PK-019', stationName: 'Airport East Battery Exchange', status: 'Charging', chemistry: 'LFP', socLabel: '42%', healthLabel: '85%', cycleCount: 220, slotLabel: 'Cab 2 / Slot 11', lastSeenLabel: '11m ago' },
+          { id: 'PK-020', stationName: 'Airport East Battery Exchange', status: 'Ready', chemistry: 'LFP', socLabel: '90%', healthLabel: '93%', cycleCount: 135, slotLabel: 'Cab 2 / Slot 12', lastSeenLabel: '12m ago' },
+        ],
+      },
+      isLoading: false,
+      error: null,
+    } as unknown as ReturnType<typeof useBatteryInventory>)
+
     render(
       <MemoryRouter>
         <SwapStationsPage />
@@ -145,5 +183,13 @@ describe('SwapStationsPage', () => {
     expect(screen.getByText('Operational Alerts')).toBeInTheDocument()
     expect(screen.getByText('Ready pack reserve is low (5 packs).')).toBeInTheDocument()
     expect(screen.getByText('Station health is degraded and requires attention.')).toBeInTheDocument()
+    expect(screen.getByText('Swap Economics Dashboard')).toBeInTheDocument()
+    expect(screen.getByText('Revenue / Station / Day')).toBeInTheDocument()
+    expect(screen.getByText('KES 485')).toBeInTheDocument()
+    expect(screen.getAllByText('Yield / Pack / Day')).toHaveLength(2)
+    expect(screen.getByText('KES 48.5')).toBeInTheDocument()
+    expect(screen.getByText('Station-Level Performance')).toBeInTheDocument()
+    expect(screen.getByText('KES 620')).toBeInTheDocument()
+    expect(screen.getByText('KES 77.5')).toBeInTheDocument()
   })
 })
