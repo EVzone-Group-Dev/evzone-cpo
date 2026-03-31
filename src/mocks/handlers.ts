@@ -468,4 +468,28 @@ export const handlers = [
       chargePointId,
     })
   }),
+  http.get('/api/swapping/packs/:id/telemetry', () => {
+    // Generate mock cell voltages near 3.2V
+    const generateCell = () => 3.2 + (Math.random() * 0.1 - 0.05)
+    const cells = Array(16).fill(0).map(generateCell)
+    
+    // Create an artificial imbalance for visual demo purposes
+    if (Math.random() > 0.5) {
+        cells[5] = 2.85 // Low voltage
+    } else {
+        cells[10] = 3.68 // High voltage
+    }
+    
+    return HttpResponse.json({
+      voltage: cells.reduce((sum, c) => sum + c, 0),
+      current: 12.5 + Math.random(),
+      soc: 85 - Math.random() * 2,
+      temps: [24.5 + Math.random(), 25.1 + Math.random()],
+      cells
+    })
+  }),
+
+  http.post('/api/swapping/packs/:id/kill', () => {
+    return HttpResponse.json({ message: 'Kill command dispatched' })
+  }),
 ]

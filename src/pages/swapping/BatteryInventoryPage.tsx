@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { useBatteryInventory, useInspectSwapPack, useTransitionSwapPack } from '@/core/hooks/useSwapping'
-import { Package, Search } from 'lucide-react'
+import { Package, Search, Activity } from 'lucide-react'
+import { LiveTelemetryModal } from './components/LiveTelemetryModal'
 
 type Filter = 'All' | 'Ready' | 'Charging' | 'Reserved' | 'Installed' | 'Quarantined' | 'Retired'
 
@@ -31,6 +32,7 @@ export function BatteryInventoryPage() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<Filter>('All')
   const [feedback, setFeedback] = useState<string | null>(null)
+  const [selectedPackId, setSelectedPackId] = useState<string | null>(null)
   const { data, isLoading, error } = useBatteryInventory()
   const transitionPack = useTransitionSwapPack()
   const inspectPack = useInspectSwapPack()
@@ -130,13 +132,23 @@ export function BatteryInventoryPage() {
                   <td className="text-xs text-subtle">{pack.slotLabel}</td>
                   <td className="text-xs text-subtle">{pack.lastSeenLabel}</td>
                   <td>
-                    {pack.status === 'Retired' ? (
-                      <span className="text-xs text-subtle">Retired</span>
-                    ) : pack.status === 'Quarantined' ? (
-                      <button className="btn secondary sm" onClick={() => handleRelease(pack.id)} disabled={inspectPack.isPending}>Release Ready</button>
-                    ) : (
-                      <button className="btn secondary sm" onClick={() => handleQuarantine(pack.id)} disabled={transitionPack.isPending}>Quarantine</button>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <button 
+                        className="btn outline sm flex items-center gap-1" 
+                        onClick={() => setSelectedPackId(pack.id)}
+                        title="View Live Telemetry"
+                      >
+                        <Activity size={14} className="text-[var(--primary)]" />
+                      </button>
+                      
+                      {pack.status === 'Retired' ? (
+                        <span className="text-xs text-subtle">Retired</span>
+                      ) : pack.status === 'Quarantined' ? (
+                        <button className="btn secondary sm" onClick={() => handleRelease(pack.id)} disabled={inspectPack.isPending}>Release</button>
+                      ) : (
+                        <button className="btn secondary sm" onClick={() => handleQuarantine(pack.id)} disabled={transitionPack.isPending}>Quarantine</button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -149,6 +161,14 @@ export function BatteryInventoryPage() {
         <div className="section-title">Balancing Note</div>
         <p className="text-sm text-subtle">{data.balancingNote}</p>
       </div>
+
+      {selectedPackId && (
+        <LiveTelemetryModal 
+          packId={selectedPackId} 
+          stationId={filtered.find(p => p.id === selectedPackId)?.stationName || 'UNKNOWN_STATION'} 
+          onClose={() => setSelectedPackId(null)} 
+        />
+      )}
     </DashboardLayout>
   )
 }
