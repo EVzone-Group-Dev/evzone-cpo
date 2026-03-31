@@ -35,7 +35,7 @@ export function LoginPage() {
         throw new Error('Login response missing access token.')
       }
 
-      setUser(auth.user, bearerToken)
+      setUser(auth.user, bearerToken, auth.refreshToken ?? null)
       navigate(getRoleHomePath(auth.user.role), { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to sign in.')

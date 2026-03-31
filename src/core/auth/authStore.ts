@@ -6,10 +6,12 @@ export interface AuthState {
   activeTenantId: string | null
   user: CPOUser | null
   token: string | null
+  refreshToken: string | null
   isAuthenticated: boolean
   isLoading: boolean
 
-  setUser: (user: CPOUser, token: string) => void
+  setUser: (user: CPOUser, token: string, refreshToken?: string | null) => void
+  setTokens: (token: string, refreshToken?: string | null) => void
   setActiveTenantId: (tenantId: string | null) => void
   logout: () => void
   setLoading: (v: boolean) => void
@@ -21,12 +23,33 @@ export const useAuthStore = create<AuthState>()(
       activeTenantId: null,
       user: null,
       token: null,
+      refreshToken: null,
       isAuthenticated: false,
       isLoading: false,
 
-      setUser: (user, token) => set({ activeTenantId: null, user, token, isAuthenticated: true }),
+      setUser: (user, token, refreshToken = null) =>
+        set({
+          activeTenantId: null,
+          user,
+          token,
+          refreshToken,
+          isAuthenticated: true,
+        }),
+      setTokens: (token, refreshToken) =>
+        set((state) => ({
+          token,
+          refreshToken: refreshToken ?? state.refreshToken,
+          isAuthenticated: !!state.user,
+        })),
       setActiveTenantId: (tenantId) => set({ activeTenantId: tenantId }),
-      logout: () => set({ activeTenantId: null, user: null, token: null, isAuthenticated: false }),
+      logout: () =>
+        set({
+          activeTenantId: null,
+          user: null,
+          token: null,
+          refreshToken: null,
+          isAuthenticated: false,
+        }),
       setLoading: (v) => set({ isLoading: v }),
     }),
     {
@@ -35,6 +58,7 @@ export const useAuthStore = create<AuthState>()(
         activeTenantId: s.activeTenantId,
         user: s.user,
         token: s.token,
+        refreshToken: s.refreshToken,
         isAuthenticated: s.isAuthenticated,
       }),
     },
