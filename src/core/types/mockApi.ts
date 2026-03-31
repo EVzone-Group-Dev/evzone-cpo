@@ -9,7 +9,9 @@ export interface DemoUserHint {
 }
 
 export interface LoginResponse {
-  token: string
+  accessToken?: string
+  refreshToken?: string
+  token?: string
   user: CPOUser
 }
 

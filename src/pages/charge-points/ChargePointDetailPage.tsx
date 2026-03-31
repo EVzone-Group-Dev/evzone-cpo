@@ -64,15 +64,42 @@ export function ChargePointDetailPage() {
     setCmdFeedback(`${command} command sent — awaiting response…`)
 
     try {
-      const response = await fetchJson<{ message: string }>('/api/charge-points/' + id + '/commands', {
+      const commandRequest = (() => {
+        if (command === 'Remote Start Session') {
+          return {
+            path: `/api/v1/charge-points/${id}/commands/remote-start`,
+            payload: { idTag: 'EVZONE_REMOTE' },
+          }
+        }
+        if (command === 'Soft Reset') {
+          return {
+            path: `/api/v1/charge-points/${id}/commands/soft-reset`,
+            payload: undefined,
+          }
+        }
+        if (command === 'Hard Reboot') {
+          return {
+            path: `/api/v1/charge-points/${id}/reboot`,
+            payload: undefined,
+          }
+        }
+        if (command === 'Unlock Connector') {
+          return {
+            path: `/api/v1/charge-points/${id}/commands/unlock`,
+            payload: { connectorId: 1 },
+          }
+        }
+
+        throw new Error(`Unsupported command: ${command}`)
+      })()
+
+      const response = await fetchJson<{ message?: string }>(commandRequest.path, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ command }),
+        headers: commandRequest.payload ? { 'Content-Type': 'application/json' } : undefined,
+        body: commandRequest.payload ? JSON.stringify(commandRequest.payload) : undefined,
       })
 
-      setCmdFeedback(`✓ ${response.message}`)
+      setCmdFeedback(`✓ ${response.message ?? 'Command queued successfully.'}`)
     } catch (err) {
       setCmdFeedback(err instanceof Error ? err.message : 'Command failed.')
     }

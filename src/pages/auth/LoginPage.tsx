@@ -22,7 +22,7 @@ export function LoginPage() {
     setLoading(true)
 
     try {
-      const auth = await fetchJson<LoginResponse>('/api/auth/login', {
+      const auth = await fetchJson<LoginResponse>('/api/v1/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -30,7 +30,12 @@ export function LoginPage() {
         body: JSON.stringify({ email, password }),
       })
 
-      setUser(auth.user, auth.token)
+      const bearerToken = auth.accessToken ?? auth.token
+      if (!bearerToken) {
+        throw new Error('Login response missing access token.')
+      }
+
+      setUser(auth.user, bearerToken)
       navigate(getRoleHomePath(auth.user.role), { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to sign in.')
