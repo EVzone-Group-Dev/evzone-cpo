@@ -19,7 +19,7 @@ export function ChargePointsPage() {
   const canCreateChargePoints = !!userRole && canManageStations(userRole)
 
   const stationOptions = useMemo(
-    () => ['All', ...Array.from(new Set((chargePoints || []).map((cp) => cp.stationName))).sort((a, b) => a.localeCompare(b))],
+    () => ['All', ...Array.from(new Set((chargePoints || []).map((cp) => cp.stationName || 'Unassigned Station'))).sort((a, b) => a.localeCompare(b))],
     [chargePoints],
   )
 
@@ -28,9 +28,9 @@ export function ChargePointsPage() {
     const matchesSearch = !searchTerm
       || cp.model.toLowerCase().includes(searchTerm)
       || cp.ocppId.toLowerCase().includes(searchTerm)
-      || cp.stationName.toLowerCase().includes(searchTerm)
+      || (cp.stationName || 'Unassigned Station').toLowerCase().includes(searchTerm)
     const matchesStatus = statusFilter === 'All' || cp.status === statusFilter
-    const matchesStation = stationFilter === 'All' || cp.stationName === stationFilter
+    const matchesStation = stationFilter === 'All' || (cp.stationName || 'Unassigned Station') === stationFilter
     const matchesRoaming = roamingFilter === 'All'
       || (roamingFilter === 'Published' && cp.roamingPublished)
       || (roamingFilter === 'Unpublished' && !cp.roamingPublished)
@@ -95,7 +95,7 @@ export function ChargePointsPage() {
           </thead>
           <tbody>
             {filtered.map((cp) => (
-              <tr key={cp.id}>
+              <tr key={`${cp.id}-${cp.ocppId}`}>
                 <td>
                   <div className="flex items-center gap-2">
                     <Cpu size={14} style={{ color: 'var(--accent)', flexShrink: 0 }} />
@@ -109,7 +109,7 @@ export function ChargePointsPage() {
                     </div>
                   </div>
                 </td>
-                <td className="text-xs">{cp.stationName}</td>
+                <td className="text-xs">{cp.stationName || 'Unassigned Station'}</td>
                 <td>
                   <div className="text-xs font-mono">{cp.ocppId}</div>
                   <div className="text-[11px]" style={{ color: 'var(--text-subtle)' }}>OCPP {cp.ocppVersion}</div>

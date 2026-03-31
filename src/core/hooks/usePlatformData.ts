@@ -73,6 +73,96 @@ function asNumber(value: unknown, fallback = 0): number {
   return Number.isFinite(parsed) ? parsed : fallback
 }
 
+const DEFAULT_REMOTE_COMMANDS: ChargePointDetail['remoteCommands'] = [
+  'Remote Start Session',
+  'Soft Reset',
+  'Hard Reboot',
+  'Unlock Connector',
+]
+
+function normalizeChargePointStatus(value: unknown): ChargePointSummary['status'] {
+  const normalized = asString(value, 'OFFLINE').toUpperCase()
+
+  if (normalized === 'ONLINE' || normalized === 'AVAILABLE' || normalized === 'ACTIVE' || normalized === 'CHARGING') {
+    return 'Online'
+  }
+
+  if (normalized === 'DEGRADED' || normalized === 'FAULTED' || normalized === 'UNAVAILABLE') {
+    return 'Degraded'
+  }
+
+  return 'Offline'
+}
+
+function formatHeartbeatLabel(value: unknown): string {
+  const raw = asString(value, '')
+  if (!raw) {
+    return 'No heartbeat'
+  }
+
+  const parsed = new Date(raw)
+  if (Number.isNaN(parsed.getTime())) {
+    return raw
+  }
+
+  return parsed.toLocaleString()
+}
+
+function normalizeChargePointSummary(value: unknown, fallbackIndex = 0): ChargePointSummary {
+  const record = asRecord(value)
+  const station = asRecord(record.station)
+  const connectorType = asString(record.connectorType ?? record.type, 'CCS2')
+  const connectorTypes = asArray<unknown>(record.connectorTypes)
+    .map((entry) => asString(entry))
+    .filter((entry) => entry.length > 0)
+  const status = normalizeChargePointStatus(record.status)
+  const id = asString(record.id, asString(record.ocppId, `charge-point-${fallbackIndex + 1}`))
+  const ocppId = asString(record.ocppId, id)
+  const lastHeartbeat = record.lastHeartbeatLabel ?? record.lastHeartbeat
+
+  return {
+    id,
+    stationId: asString(record.stationId, asString(station.id, 'unknown-station')),
+    stationName: asString(record.stationName ?? station.name, asString(record.stationId, 'Unassigned Station')),
+    model: asString(record.model, ocppId),
+    manufacturer: asString(record.manufacturer ?? record.vendor, 'Unknown Manufacturer'),
+    serialNumber: asString(record.serialNumber, ocppId),
+    firmwareVersion: asString(record.firmwareVersion, 'Unknown firmware'),
+    connectorType,
+    connectorTypes: connectorTypes.length > 0 ? connectorTypes : [connectorType],
+    ocppId,
+    ocppVersion: asString(record.ocppVersion, '1.6'),
+    maxCapacityKw: asNumber(record.maxCapacityKw ?? record.power, 0),
+    status,
+    ocppStatus: asString(record.ocppStatus, status),
+    roamingPublished: Boolean(record.roamingPublished),
+    lastHeartbeatLabel: formatHeartbeatLabel(lastHeartbeat),
+    stale: typeof record.stale === 'boolean' ? record.stale : !asString(record.lastHeartbeat),
+  }
+}
+
+function normalizeChargePointDetail(value: unknown): ChargePointDetail {
+  const record = asRecord(value)
+  const base = normalizeChargePointSummary(record)
+  const unitHealth = asRecord(record.unitHealth)
+  const remoteCommands = asArray<unknown>(record.remoteCommands)
+    .map((entry) => asString(entry))
+    .filter((entry) => entry.length > 0)
+
+  return {
+    ...base,
+    remoteCommands: remoteCommands.length > 0 ? remoteCommands : DEFAULT_REMOTE_COMMANDS,
+    unitHealth: {
+      ocppConnection: asString(
+        unitHealth.ocppConnection,
+        base.status === 'Online' ? 'Connected' : 'Disconnected',
+      ),
+      lastHeartbeat: asString(unitHealth.lastHeartbeat, base.lastHeartbeatLabel),
+      errorCode: asString(unitHealth.errorCode, asString(record.errorCode, 'None')),
+    },
+  }
+}
+
 function normalizeDashboardOverview(value: unknown): DashboardOverviewResponse {
   const record = asRecord(value)
   return {
@@ -524,7 +614,22 @@ export function useChargePoints() {
 
   return useQuery<ChargePointSummary[]>({
     queryKey: ['charge-points', tenantKey],
-    queryFn: async () => asArray<ChargePointSummary>(await fetchJson<unknown>('/api/v1/charge-points')),
+    queryFn: async () => {
+      const seen = new Set<string>()
+      const records = asArray<unknown>(await fetchJson<unknown>('/api/v1/charge-points'))
+
+      return records.map((record, index) => {
+        const normalized = normalizeChargePointSummary(record, index)
+        let stableId = normalized.id || `charge-point-${index + 1}`
+
+        if (seen.has(stableId)) {
+          stableId = `${stableId}-${index + 1}`
+        }
+        seen.add(stableId)
+
+        return { ...normalized, id: stableId }
+      })
+    },
     enabled,
   })
 }
@@ -534,7 +639,8 @@ export function useChargePoint(id?: string) {
 
   return useQuery<ChargePointDetail>({
     queryKey: ['charge-points', tenantKey, id],
-    queryFn: () => fetchJson<ChargePointDetail>(`/api/v1/charge-points/${id}`),
+    queryFn: async () =>
+      normalizeChargePointDetail(await fetchJson<unknown>(`/api/v1/charge-points/${id}`)),
     enabled,
   })
 }
@@ -545,11 +651,11 @@ export function useCreateChargePoint() {
 
   return useMutation({
     mutationFn: (payload: CreateChargePointRequest) =>
-      fetchJson<ChargePointDetail>('/api/v1/charge-points', {
+      fetchJson<unknown>('/api/v1/charge-points', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
-      }),
+      }).then((value) => normalizeChargePointDetail(value)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['charge-points', tenantKey] })
     },

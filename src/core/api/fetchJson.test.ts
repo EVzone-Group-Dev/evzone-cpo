@@ -10,8 +10,11 @@ vi.mock('@/core/auth/authStore', () => ({
 
 describe('fetchJson', () => {
   const mockedGetState = vi.mocked(useAuthStore.getState)
+  const env = import.meta.env as Record<string, string | undefined>
+  const originalApiBaseUrl = env.VITE_API_BASE_URL
 
   beforeEach(() => {
+    env.VITE_API_BASE_URL = ''
     mockedGetState.mockReturnValue({
       activeTenantId: 'tenant-evzone-ke',
       token: 'demo-token',
@@ -19,6 +22,7 @@ describe('fetchJson', () => {
   })
 
   afterEach(() => {
+    env.VITE_API_BASE_URL = originalApiBaseUrl
     vi.restoreAllMocks()
   })
 
@@ -50,5 +54,37 @@ describe('fetchJson', () => {
     )
 
     await expect(fetchJson('/api/example')).rejects.toThrow('Billing service unavailable.')
+  })
+
+  it('prefixes relative paths with VITE_API_BASE_URL when configured', async () => {
+    env.VITE_API_BASE_URL = 'http://localhost:3000'
+
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    await fetchJson('/api/example')
+
+    const [requestUrl] = fetchMock.mock.calls[0]
+    expect(requestUrl).toBe('http://localhost:3000/api/example')
+  })
+
+  it('normalizes malformed VITE_API_BASE_URL values', async () => {
+    env.VITE_API_BASE_URL = 'http://localhost::3000'
+
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    await fetchJson('/api/example')
+
+    const [requestUrl] = fetchMock.mock.calls[0]
+    expect(requestUrl).toBe('http://localhost:3000/api/example')
   })
 })
