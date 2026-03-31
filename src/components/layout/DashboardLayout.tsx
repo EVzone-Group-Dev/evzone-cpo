@@ -47,7 +47,7 @@ export function DashboardLayout({ children, pageTitle, actions }: Props) {
       <div className="flex flex-col flex-1 overflow-hidden min-w-0">
         {/* Top bar */}
         <header
-          className="flex items-center justify-between px-6 py-3 border-b flex-shrink-0"
+          className="flex items-center justify-between gap-2 px-4 sm:px-6 py-2.5 sm:py-3 border-b flex-shrink-0"
           style={{ borderColor: 'var(--border)', background: 'var(--bg-card)', minHeight: 57 }}
         >
           {pageTitle ? (
@@ -131,7 +131,7 @@ export function DashboardLayout({ children, pageTitle, actions }: Props) {
         </header>
 
         {/* Page scroll area */}
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6">
           {children}
         </main>
       </div>
