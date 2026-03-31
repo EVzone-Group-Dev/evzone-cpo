@@ -163,12 +163,114 @@ function normalizeChargePointDetail(value: unknown): ChargePointDetail {
   }
 }
 
-function normalizeDashboardOverview(value: unknown): DashboardOverviewResponse {
-  const record = asRecord(value)
+function toTimestamp(value: unknown): number {
+  const parsed = Date.parse(asString(value, ''))
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+function mapDashboardIncidentSeverity(value: unknown): DashboardOverviewResponse['recentIncidents'][number]['severity'] {
+  const normalized = asString(value, 'LOW').toUpperCase()
+  if (normalized === 'CRITICAL' || normalized === 'HIGH') {
+    return 'High'
+  }
+  if (normalized === 'MEDIUM') {
+    return 'Medium'
+  }
+  return 'Low'
+}
+
+function normalizeDashboardOverview(
+  analyticsValue: unknown,
+  sessionsValue: unknown,
+  incidentsValue: unknown,
+): DashboardOverviewResponse {
+  const analytics = asRecord(analyticsValue)
+  const realtime = asRecord(analytics.realTime)
+  const today = asRecord(analytics.today)
+  const totalSessions = asNumber(analytics.totalSessions ?? today.sessions, 0)
+  const totalEnergy = asNumber(analytics.totalEnergy ?? today.energyDelivered, 0)
+  const revenue = asNumber(analytics.revenue ?? today.revenue, 0)
+  const activeChargers = asNumber(analytics.activeChargers ?? realtime.onlineChargers, 0)
+  const incidents24h = asNumber(analytics.incidents24h ?? today.incidents, 0)
+
+  const kpis: DashboardOverviewResponse['kpis'] = [
+    {
+      id: 'sessions',
+      label: 'Sessions Today',
+      value: totalSessions.toLocaleString(),
+      delta: 'Today',
+      trend: 'up',
+      iconKey: 'activity',
+    },
+    {
+      id: 'energy',
+      label: 'Energy Delivered',
+      value: `${totalEnergy.toFixed(1)} kWh`,
+      delta: 'Today',
+      trend: 'up',
+      iconKey: 'energy',
+    },
+    {
+      id: 'revenue',
+      label: 'Revenue',
+      value: `KES ${Math.round(revenue).toLocaleString()}`,
+      delta: 'Today',
+      trend: 'up',
+      iconKey: 'revenue',
+    },
+    {
+      id: 'active-chargers',
+      label: 'Active Chargers',
+      value: activeChargers.toLocaleString(),
+      delta: 'Live',
+      trend: 'up',
+      iconKey: 'charge-points',
+    },
+    {
+      id: 'incidents',
+      label: 'Incidents (24h)',
+      value: incidents24h.toLocaleString(),
+      delta: '24h',
+      trend: incidents24h > 0 ? 'down' : 'up',
+      iconKey: 'incidents',
+    },
+  ]
+
+  const recentSessions = normalizeSessionRecords(sessionsValue)
+    .sort((a, b) => toTimestamp(b.started) - toTimestamp(a.started))
+    .slice(0, 5)
+    .map((session) => ({
+      id: session.id,
+      station: session.station,
+      cp: session.cp,
+      energy: session.energy,
+      amount: session.amount,
+      status: session.status,
+      method: session.method,
+    }))
+
+  const recentIncidents = asArray<Record<string, unknown>>(incidentsValue)
+    .sort((a, b) => toTimestamp(b.createdAt) - toTimestamp(a.createdAt))
+    .slice(0, 5)
+    .map((incident) => {
+      const status: DashboardOverviewResponse['recentIncidents'][number]['status'] =
+        asString(incident.status, 'OPEN').toUpperCase() === 'OPEN'
+          ? 'Open'
+          : 'Acknowledged'
+
+      return {
+        id: asString(incident.id, 'N/A'),
+        station: asString(asRecord(incident.station).name ?? incident.stationId, 'Unknown Station'),
+        severity: mapDashboardIncidentSeverity(incident.severity),
+        title: asString(incident.title ?? incident.description, 'Incident'),
+        status,
+      }
+    })
+
   return {
-    kpis: asArray<DashboardOverviewResponse['kpis'][number]>(record.kpis),
-    recentIncidents: asArray<DashboardOverviewResponse['recentIncidents'][number]>(record.recentIncidents),
-    recentSessions: asArray<DashboardOverviewResponse['recentSessions'][number]>(record.recentSessions),
+    kpis,
+    recentIncidents,
+    recentSessions,
   }
 }
 
@@ -594,7 +696,15 @@ export function useDashboardOverview(options?: { enabled?: boolean }) {
 
   return useQuery<DashboardOverviewResponse>({
     queryKey: ['dashboard', 'overview', tenantKey],
-    queryFn: async () => normalizeDashboardOverview(await fetchJson<unknown>('/api/v1/analytics/dashboard')),
+    queryFn: async () => {
+      const [analytics, sessions, incidents] = await Promise.all([
+        fetchJson<unknown>('/api/v1/analytics/dashboard'),
+        fetchJson<unknown>('/api/v1/sessions/history/all').catch(() => []),
+        fetchJson<unknown>('/api/v1/incidents').catch(() => []),
+      ])
+
+      return normalizeDashboardOverview(analytics, sessions, incidents)
+    },
     enabled,
   })
 }
