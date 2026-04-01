@@ -1,7 +1,15 @@
 import { useState } from 'react'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
-import { useRoamingSessions } from '@/core/hooks/usePlatformData'
-import { Globe, ArrowDownLeft, Zap, Clock, ShieldCheck, Search } from 'lucide-react'
+import {
+  useRoamingPartnerObservability,
+  useRoamingPartners,
+  useRoamingSessions,
+} from '@/core/hooks/usePlatformData'
+import { AlertTriangle, ArrowDownLeft, Clock, Globe, Search, ShieldCheck, Zap } from 'lucide-react'
+import {
+  buildRoamingPartnerTelemetry,
+  DELIVERY_STATUS_CLASS,
+} from './partnerObservability'
 
 const METRIC_ICONS = {
   incoming: <ArrowDownLeft size={24} />,
@@ -37,6 +45,8 @@ export function RoamingSessionsPage() {
   const [activeTab, setActiveTab] = useState<'all' | 'active' | 'pending'>('all')
   const [search, setSearch] = useState('')
   const { data, isLoading, error } = useRoamingSessions()
+  const { data: partners } = useRoamingPartners()
+  const { data: observability } = useRoamingPartnerObservability()
 
   if (isLoading) {
     return <DashboardLayout pageTitle="Roaming Operations"><div className="p-8 text-center text-subtle">Loading roaming operations...</div></DashboardLayout>
@@ -46,6 +56,8 @@ export function RoamingSessionsPage() {
     return <DashboardLayout pageTitle="Roaming Operations"><div className="p-8 text-center text-danger">Unable to load roaming operations.</div></DashboardLayout>
   }
 
+  const telemetry = buildRoamingPartnerTelemetry(partners, observability)
+  const hasTelemetry = telemetry.views.length > 0
   const filteredSessions = data.sessions.filter((session) => {
     const matchesTab = activeTab === 'all' || (activeTab === 'active' && session.status === 'Active') || (activeTab === 'pending' && session.status === 'Authorized')
     const matchesSearch = session.partyId.toLowerCase().includes(search.toLowerCase()) || session.emspName.toLowerCase().includes(search.toLowerCase())
@@ -54,6 +66,46 @@ export function RoamingSessionsPage() {
 
   return (
     <DashboardLayout pageTitle="Roaming Operations">
+      {hasTelemetry && (
+        <div className={`card mb-6 ${telemetry.attentionPartners.length > 0 ? 'border-warning/20 bg-warning/5' : 'border-ok/20 bg-ok/5'}`}>
+          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+            <div>
+              <div className="section-title text-[10px] text-accent"><AlertTriangle size={14} /> Partner Delivery Watch</div>
+              <h2 className="text-lg font-bold mt-3">
+                {telemetry.attentionPartners.length > 0 ? 'Session traffic is sharing space with partner retry pressure' : 'All instrumented roaming partners look healthy right now'}
+              </h2>
+              <p className="text-sm text-subtle mt-2">
+                {telemetry.attentionPartners.length > 0
+                  ? `${telemetry.attentionPartners.length} partner feeds need attention across callback delivery and retry backlog.`
+                  : `${telemetry.healthyCount} partner feeds are healthy, with no active retry queue or callback failure drift in this tenant scope.`}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2 text-[11px]">
+              <span className="pill pending">{telemetry.totalRetryQueueDepth} queued retries</span>
+              <span className={`pill ${telemetry.totalFailures24h > 0 ? 'faulted' : 'online'}`}>{telemetry.totalFailures24h} failed callbacks</span>
+            </div>
+          </div>
+          {telemetry.attentionPartners.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 mt-5">
+              {telemetry.attentionPartners.slice(0, 3).map((partner) => (
+                <div key={partner.id} className="rounded-xl border border-border bg-bg-card/70 px-4 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="font-semibold text-sm">{partner.name}</div>
+                      <div className="text-[10px] text-subtle font-mono">{partner.partyId} · {partner.country}</div>
+                    </div>
+                    <span className={`pill ${DELIVERY_STATUS_CLASS[partner.deliveryStatus]}`}>{partner.deliveryStatus}</span>
+                  </div>
+                  <div className="text-[11px] text-subtle mt-3">
+                    {partner.successRate} success rate · {partner.retryQueueDepth} queued retries · {partner.callbackFailures24h} failed callbacks
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         {data.metrics.map((metric) => {
           const styles = METRIC_STYLES[metric.tone]
@@ -106,35 +158,50 @@ export function RoamingSessionsPage() {
             </tr>
           </thead>
           <tbody>
-            {filteredSessions.map((session) => (
-              <tr key={session.id} className="hover:bg-bg-muted/30 transition-colors cursor-pointer">
-                <td className="font-mono text-[11px] font-bold text-accent">{session.id}</td>
-                <td>
-                  <div className="text-sm font-semibold">{session.stationName}</div>
-                  <div className="text-[10px] text-subtle uppercase">Connector #1</div>
-                </td>
-                <td>
-                  <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 rounded bg-bg-muted flex items-center justify-center text-[8px] font-bold border border-border">{session.partyId}</div>
-                    <div className="text-xs">{session.emspName}</div>
-                  </div>
-                </td>
-                <td><div className="text-xs text-subtle flex items-center gap-1"><Clock size={12} /> {session.startTime}</div></td>
-                <td>
-                  <div className="text-xs font-semibold">{session.energy} kWh</div>
-                  <div className="w-24 h-1 bg-bg-muted rounded-full mt-1 overflow-hidden">
-                    <div className="h-full bg-accent animate-pulse" style={{ width: '60%' }} />
-                  </div>
-                </td>
-                <td><div className="font-bold text-xs">{session.amount}</div></td>
-                <td><span className={`pill ${SESSION_STATUS_CLASS[session.status]}`}>{session.status}</span></td>
-              </tr>
-            ))}
+            {filteredSessions.map((session) => {
+              const partnerHealth = telemetry.byPartnerId.get(session.partnerId) ?? telemetry.byPartyId.get(session.partyId)
+
+              return (
+                <tr key={session.id} className="hover:bg-bg-muted/30 transition-colors cursor-pointer">
+                  <td className="font-mono text-[11px] font-bold text-accent">{session.id}</td>
+                  <td>
+                    <div className="text-sm font-semibold">{session.stationName}</div>
+                    <div className="text-[10px] text-subtle uppercase">Connector #1</div>
+                  </td>
+                  <td>
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 rounded bg-bg-muted flex items-center justify-center text-[8px] font-bold border border-border">{session.partyId}</div>
+                      <div>
+                        <div className="text-xs">{session.emspName}</div>
+                        {partnerHealth && (
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className={`pill ${DELIVERY_STATUS_CLASS[partnerHealth.deliveryStatus]}`}>{partnerHealth.deliveryStatus}</span>
+                            <span className="text-[10px] text-subtle">{partnerHealth.successRate} success</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </td>
+                  <td><div className="text-xs text-subtle flex items-center gap-1"><Clock size={12} /> {session.startTime}</div></td>
+                  <td>
+                    <div className="text-xs font-semibold">{session.energy} kWh</div>
+                    <div className="w-24 h-1 bg-bg-muted rounded-full mt-1 overflow-hidden">
+                      <div className="h-full bg-accent animate-pulse" style={{ width: '60%' }} />
+                    </div>
+                    {partnerHealth && (
+                      <div className="text-[10px] text-subtle mt-2">{partnerHealth.retryQueueDepth} queued retries · {partnerHealth.callbackFailures24h} failures</div>
+                    )}
+                  </td>
+                  <td><div className="font-bold text-xs">{session.amount}</div></td>
+                  <td><span className={`pill ${SESSION_STATUS_CLASS[session.status]}`}>{session.status}</span></td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
 
-      <div className="mt-8 flex gap-4 overflow-x-auto pb-4">
+      <div className={`mt-8 grid gap-4 ${hasTelemetry ? 'grid-cols-1 xl:grid-cols-3' : 'grid-cols-1 xl:grid-cols-2'}`}>
         <div className="card bg-bg-muted/20 min-w-[300px] flex-1">
           <div className="section-title text-[10px] text-accent"><Globe size={14} /> Regional Reach</div>
           <div className="mt-4 space-y-3">
@@ -158,6 +225,24 @@ export function RoamingSessionsPage() {
             <span>Today</span>
           </div>
         </div>
+        {hasTelemetry && (
+          <div className="card bg-bg-muted/20 min-w-[300px] flex-1">
+            <div className="section-title text-[10px] text-accent"><ShieldCheck size={14} /> Partner Health Snapshot</div>
+            <div className="mt-4 space-y-3">
+              {telemetry.views.map((partner) => (
+                <div key={partner.id} className="rounded-xl border border-border bg-bg-card/50 px-3 py-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <div className="text-sm font-semibold">{partner.name}</div>
+                      <div className="text-[10px] text-subtle">{partner.totalEvents24h.toLocaleString()} events · {partner.successRate} success</div>
+                    </div>
+                    <span className={`pill ${DELIVERY_STATUS_CLASS[partner.deliveryStatus]}`}>{partner.deliveryStatus}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   )

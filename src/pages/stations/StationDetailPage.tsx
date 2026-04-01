@@ -15,9 +15,9 @@ const STATION_CP_STATUS_CLASS = {
 
 export function StationDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const userRole = useAuthStore((state) => state.user?.role)
+  const user = useAuthStore((state) => state.user)
   const { data: station, isLoading, error } = useStation(id)
-  const canConfigureAssets = !!userRole && canManageStations(userRole)
+  const canConfigureAssets = canManageStations(user)
 
   if (isLoading) {
     return <DashboardLayout pageTitle="Loading..."><div className="p-12 text-center text-subtle font-mono animate-pulse">Retrieving station telemetry...</div></DashboardLayout>

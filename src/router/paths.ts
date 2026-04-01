@@ -8,6 +8,7 @@ export const PATHS = {
   DASHBOARD_FINANCE: '/dashboard/finance',
   DASHBOARD_OPERATOR: '/dashboard/operator',
   DASHBOARD_TECHNICIAN: '/dashboard/technician',
+  SITE_DASHBOARD: '/site-dashboard',
 
   // Infrastructure
   STATIONS: '/stations',
@@ -32,6 +33,8 @@ export const PATHS = {
 
   // Roaming
   OCPI_PARTNERS: '/roaming/partners',
+  OCPI_SESSIONS: '/roaming/sessions',
+  OCPI_COMMANDS: '/roaming/commands',
   OCPI_CDRS: '/roaming/cdrs',
 
   // Finance

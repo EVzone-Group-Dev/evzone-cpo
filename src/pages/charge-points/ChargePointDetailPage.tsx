@@ -54,7 +54,15 @@ export function ChargePointDetailPage() {
   const roaming = roamingOverride ?? chargePoint.roamingPublished
   const connectorTypes = chargePoint.connectorTypes?.length
     ? chargePoint.connectorTypes
-    : [chargePoint.connectorType]
+    : (chargePoint.connectorType ? [chargePoint.connectorType] : ['N/A'])
+  const remoteCommands = Array.isArray(chargePoint.remoteCommands) && chargePoint.remoteCommands.length > 0
+    ? chargePoint.remoteCommands
+    : ['Remote Start Session', 'Soft Reset', 'Hard Reboot', 'Unlock Connector']
+  const unitHealth = chargePoint.unitHealth ?? {
+    ocppConnection: chargePoint.status === 'Online' ? 'Connected' : 'Disconnected',
+    lastHeartbeat: chargePoint.lastHeartbeatLabel ?? 'No heartbeat',
+    errorCode: 'None',
+  }
 
   const sendCmd = async (command: string) => {
     if (!id) {
@@ -64,15 +72,42 @@ export function ChargePointDetailPage() {
     setCmdFeedback(`${command} command sent — awaiting response…`)
 
     try {
-      const response = await fetchJson<{ message: string }>('/api/charge-points/' + id + '/commands', {
+      const commandRequest = (() => {
+        if (command === 'Remote Start Session') {
+          return {
+            path: `/api/v1/charge-points/${id}/commands/remote-start`,
+            payload: { idTag: 'EVZONE_REMOTE' },
+          }
+        }
+        if (command === 'Soft Reset') {
+          return {
+            path: `/api/v1/charge-points/${id}/commands/soft-reset`,
+            payload: undefined,
+          }
+        }
+        if (command === 'Hard Reboot') {
+          return {
+            path: `/api/v1/charge-points/${id}/reboot`,
+            payload: undefined,
+          }
+        }
+        if (command === 'Unlock Connector') {
+          return {
+            path: `/api/v1/charge-points/${id}/commands/unlock`,
+            payload: { connectorId: 1 },
+          }
+        }
+
+        throw new Error(`Unsupported command: ${command}`)
+      })()
+
+      const response = await fetchJson<{ message?: string }>(commandRequest.path, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ command }),
+        headers: commandRequest.payload ? { 'Content-Type': 'application/json' } : undefined,
+        body: commandRequest.payload ? JSON.stringify(commandRequest.payload) : undefined,
       })
 
-      setCmdFeedback(`✓ ${response.message}`)
+      setCmdFeedback(`✓ ${response.message ?? 'Command queued successfully.'}`)
     } catch (err) {
       setCmdFeedback(err instanceof Error ? err.message : 'Command failed.')
     }
@@ -182,7 +217,7 @@ export function ChargePointDetailPage() {
               <div className={`alert ${cmdFeedback.startsWith('✓') ? 'success' : 'info'} text-xs mb-3`}>{cmdFeedback}</div>
             )}
             <div className="space-y-2">
-              {chargePoint.remoteCommands.map((command) => (
+              {remoteCommands.map((command) => (
                 <button key={command} className="btn secondary w-full flex items-center gap-2" onClick={() => sendCmd(command)}>
                   {COMMAND_ICONS[command as keyof typeof COMMAND_ICONS]}
                   {command}
@@ -193,9 +228,9 @@ export function ChargePointDetailPage() {
           <div className="card">
             <div className="section-title">Unit Health</div>
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between"><span style={{ color: 'var(--text-muted)' }}>OCPP Connection</span><span style={{ color: 'var(--ok)' }}>{chargePoint.unitHealth.ocppConnection}</span></div>
-              <div className="flex justify-between"><span style={{ color: 'var(--text-muted)' }}>Last Heartbeat</span><span>{chargePoint.unitHealth.lastHeartbeat}</span></div>
-              <div className="flex justify-between"><span style={{ color: 'var(--text-muted)' }}>Error Code</span><span>{chargePoint.unitHealth.errorCode}</span></div>
+              <div className="flex justify-between"><span style={{ color: 'var(--text-muted)' }}>OCPP Connection</span><span style={{ color: 'var(--ok)' }}>{unitHealth.ocppConnection}</span></div>
+              <div className="flex justify-between"><span style={{ color: 'var(--text-muted)' }}>Last Heartbeat</span><span>{unitHealth.lastHeartbeat}</span></div>
+              <div className="flex justify-between"><span style={{ color: 'var(--text-muted)' }}>Error Code</span><span>{unitHealth.errorCode}</span></div>
             </div>
           </div>
         </div>

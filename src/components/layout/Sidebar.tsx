@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import {
-  ACCESS_POLICY,
-  canAccessRole,
+  canAccessPolicy,
+  getUserRoleLabel,
+  type AccessPolicyKey,
 } from '@/core/auth/access'
 import { useAuthStore } from '@/core/auth/authStore'
 import { useTenant } from '@/core/hooks/useTenant'
-import type { CPORole } from '@/core/types/domain'
 import { PATHS } from '@/router/paths'
 import {
   LayoutDashboard, Zap, Cpu, Activity, AlertTriangle, Bell,
@@ -21,7 +21,7 @@ interface NavGroup {
 }
 
 interface NavItem {
-  allowedRoles: readonly CPORole[]
+  policy: AccessPolicyKey
   label: string
   icon: React.ReactNode
   path: string
@@ -31,59 +31,61 @@ const NAV: NavGroup[] = [
   {
     label: 'Overview',
     items: [
-      { label: 'Dashboard', icon: <LayoutDashboard size={16} />, path: PATHS.DASHBOARD, allowedRoles: ACCESS_POLICY.dashboardHome },
+      { label: 'Dashboard', icon: <LayoutDashboard size={16} />, path: PATHS.DASHBOARD, policy: 'dashboardHome' },
     ],
   },
   {
     label: 'Infrastructure',
     items: [
-      { label: 'Stations', icon: <Zap size={16} />, path: PATHS.STATIONS, allowedRoles: ACCESS_POLICY.stationsRead },
-      { label: 'Charge Points', icon: <Cpu size={16} />, path: PATHS.CHARGE_POINTS, allowedRoles: ACCESS_POLICY.chargePointsRead },
-      { label: 'Swap Stations', icon: <RefreshCw size={16} />, path: PATHS.SWAP_STATIONS, allowedRoles: ACCESS_POLICY.swapStationsRead },
+      { label: 'Stations', icon: <Zap size={16} />, path: PATHS.STATIONS, policy: 'stationsRead' },
+      { label: 'Charge Points', icon: <Cpu size={16} />, path: PATHS.CHARGE_POINTS, policy: 'chargePointsRead' },
+      { label: 'Swap Stations', icon: <RefreshCw size={16} />, path: PATHS.SWAP_STATIONS, policy: 'swapStationsRead' },
     ],
   },
   {
     label: 'Operations',
     items: [
-      { label: 'Sessions', icon: <Activity size={16} />, path: PATHS.SESSIONS, allowedRoles: ACCESS_POLICY.sessionsRead },
-      { label: 'Swap Sessions', icon: <RefreshCw size={16} />, path: PATHS.SWAP_SESSIONS, allowedRoles: ACCESS_POLICY.swapSessionsRead },
-      { label: 'Incidents', icon: <AlertTriangle size={16} />, path: PATHS.INCIDENTS, allowedRoles: ACCESS_POLICY.incidentsRead },
-      { label: 'Alerts', icon: <Bell size={16} />, path: PATHS.ALERTS, allowedRoles: ACCESS_POLICY.alertsRead },
+      { label: 'Sessions', icon: <Activity size={16} />, path: PATHS.SESSIONS, policy: 'sessionsRead' },
+      { label: 'Swap Sessions', icon: <RefreshCw size={16} />, path: PATHS.SWAP_SESSIONS, policy: 'swapSessionsRead' },
+      { label: 'Incidents', icon: <AlertTriangle size={16} />, path: PATHS.INCIDENTS, policy: 'incidentsRead' },
+      { label: 'Alerts', icon: <Bell size={16} />, path: PATHS.ALERTS, policy: 'alertsRead' },
     ],
   },
   {
     label: 'Energy',
     items: [
-      { label: 'Smart Charging', icon: <Gauge size={16} />, path: PATHS.SMART_CHARGING, allowedRoles: ACCESS_POLICY.smartChargingRead },
-      { label: 'Load Policy', icon: <TrendingUp size={16} />, path: PATHS.LOAD_POLICY, allowedRoles: ACCESS_POLICY.loadPoliciesRead },
-      { label: 'Battery Inventory', icon: <Package size={16} />, path: PATHS.BATTERY_INVENTORY, allowedRoles: ACCESS_POLICY.batteryInventoryRead },
+      { label: 'Smart Charging', icon: <Gauge size={16} />, path: PATHS.SMART_CHARGING, policy: 'smartChargingRead' },
+      { label: 'Load Policy', icon: <TrendingUp size={16} />, path: PATHS.LOAD_POLICY, policy: 'loadPoliciesRead' },
+      { label: 'Battery Inventory', icon: <Package size={16} />, path: PATHS.BATTERY_INVENTORY, policy: 'batteryInventoryRead' },
     ],
   },
   {
     label: 'Roaming (OCPI)',
     items: [
-      { label: 'Partners', icon: <Network size={16} />, path: PATHS.OCPI_PARTNERS, allowedRoles: ACCESS_POLICY.roamingRead },
-      { label: 'CDR Ledger', icon: <BookOpen size={16} />, path: PATHS.OCPI_CDRS, allowedRoles: ACCESS_POLICY.roamingRead },
+      { label: 'Partners', icon: <Network size={16} />, path: PATHS.OCPI_PARTNERS, policy: 'roamingRead' },
+      { label: 'Sessions', icon: <Activity size={16} />, path: PATHS.OCPI_SESSIONS, policy: 'roamingRead' },
+      { label: 'Commands', icon: <RefreshCw size={16} />, path: PATHS.OCPI_COMMANDS, policy: 'roamingRead' },
+      { label: 'CDR Ledger', icon: <BookOpen size={16} />, path: PATHS.OCPI_CDRS, policy: 'roamingRead' },
     ],
   },
   {
     label: 'Finance',
     items: [
-      { label: 'Tariffs', icon: <DollarSign size={16} />, path: PATHS.TARIFFS, allowedRoles: ACCESS_POLICY.tariffsRead },
-      { label: 'Billing', icon: <FileText size={16} />, path: PATHS.BILLING, allowedRoles: ACCESS_POLICY.billingRead },
-      { label: 'Payouts', icon: <TrendingUp size={16} />, path: PATHS.PAYOUTS, allowedRoles: ACCESS_POLICY.payoutsRead },
-      { label: 'Settlement', icon: <ShieldCheck size={16} />, path: PATHS.SETTLEMENT, allowedRoles: ACCESS_POLICY.settlementRead },
+      { label: 'Tariffs', icon: <DollarSign size={16} />, path: PATHS.TARIFFS, policy: 'tariffsRead' },
+      { label: 'Billing', icon: <FileText size={16} />, path: PATHS.BILLING, policy: 'billingRead' },
+      { label: 'Payouts', icon: <TrendingUp size={16} />, path: PATHS.PAYOUTS, policy: 'payoutsRead' },
+      { label: 'Settlement', icon: <ShieldCheck size={16} />, path: PATHS.SETTLEMENT, policy: 'settlementRead' },
     ],
   },
   {
     label: 'Platform',
     items: [
-      { label: 'Reports', icon: <BarChart3 size={16} />, path: PATHS.REPORTS, allowedRoles: ACCESS_POLICY.reportsRead },
-      { label: 'Team', icon: <Users size={16} />, path: PATHS.TEAM, allowedRoles: ACCESS_POLICY.teamRead },
-      { label: 'Audit Logs', icon: <FileText size={16} />, path: PATHS.AUDIT_LOGS, allowedRoles: ACCESS_POLICY.auditLogsRead },
-      { label: 'Webhooks', icon: <Webhook size={16} />, path: PATHS.WEBHOOKS, allowedRoles: ACCESS_POLICY.platformAdminRead },
-      { label: 'Integrations', icon: <Puzzle size={16} />, path: PATHS.INTEGRATIONS, allowedRoles: ACCESS_POLICY.platformAdminRead },
-      { label: 'Protocols', icon: <Globe2 size={16} />, path: PATHS.PROTOCOLS, allowedRoles: ACCESS_POLICY.platformAdminRead },
+      { label: 'Reports', icon: <BarChart3 size={16} />, path: PATHS.REPORTS, policy: 'reportsRead' },
+      { label: 'Team', icon: <Users size={16} />, path: PATHS.TEAM, policy: 'teamRead' },
+      { label: 'Audit Logs', icon: <FileText size={16} />, path: PATHS.AUDIT_LOGS, policy: 'auditLogsRead' },
+      { label: 'Webhooks', icon: <Webhook size={16} />, path: PATHS.WEBHOOKS, policy: 'platformAdminRead' },
+      { label: 'Integrations', icon: <Puzzle size={16} />, path: PATHS.INTEGRATIONS, policy: 'platformAdminRead' },
+      { label: 'Protocols', icon: <Globe2 size={16} />, path: PATHS.PROTOCOLS, policy: 'platformAdminRead' },
     ],
   },
 ]
@@ -94,7 +96,6 @@ export function Sidebar() {
   const { activeTenant } = useTenant()
   const [collapsed, setCollapsed] = useState(false)
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
-  const userRole = user?.role
 
   return (
     <aside
@@ -127,7 +128,7 @@ export function Sidebar() {
       {/* Navigation */}
       <nav className="sidebar-scroll flex-1 overflow-y-auto py-2 space-y-1">
         {NAV.map(group => {
-          const visibleItems = group.items.filter((item) => canAccessRole(userRole, item.allowedRoles))
+          const visibleItems = group.items.filter((item) => canAccessPolicy(user, item.policy))
           if (visibleItems.length === 0) return null
 
           return (
@@ -169,7 +170,7 @@ export function Sidebar() {
               {!collapsed && (
                 <div className="overflow-hidden text-left">
                   <div className="text-xs font-semibold text-[var(--text)] truncate">{user.name}</div>
-                  <div className="text-[10px] text-[var(--text-subtle)] truncate">{user.role}</div>
+                  <div className="text-[10px] text-[var(--text-subtle)] truncate">{getUserRoleLabel(user)}</div>
                   {activeTenant && (
                     <div className="text-[10px] text-[var(--accent)] truncate">{activeTenant.name}</div>
                   )}
@@ -178,7 +179,7 @@ export function Sidebar() {
             </button>
             {isProfileMenuOpen && (
               <div className={`mt-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] p-1 ${collapsed ? 'absolute right-3 bottom-14 w-44 z-50 shadow-2xl' : ''}`}>
-                {canAccessRole(userRole, ACCESS_POLICY.settingsRead) && (
+                {canAccessPolicy(user, 'settingsRead') && (
                   <Link
                     to={PATHS.SETTINGS}
                     className="nav-item"

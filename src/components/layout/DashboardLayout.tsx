@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { Sidebar } from '@/components/layout/Sidebar'
+import { getUserRoleLabel } from '@/core/auth/access'
 import { useAuthStore } from '@/core/auth/authStore'
 import { useTenant } from '@/core/hooks/useTenant'
 import { Bell, LogOut, Settings } from 'lucide-react'
@@ -47,7 +48,7 @@ export function DashboardLayout({ children, pageTitle, actions }: Props) {
       <div className="flex flex-col flex-1 overflow-hidden min-w-0">
         {/* Top bar */}
         <header
-          className="flex items-center justify-between px-6 py-3 border-b flex-shrink-0"
+          className="flex items-center justify-between gap-2 px-4 sm:px-6 py-2.5 sm:py-3 border-b flex-shrink-0"
           style={{ borderColor: 'var(--border)', background: 'var(--bg-card)', minHeight: 57 }}
         >
           {pageTitle ? (
@@ -98,7 +99,7 @@ export function DashboardLayout({ children, pageTitle, actions }: Props) {
                   <div className="absolute right-0 top-10 z-50 w-64 rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-2 shadow-2xl">
                     <div className="px-3 py-2 border-b border-[var(--border)]">
                       <div className="text-sm font-semibold text-[var(--text)]">{user.name}</div>
-                      <div className="text-[11px] text-[var(--text-subtle)]">{user.role}</div>
+                      <div className="text-[11px] text-[var(--text-subtle)]">{getUserRoleLabel(user)}</div>
                       {activeTenant && (
                         <div className="text-[11px] text-[var(--accent)] mt-1">{activeTenant.name}</div>
                       )}
@@ -131,7 +132,7 @@ export function DashboardLayout({ children, pageTitle, actions }: Props) {
         </header>
 
         {/* Page scroll area */}
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6">
           {children}
         </main>
       </div>

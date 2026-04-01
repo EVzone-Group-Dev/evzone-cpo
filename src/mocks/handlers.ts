@@ -1,6 +1,7 @@
 import {
   ACCESS_POLICY,
-  canAccessRole,
+  canAccessPolicy,
+  type AccessPolicyKey,
 } from '@/core/auth/access'
 import type { CPORole } from '@/core/types/domain'
 import { http, HttpResponse } from 'msw'
@@ -21,6 +22,8 @@ import {
   getOCPICdrs,
   getProtocolEngine,
   getSwapRebalancing,
+  getRoamingPartnerObservability,
+  getRoamingPartnerObservabilityDetail,
   getReports,
   getRoamingSessions,
   getSettlement,
@@ -102,25 +105,26 @@ function unauthorized() {
   return HttpResponse.json({ message: 'Unauthorized.' }, { status: 401 })
 }
 
-function forbidden(role: CPORole, allowedRoles: readonly CPORole[]) {
+function forbidden(role: CPORole, policy: AccessPolicyKey) {
   return HttpResponse.json(
     {
       message: 'Forbidden.',
       role,
-      allowedRoles,
+      allowedRoles: ACCESS_POLICY[policy],
+      policy,
     },
     { status: 403 },
   )
 }
 
-function authorize(request: Request, allowedRoles: readonly CPORole[]): AccessResult {
+function authorize(request: Request, policy: AccessPolicyKey): AccessResult {
   const access = getRequestAccess(request)
   if (!access) {
     return { ok: false, response: unauthorized() }
   }
 
-  if (!canAccessRole(access.role, allowedRoles)) {
-    return { ok: false, response: forbidden(access.role, allowedRoles) }
+  if (!canAccessPolicy({ role: access.role }, policy)) {
+    return { ok: false, response: forbidden(access.role, policy) }
   }
 
   return { ok: true, access }
@@ -141,31 +145,31 @@ export const handlers = [
   }),
 
   http.get('/api/tenancy/context', ({ request }) => {
-    const result = authorize(request, ACCESS_POLICY.tenancyContext)
+    const result = authorize(request, 'tenancyContext')
     if (!result.ok) return result.response
     return HttpResponse.json(result.access.context)
   }),
 
   http.get('/api/dashboard/overview', ({ request }) => {
-    const result = authorize(request, ACCESS_POLICY.dashboardHome)
+    const result = authorize(request, 'dashboardHome')
     if (!result.ok) return result.response
     return HttpResponse.json(getDashboardOverview(result.access.tenantId))
   }),
 
   http.get('/api/dashboard/site-owner', ({ request }) => {
-    const result = authorize(request, ACCESS_POLICY.siteDashboard)
+    const result = authorize(request, 'siteDashboard')
     if (!result.ok) return result.response
     return HttpResponse.json(getSiteOwnerDashboard(result.access.tenantId))
   }),
 
   http.get('/api/stations', ({ request }) => {
-    const result = authorize(request, ACCESS_POLICY.stationsRead)
+    const result = authorize(request, 'stationsRead')
     if (!result.ok) return result.response
     return HttpResponse.json(listStations(result.access.tenantId))
   }),
 
   http.get('/api/stations/:id', ({ params, request }) => {
-    const result = authorize(request, ACCESS_POLICY.stationsRead)
+    const result = authorize(request, 'stationsRead')
     if (!result.ok) return result.response
 
     const station = getStationById(String(params.id), result.access.tenantId)
@@ -174,13 +178,13 @@ export const handlers = [
   }),
 
   http.get('/api/swapping/stations', ({ request }) => {
-    const result = authorize(request, ACCESS_POLICY.swapStationsRead)
+    const result = authorize(request, 'swapStationsRead')
     if (!result.ok) return result.response
     return HttpResponse.json(listSwapStations(result.access.tenantId))
   }),
 
   http.get('/api/swapping/stations/:id', ({ params, request }) => {
-    const result = authorize(request, ACCESS_POLICY.swapStationsRead)
+    const result = authorize(request, 'swapStationsRead')
     if (!result.ok) return result.response
 
     const station = getSwapStationById(String(params.id), result.access.tenantId)
@@ -189,13 +193,13 @@ export const handlers = [
   }),
 
   http.get('/api/charge-points', ({ request }) => {
-    const result = authorize(request, ACCESS_POLICY.chargePointsRead)
+    const result = authorize(request, 'chargePointsRead')
     if (!result.ok) return result.response
     return HttpResponse.json(listChargePoints(result.access.tenantId))
   }),
 
   http.get('/api/charge-points/:id', ({ params, request }) => {
-    const result = authorize(request, ACCESS_POLICY.chargePointsRead)
+    const result = authorize(request, 'chargePointsRead')
     if (!result.ok) return result.response
 
     const chargePoint = getChargePointById(String(params.id), result.access.tenantId)
@@ -204,7 +208,7 @@ export const handlers = [
   }),
 
   http.post('/api/charge-points', async ({ request }) => {
-    const result = authorize(request, ACCESS_POLICY.chargePointsWrite)
+    const result = authorize(request, 'chargePointsWrite')
     if (!result.ok) return result.response
 
     const payload = await request.json() as Parameters<typeof createChargePoint>[0]
@@ -218,7 +222,7 @@ export const handlers = [
   }),
 
   http.post('/api/charge-points/:id/commands', async ({ params, request }) => {
-    const result = authorize(request, ACCESS_POLICY.chargePointCommands)
+    const result = authorize(request, 'chargePointCommands')
     if (!result.ok) return result.response
 
     const chargePoint = getChargePointById(String(params.id), result.access.tenantId)
@@ -233,31 +237,31 @@ export const handlers = [
   }),
 
   http.get('/api/sessions', ({ request }) => {
-    const result = authorize(request, ACCESS_POLICY.sessionsRead)
+    const result = authorize(request, 'sessionsRead')
     if (!result.ok) return result.response
     return HttpResponse.json(listSessions(result.access.tenantId))
   }),
 
   http.get('/api/swapping/sessions', ({ request }) => {
-    const result = authorize(request, ACCESS_POLICY.swapSessionsRead)
+    const result = authorize(request, 'swapSessionsRead')
     if (!result.ok) return result.response
     return HttpResponse.json(listBatterySwapSessions(result.access.tenantId))
   }),
 
   http.get('/api/swapping/inventory', ({ request }) => {
-    const result = authorize(request, ACCESS_POLICY.batteryInventoryRead)
+    const result = authorize(request, 'batteryInventoryRead')
     if (!result.ok) return result.response
     return HttpResponse.json(getBatteryInventory(result.access.tenantId))
   }),
 
   http.get('/api/swapping/rebalancing', ({ request }) => {
-    const result = authorize(request, ACCESS_POLICY.swapStationsRead)
+    const result = authorize(request, 'swapStationsRead')
     if (!result.ok) return result.response
     return HttpResponse.json(getSwapRebalancing(result.access.tenantId))
   }),
 
   http.post('/api/swapping/rebalancing/:id/action', async ({ params, request }) => {
-    const result = authorize(request, ACCESS_POLICY.swapDispatchWrite)
+    const result = authorize(request, 'swapDispatchWrite')
     if (!result.ok) return result.response
 
     const payload = await request.json() as Parameters<typeof applySwapDispatchAction>[1]
@@ -274,7 +278,7 @@ export const handlers = [
   }),
 
   http.post('/api/swapping/packs/:id/transition', async ({ params, request }) => {
-    const result = authorize(request, ACCESS_POLICY.swapLifecycleWrite)
+    const result = authorize(request, 'swapLifecycleWrite')
     if (!result.ok) return result.response
 
     const payload = await request.json() as Parameters<typeof transitionSwapPack>[1]
@@ -291,7 +295,7 @@ export const handlers = [
   }),
 
   http.post('/api/swapping/packs/:id/inspection', async ({ params, request }) => {
-    const result = authorize(request, ACCESS_POLICY.swapLifecycleWrite)
+    const result = authorize(request, 'swapLifecycleWrite')
     if (!result.ok) return result.response
 
     const payload = await request.json() as Parameters<typeof inspectSwapPack>[1]
@@ -308,7 +312,7 @@ export const handlers = [
   }),
 
   http.post('/api/swapping/packs/:id/retirement', async ({ params, request }) => {
-    const result = authorize(request, ACCESS_POLICY.swapLifecycleWrite)
+    const result = authorize(request, 'swapLifecycleWrite')
     if (!result.ok) return result.response
 
     const payload = await request.json() as Parameters<typeof applySwapPackRetirementDecision>[1]
@@ -325,121 +329,136 @@ export const handlers = [
   }),
 
   http.get('/api/incidents', ({ request }) => {
-    const result = authorize(request, ACCESS_POLICY.incidentsRead)
+    const result = authorize(request, 'incidentsRead')
     if (!result.ok) return result.response
     return HttpResponse.json(getIncidentCommand(result.access.tenantId))
   }),
 
   http.get('/api/alerts', ({ request }) => {
-    const result = authorize(request, ACCESS_POLICY.alertsRead)
+    const result = authorize(request, 'alertsRead')
     if (!result.ok) return result.response
     return HttpResponse.json(listAlerts(result.access.tenantId))
   }),
 
   http.get('/api/tariffs', ({ request }) => {
-    const result = authorize(request, ACCESS_POLICY.tariffsRead)
+    const result = authorize(request, 'tariffsRead')
     if (!result.ok) return result.response
     return HttpResponse.json(listTariffs(result.access.tenantId))
   }),
 
   http.get('/api/energy/smart-charging', ({ request }) => {
-    const result = authorize(request, ACCESS_POLICY.smartChargingRead)
+    const result = authorize(request, 'smartChargingRead')
     if (!result.ok) return result.response
     return HttpResponse.json(getSmartCharging(result.access.tenantId))
   }),
 
   http.get('/api/energy/load-policies', ({ request }) => {
-    const result = authorize(request, ACCESS_POLICY.loadPoliciesRead)
+    const result = authorize(request, 'loadPoliciesRead')
     if (!result.ok) return result.response
     return HttpResponse.json(listLoadPolicies(result.access.tenantId))
   }),
 
   http.get('/api/roaming/partners', ({ request }) => {
-    const result = authorize(request, ACCESS_POLICY.roamingRead)
+    const result = authorize(request, 'roamingRead')
     if (!result.ok) return result.response
     return HttpResponse.json(listRoamingPartners(result.access.tenantId))
   }),
 
+  http.get('/api/roaming/partners/observability', ({ request }) => {
+    const result = authorize(request, 'roamingRead')
+    if (!result.ok) return result.response
+    return HttpResponse.json(getRoamingPartnerObservability(result.access.tenantId))
+  }),
+
+  http.get('/api/roaming/partners/:id/observability', ({ params, request }) => {
+    const result = authorize(request, 'roamingRead')
+    if (!result.ok) return result.response
+
+    const observability = getRoamingPartnerObservabilityDetail(String(params.id), result.access.tenantId)
+    if (!observability) return HttpResponse.json({ message: 'Roaming partner observability not found.' }, { status: 404 })
+    return HttpResponse.json(observability)
+  }),
+
   http.get('/api/roaming/sessions', ({ request }) => {
-    const result = authorize(request, ACCESS_POLICY.roamingRead)
+    const result = authorize(request, 'roamingRead')
     if (!result.ok) return result.response
     return HttpResponse.json(getRoamingSessions(result.access.tenantId))
   }),
 
   http.get('/api/roaming/cdrs', ({ request }) => {
-    const result = authorize(request, ACCESS_POLICY.roamingRead)
+    const result = authorize(request, 'roamingRead')
     if (!result.ok) return result.response
     return HttpResponse.json(getOCPICdrs(result.access.tenantId))
   }),
 
   http.get('/api/roaming/commands', ({ request }) => {
-    const result = authorize(request, ACCESS_POLICY.roamingRead)
+    const result = authorize(request, 'roamingRead')
     if (!result.ok) return result.response
     return HttpResponse.json(getOCPICommands(result.access.tenantId))
   }),
 
   http.get('/api/finance/billing', ({ request }) => {
-    const result = authorize(request, ACCESS_POLICY.billingRead)
+    const result = authorize(request, 'billingRead')
     if (!result.ok) return result.response
     return HttpResponse.json(getBilling(result.access.tenantId))
   }),
 
   http.get('/api/finance/payouts', ({ request }) => {
-    const result = authorize(request, ACCESS_POLICY.payoutsRead)
+    const result = authorize(request, 'payoutsRead')
     if (!result.ok) return result.response
     return HttpResponse.json(listPayouts(result.access.tenantId))
   }),
 
   http.get('/api/finance/settlement', ({ request }) => {
-    const result = authorize(request, ACCESS_POLICY.settlementRead)
+    const result = authorize(request, 'settlementRead')
     if (!result.ok) return result.response
     return HttpResponse.json(getSettlement(result.access.tenantId))
   }),
 
   http.get('/api/team', ({ request }) => {
-    const result = authorize(request, ACCESS_POLICY.teamRead)
+    const result = authorize(request, 'teamRead')
     if (!result.ok) return result.response
     return HttpResponse.json(listTeamMembers(result.access.tenantId))
   }),
 
   http.get('/api/audit-logs', ({ request }) => {
-    const result = authorize(request, ACCESS_POLICY.auditLogsRead)
+    const result = authorize(request, 'auditLogsRead')
     if (!result.ok) return result.response
     return HttpResponse.json(listAuditLogs(result.access.tenantId))
   }),
 
   http.get('/api/reports', ({ request }) => {
-    const result = authorize(request, ACCESS_POLICY.reportsRead)
+    const result = authorize(request, 'reportsRead')
     if (!result.ok) return result.response
     return HttpResponse.json(getReports(result.access.tenantId))
   }),
 
   http.get('/api/protocols', ({ request }) => {
-    const result = authorize(request, ACCESS_POLICY.platformAdminRead)
+    const result = authorize(request, 'platformAdminRead')
     if (!result.ok) return result.response
     return HttpResponse.json(getProtocolEngine(result.access.tenantId))
   }),
 
   http.get('/api/platform/integrations', ({ request }) => {
-    const result = authorize(request, ACCESS_POLICY.platformAdminRead)
+    const result = authorize(request, 'platformAdminRead')
     if (!result.ok) return result.response
     return HttpResponse.json(getIntegrationsModule(result.access.tenantId))
   }),
 
   http.get('/api/platform/webhooks', ({ request }) => {
-    const result = authorize(request, ACCESS_POLICY.platformAdminRead)
+    const result = authorize(request, 'platformAdminRead')
     if (!result.ok) return result.response
     return HttpResponse.json(getWebhooksModule(result.access.tenantId))
   }),
 
   http.get('/api/platform/notifications', ({ request }) => {
-    const result = authorize(request, ACCESS_POLICY.notificationsRead)
+    const result = authorize(request, 'notificationsRead')
     if (!result.ok) return result.response
     return HttpResponse.json(getNotificationsModule(result.access.tenantId))
   }),
 
   http.post('/api/commands/start', async ({ request }) => {
-    const result = authorize(request, ACCESS_POLICY.remoteCommandStart)
+    const result = authorize(request, 'remoteCommandStart')
     if (!result.ok) return result.response
 
     const { chargePointId } = await request.json() as { chargePointId: string }
@@ -450,5 +469,29 @@ export const handlers = [
       tenant: result.access.context.activeTenant.name,
       chargePointId,
     })
+  }),
+  http.get('/api/swapping/packs/:id/telemetry', () => {
+    // Generate mock cell voltages near 3.2V
+    const generateCell = () => 3.2 + (Math.random() * 0.1 - 0.05)
+    const cells = Array(16).fill(0).map(generateCell)
+    
+    // Create an artificial imbalance for visual demo purposes
+    if (Math.random() > 0.5) {
+        cells[5] = 2.85 // Low voltage
+    } else {
+        cells[10] = 3.68 // High voltage
+    }
+    
+    return HttpResponse.json({
+      voltage: cells.reduce((sum, c) => sum + c, 0),
+      current: 12.5 + Math.random(),
+      soc: 85 - Math.random() * 2,
+      temps: [24.5 + Math.random(), 25.1 + Math.random()],
+      cells
+    })
+  }),
+
+  http.post('/api/swapping/packs/:id/kill', () => {
+    return HttpResponse.json({ message: 'Kill command dispatched' })
   }),
 ]

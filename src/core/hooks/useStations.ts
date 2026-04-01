@@ -10,7 +10,7 @@ export function useStations() {
 
   return useQuery<Station[]>({
     queryKey: ['stations', activeTenantId ?? 'default'],
-    queryFn: () => fetchJson<Station[]>('/api/stations'),
+    queryFn: () => fetchJson<Station[]>('/api/v1/stations'),
     enabled: isReady,
   })
 }
@@ -20,7 +20,7 @@ export function useStation(id?: string) {
 
   return useQuery<StationDetail>({
     queryKey: ['stations', activeTenantId ?? 'default', id],
-    queryFn: () => fetchJson<StationDetail>(`/api/stations/${id}`),
+    queryFn: () => fetchJson<StationDetail>(`/api/v1/stations/${id}`),
     enabled: isReady && !!id,
   })
 }

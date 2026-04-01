@@ -1,4 +1,4 @@
-import type { CPORole, CPOUser, ServiceMode } from '@/core/types/domain'
+import type { AccessProfile, CPORole, CPOUser, ServiceMode } from '@/core/types/domain'
 
 export interface DemoUserHint {
   id: string
@@ -9,8 +9,15 @@ export interface DemoUserHint {
 }
 
 export interface LoginResponse {
-  token: string
-  user: CPOUser
+  accessToken?: string
+  refreshToken?: string
+  token?: string
+  user: AuthenticatedApiUser
+}
+
+export type AuthenticatedApiUser = Omit<CPOUser, 'role'> & {
+  role: string
+  accessProfile?: AccessProfile | null
 }
 
 export type TenantScope = 'platform' | 'organization' | 'site'
@@ -506,6 +513,60 @@ export interface RoamingPartnerRecord {
   version: string
 }
 
+export interface PartnerObservabilityMetric {
+  id: 'healthy' | 'attention' | 'events' | 'failures'
+  label: string
+  note: string
+  tone: 'accent' | 'ok' | 'warning' | 'danger'
+  value: string
+}
+
+export interface RoamingPartnerObservabilitySummary {
+  callbackFailures24h: number
+  deliveryStatus: 'Healthy' | 'Retrying' | 'Degraded'
+  eventCoverage: string[]
+  id: string
+  lastEventAt: string
+  lastPartnerActivity: string
+  retryQueueDepth: number
+  successRate: string
+  totalEvents24h: number
+}
+
+export interface RoamingPartnerObservabilityEvent {
+  direction: 'Inbound' | 'Outbound'
+  id: string
+  module: string
+  status: 'Delivered' | 'Retried' | 'Failed'
+  summary: string
+  time: string
+}
+
+export interface RoamingPartnerObservabilityAlert {
+  detail: string
+  id: string
+  severity: 'Info' | 'Warning' | 'Critical'
+  title: string
+}
+
+export interface RoamingPartnerObservabilityDetail extends RoamingPartnerObservabilitySummary {
+  callbacks: {
+    avgLatency: string
+    delivered24h: number
+    failed24h: number
+    lastDelivery: string
+    lastHttpStatus: string
+  }
+  recentEvents: RoamingPartnerObservabilityEvent[]
+  warnings: RoamingPartnerObservabilityAlert[]
+}
+
+export interface RoamingPartnerObservabilityResponse {
+  metrics: PartnerObservabilityMetric[]
+  note: string
+  partners: RoamingPartnerObservabilitySummary[]
+}
+
 export interface RoamingMetric {
   id: 'incoming' | 'authorized' | 'utilisation'
   label: string
@@ -519,6 +580,7 @@ export interface RoamingSessionRecord {
   emspName: string
   energy: number
   id: string
+  partnerId: string
   partyId: string
   startTime: string
   stationName: string
@@ -549,6 +611,7 @@ export interface CdrRecord {
   end: string
   id: string
   kwh: number
+  partnerId: string
   partyId: string
   sessionId: string
   start: string
@@ -569,6 +632,7 @@ export interface CommandLog {
   command: string
   id: string
   partner: string
+  partnerId: string
   payload: string
   status: 'Accepted' | 'Rejected' | 'Timed Out'
   time: string
