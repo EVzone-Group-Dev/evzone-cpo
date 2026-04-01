@@ -206,10 +206,10 @@ function unsupportedSwapActionMessage(action: string) {
 export type SwapStation = SwapStationSummary
 
 export function useSwapStations() {
-  const { activeTenantId, isReady } = useTenant()
+  const { activeScopeKey, isReady } = useTenant()
 
   return useQuery<SwapStation[]>({
-    queryKey: ['swap-stations', activeTenantId ?? 'default'],
+    queryKey: ['swap-stations', activeScopeKey],
     queryFn: async () => {
       const [stations, packs] = await Promise.all([
         fetchJson<BackendStation[]>('/api/v1/stations'),
@@ -264,10 +264,10 @@ export function useSwapStations() {
 }
 
 export function useSwapStation(id?: string) {
-  const { activeTenantId, isReady } = useTenant()
+  const { activeScopeKey, isReady } = useTenant()
 
   return useQuery<SwapStationDetail>({
-    queryKey: ['swap-stations', activeTenantId ?? 'default', id],
+    queryKey: ['swap-stations', activeScopeKey, id],
     queryFn: async () => {
       if (!id) {
         throw new Error('Station id is required')
@@ -369,10 +369,10 @@ export function useSwapStation(id?: string) {
 }
 
 export function useSwapSessions() {
-  const { activeTenantId, isReady } = useTenant()
+  const { activeScopeKey, isReady } = useTenant()
 
   return useQuery<BatterySwapSessionRecord[]>({
-    queryKey: ['swapping', 'sessions', activeTenantId ?? 'default'],
+    queryKey: ['swapping', 'sessions', activeScopeKey],
     queryFn: async () => {
       const [sessions, stations] = await Promise.all([
         fetchJson<BackendSession[]>('/api/v1/sessions/history/all'),
@@ -412,10 +412,10 @@ export function useSwapSessions() {
 }
 
 export function useBatteryInventory() {
-  const { activeTenantId, isReady } = useTenant()
+  const { activeScopeKey, isReady } = useTenant()
 
   return useQuery<BatteryInventoryResponse>({
-    queryKey: ['swapping', 'inventory', activeTenantId ?? 'default'],
+    queryKey: ['swapping', 'inventory', activeScopeKey],
     queryFn: async () => {
       const [packs, stations] = await Promise.all([
         fetchJson<BackendBatteryPack[]>(`${BMS_BASE_PATH}/packs`),
@@ -457,20 +457,19 @@ interface DispatchActionPayload extends SwapDispatchActionRequest {
   recommendationId: string
 }
 
-function useSwapMutationInvalidation(tenantKey: string) {
+function useSwapMutationInvalidation(scopeKey: string) {
   const queryClient = useQueryClient()
 
   return () => {
-    queryClient.invalidateQueries({ queryKey: ['swap-stations', tenantKey] })
-    queryClient.invalidateQueries({ queryKey: ['swapping', 'inventory', tenantKey] })
-    queryClient.invalidateQueries({ queryKey: ['swapping', 'rebalancing', tenantKey] })
+    queryClient.invalidateQueries({ queryKey: ['swap-stations', scopeKey] })
+    queryClient.invalidateQueries({ queryKey: ['swapping', 'inventory', scopeKey] })
+    queryClient.invalidateQueries({ queryKey: ['swapping', 'rebalancing', scopeKey] })
   }
 }
 
 export function useTransitionSwapPack() {
-  const { activeTenantId } = useTenant()
-  const tenantKey = activeTenantId ?? 'default'
-  const invalidate = useSwapMutationInvalidation(tenantKey)
+  const { activeScopeKey } = useTenant()
+  const invalidate = useSwapMutationInvalidation(activeScopeKey)
 
   return useMutation({
     mutationFn: async (payload: TransitionPackPayload): Promise<SwapPackMutationResponse> => {
@@ -482,9 +481,8 @@ export function useTransitionSwapPack() {
 }
 
 export function useInspectSwapPack() {
-  const { activeTenantId } = useTenant()
-  const tenantKey = activeTenantId ?? 'default'
-  const invalidate = useSwapMutationInvalidation(tenantKey)
+  const { activeScopeKey } = useTenant()
+  const invalidate = useSwapMutationInvalidation(activeScopeKey)
 
   return useMutation({
     mutationFn: async (payload: InspectPackPayload): Promise<SwapPackMutationResponse> => {
@@ -496,9 +494,8 @@ export function useInspectSwapPack() {
 }
 
 export function useRetireSwapPack() {
-  const { activeTenantId } = useTenant()
-  const tenantKey = activeTenantId ?? 'default'
-  const invalidate = useSwapMutationInvalidation(tenantKey)
+  const { activeScopeKey } = useTenant()
+  const invalidate = useSwapMutationInvalidation(activeScopeKey)
 
   return useMutation({
     mutationFn: async (payload: RetirementPackPayload): Promise<SwapPackMutationResponse> => {
@@ -510,10 +507,10 @@ export function useRetireSwapPack() {
 }
 
 export function useSwapRebalancing() {
-  const { activeTenantId, isReady } = useTenant()
+  const { activeScopeKey, isReady } = useTenant()
 
   return useQuery<SwapRebalancingResponse>({
-    queryKey: ['swapping', 'rebalancing', activeTenantId ?? 'default'],
+    queryKey: ['swapping', 'rebalancing', activeScopeKey],
     queryFn: async () => ({
       generatedAtLabel: formatDateLabel(new Date().toISOString()),
       recommendations: [],
@@ -524,9 +521,8 @@ export function useSwapRebalancing() {
 }
 
 export function useSwapDispatchAction() {
-  const { activeTenantId } = useTenant()
-  const tenantKey = activeTenantId ?? 'default'
-  const invalidate = useSwapMutationInvalidation(tenantKey)
+  const { activeScopeKey } = useTenant()
+  const invalidate = useSwapMutationInvalidation(activeScopeKey)
 
   return useMutation({
     mutationFn: async (payload: DispatchActionPayload): Promise<SwapDispatchActionResponse> => {
@@ -555,10 +551,10 @@ export interface PackTelemetryResponse {
 }
 
 export function usePackTelemetry(packId: string) {
-  const { activeTenantId, isReady } = useTenant()
+  const { activeScopeKey, isReady } = useTenant()
 
   return useQuery<PackTelemetryResponse>({
-    queryKey: ['swapping', 'telemetry', activeTenantId ?? 'default', packId],
+    queryKey: ['swapping', 'telemetry', activeScopeKey, packId],
     queryFn: async () => {
       const telemetry = await fetchJson<BackendBatteryTelemetry[]>(
         `${BMS_BASE_PATH}/packs/${packId}/telemetry?limit=1`,
@@ -571,9 +567,8 @@ export function usePackTelemetry(packId: string) {
 }
 
 export function useRemoteKillPack() {
-  const { activeTenantId } = useTenant()
-  const tenantKey = activeTenantId ?? 'default'
-  const invalidate = useSwapMutationInvalidation(tenantKey)
+  const { activeScopeKey } = useTenant()
+  const invalidate = useSwapMutationInvalidation(activeScopeKey)
 
   return useMutation({
     mutationFn: ({ packId, stationId }: { packId: string, stationId: string }) =>

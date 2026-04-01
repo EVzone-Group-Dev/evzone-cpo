@@ -72,7 +72,7 @@ function SettingToggle({
 
 export function SettingsPage() {
   const { user } = useAuthStore()
-  const { activeTenant, availableTenants, dataScopeLabel } = useTenant()
+  const { activeStationContext, activeTenant, availableStationContexts, availableTenants, dataScopeLabel } = useTenant()
   const userName = user?.name ?? ''
   const userEmail = user?.email ?? ''
   const mfaEnabled = user?.mfaEnabled ?? false
@@ -293,8 +293,10 @@ export function SettingsPage() {
               <div className="space-y-3 text-sm">
                 <div><div className="form-label">Active Tenant</div><div>{activeTenant?.name ?? 'Loading...'}</div></div>
                 <div><div className="form-label">Scope</div><div>{activeTenant?.scopeLabel ?? '-'}</div></div>
+                <div><div className="form-label">Active Station</div><div>{activeStationContext?.stationName ?? activeStationContext?.stationId ?? 'All assigned stations'}</div></div>
                 <div><div className="form-label">Region</div><div>{activeTenant?.region ?? '-'}</div></div>
                 <div><div className="form-label">Coverage</div><div>{dataScopeLabel}</div></div>
+                <div><div className="form-label">Station Contexts</div><div>{availableStationContexts.length}</div></div>
                 <div><div className="form-label">Available Tenants</div><div>{availableTenants.length}</div></div>
               </div>
             </div>

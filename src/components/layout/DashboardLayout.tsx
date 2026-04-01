@@ -15,7 +15,17 @@ interface Props {
 
 export function DashboardLayout({ children, pageTitle, actions }: Props) {
   const { user, logout } = useAuthStore()
-  const { activeTenant, availableTenants, canSwitchTenants, isLoading, setActiveTenantId } = useTenant()
+  const {
+    activeTenant,
+    activeStationContext,
+    availableStationContexts,
+    availableTenants,
+    canSwitchStationContexts,
+    canSwitchTenants,
+    isLoading,
+    setActiveStationContextId,
+    setActiveTenantId,
+  } = useTenant()
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
   const profileMenuRef = useRef<HTMLDivElement | null>(null)
 
@@ -56,26 +66,60 @@ export function DashboardLayout({ children, pageTitle, actions }: Props) {
           ) : (
             <div />
           )}
-          <div className="flex items-center gap-2">
-            {activeTenant && (
-              <div className="hidden lg:flex items-center gap-3 rounded-xl border px-3 py-2" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
-                <div className="text-right leading-tight">
-                  <div className="text-[10px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-subtle)' }}>{activeTenant.scopeLabel}</div>
-                  <div className="text-xs font-semibold" style={{ color: 'var(--text)' }}>{activeTenant.name}</div>
-                </div>
-                {canSwitchTenants && (
-                  <select
-                    className="input !h-9 !py-0 !min-w-[220px]"
-                    value={activeTenant.id}
-                    onChange={(event) => setActiveTenantId(event.target.value)}
-                    disabled={isLoading}
-                  >
-                    {availableTenants.map((tenant) => (
-                      <option key={tenant.id} value={tenant.id}>
-                        {tenant.name}
-                      </option>
-                    ))}
-                  </select>
+          <div className="flex items-center gap-2 min-w-0">
+            {(activeTenant || activeStationContext) && (
+              <div className="hidden md:flex flex-wrap items-center justify-end gap-2 min-w-0">
+                {activeTenant && (
+                  <div className="flex items-center gap-3 rounded-xl border px-3 py-2 min-w-0" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
+                    <div className="text-right leading-tight shrink-0">
+                      <div className="text-[10px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-subtle)' }}>{activeTenant.scopeLabel}</div>
+                      <div className="text-xs font-semibold" style={{ color: 'var(--text)' }}>{activeTenant.name}</div>
+                    </div>
+                    {canSwitchTenants && (
+                      <select
+                        className="input !h-9 !py-0 min-w-[180px] xl:min-w-[220px]"
+                        value={activeTenant.id}
+                        onChange={(event) => setActiveTenantId(event.target.value)}
+                        disabled={isLoading}
+                        aria-label="Switch organization context"
+                      >
+                        {availableTenants.map((tenant) => (
+                          <option key={tenant.id} value={tenant.id}>
+                            {tenant.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                )}
+                {(activeStationContext || canSwitchStationContexts) && (
+                  <div className="flex items-center gap-3 rounded-xl border px-3 py-2 min-w-0" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
+                    <div className="text-right leading-tight shrink-0">
+                      <div className="text-[10px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-subtle)' }}>Station Context</div>
+                      <div className="text-xs font-semibold" style={{ color: 'var(--text)' }}>
+                        {activeStationContext?.stationName ?? activeStationContext?.stationId ?? 'Assigned stations'}
+                      </div>
+                    </div>
+                    {canSwitchStationContexts ? (
+                      <select
+                        className="input !h-9 !py-0 min-w-[220px] xl:min-w-[260px]"
+                        value={activeStationContext?.assignmentId ?? ''}
+                        onChange={(event) => setActiveStationContextId(event.target.value)}
+                        disabled={isLoading}
+                        aria-label="Switch station context"
+                      >
+                        {availableStationContexts.map((context) => (
+                          <option key={context.assignmentId} value={context.assignmentId}>
+                            {(context.stationName ?? context.stationId)} · {context.role}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div className="text-[11px] text-subtle max-w-[220px] truncate">
+                        {activeStationContext?.role ?? 'Scoped access'}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             )}
@@ -102,6 +146,11 @@ export function DashboardLayout({ children, pageTitle, actions }: Props) {
                       <div className="text-[11px] text-[var(--text-subtle)]">{getUserRoleLabel(user)}</div>
                       {activeTenant && (
                         <div className="text-[11px] text-[var(--accent)] mt-1">{activeTenant.name}</div>
+                      )}
+                      {activeStationContext && (
+                        <div className="text-[11px] text-[var(--text-subtle)] mt-1">
+                          {activeStationContext.stationName ?? activeStationContext.stationId}
+                        </div>
                       )}
                     </div>
                     <div className="pt-2 space-y-1">

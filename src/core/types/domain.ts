@@ -315,6 +315,10 @@ export interface StationContextSummary {
   organizationId: OrganizationId | null
   role: string
   isPrimary: boolean
+  attendantMode?: string | null
+  shiftStart?: string | null
+  shiftEnd?: string | null
+  timezone?: string | null
 }
 
 export interface CPOUser {

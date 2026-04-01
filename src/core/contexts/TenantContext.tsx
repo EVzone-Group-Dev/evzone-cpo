@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { fetchJson } from '@/core/api/fetchJson'
 import { useAuthStore } from '@/core/auth/authStore'
 import { TenantContext } from '@/core/contexts/tenantSessionContext'
 import type { TenantContextType } from '@/core/contexts/tenantSessionContext'
-import type { AccessScopeType, CPOUser, OrganizationMembershipSummary } from '@/core/types/domain'
-import type { LoginResponse, TenantContextResponse, TenantSummary } from '@/core/types/mockApi'
+import type { AccessScopeType, CPOUser, OrganizationMembershipSummary, StationContextSummary } from '@/core/types/domain'
+import type { AuthenticatedApiUser, LoginResponse, TenantContextResponse, TenantSummary } from '@/core/types/mockApi'
 
 type BackendTenantRecord = {
   id: string
@@ -21,6 +21,8 @@ type BackendTenantRecord = {
   stationCount?: number
   siteCount?: number
 }
+
+const EMPTY_STATION_CONTEXTS: StationContextSummary[] = []
 
 function toTenantSummary(raw: BackendTenantRecord): TenantSummary {
   return {
@@ -203,11 +205,16 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   const replaceUser = useAuthStore((state) => state.replaceUser)
   const token = useAuthStore((state) => state.token)
   const [isSwitchingTenant, setIsSwitchingTenant] = useState(false)
+  const [isSwitchingStationContext, setIsSwitchingStationContext] = useState(false)
 
   const authDerivedContext = useMemo(
     () => buildTenantContextFromUser(user, activeTenantId),
     [activeTenantId, user],
   )
+
+  const activeStationContext = user?.activeStationContext ?? null
+  const availableStationContexts = user?.stationContexts ?? EMPTY_STATION_CONTEXTS
+  const canSwitchStationContexts = availableStationContexts.length > 1
 
   const { data: fallbackContext, isLoading: isFallbackLoading, isSuccess: isFallbackSuccess } = useQuery<TenantContextResponse>({
     queryKey: ['tenancy', 'context', token, activeTenantId],
@@ -249,6 +256,17 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   })
 
   const contextData = authDerivedContext ?? fallbackContext ?? null
+  const resolvedTenantScopeId = contextData?.activeTenant.id
+    ?? user?.activeOrganizationId
+    ?? user?.organizationId
+    ?? activeTenantId
+    ?? 'default'
+  const activeScopeKey = `${resolvedTenantScopeId}:${activeStationContext?.assignmentId ?? 'all'}`
+
+  const refreshCurrentUser = useCallback(async () => {
+    const refreshedUser = await fetchJson<AuthenticatedApiUser>('/api/v1/users/me')
+    replaceUser(refreshedUser)
+  }, [replaceUser])
 
   useEffect(() => {
     const synchronizedTenantId = user?.activeOrganizationId ?? contextData?.activeTenant.id
@@ -257,72 +275,110 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     }
   }, [activeTenantId, contextData?.activeTenant.id, setActiveTenantId, user?.activeOrganizationId])
 
-  const value = useMemo<TenantContextType>(() => ({
-    activeTenant: contextData?.activeTenant ?? null,
-    activeTenantId: contextData?.activeTenant.id ?? activeTenantId,
-    availableTenants: contextData?.availableTenants ?? [],
-    canSwitchTenants: contextData?.canSwitchTenants ?? false,
-    dashboardMode: contextData?.dashboardMode ?? 'operations',
-    dataScopeLabel: contextData?.dataScopeLabel ?? 'Tenant scope loading',
-    isLoading: isAuthenticated ? isSwitchingTenant || (!authDerivedContext && isFallbackLoading) : false,
-    isReady: !isAuthenticated || Boolean(authDerivedContext) || isFallbackSuccess || !isFallbackLoading,
-    setActiveTenantId: (tenantId: string) => {
-      void (async () => {
-        if (!tenantId || tenantId === activeTenantId) {
-          return
+  const handleTenantSwitch = useCallback((tenantId: string) => {
+    void (async () => {
+      if (!tenantId || tenantId === activeTenantId) {
+        return
+      }
+
+      const canSwitchViaBackend = Boolean(
+        token
+        && user?.memberships?.some((membership) => membership.organizationId === tenantId),
+      )
+
+      if (!canSwitchViaBackend) {
+        setActiveTenantId(tenantId)
+        return
+      }
+
+      setIsSwitchingTenant(true)
+
+      try {
+        const auth = await fetchJson<LoginResponse>('/api/v1/auth/switch-organization', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ organizationId: tenantId }),
+        })
+
+        const bearerToken = auth.accessToken ?? auth.token
+        if (bearerToken) {
+          setTokens(bearerToken, auth.refreshToken ?? null)
         }
 
-        const canSwitchViaBackend = Boolean(
-          token
-          && user?.memberships?.some((membership) => membership.organizationId === tenantId),
-        )
-
-        if (!canSwitchViaBackend) {
+        if (auth.user) {
+          replaceUser(auth.user)
+        } else {
           setActiveTenantId(tenantId)
-          return
         }
+      } catch (error) {
+        console.error('Failed to switch organization context.', error)
+      } finally {
+        setIsSwitchingTenant(false)
+      }
+    })()
+  }, [activeTenantId, replaceUser, setActiveTenantId, setTokens, token, user?.memberships])
 
-        setIsSwitchingTenant(true)
+  const handleStationContextSwitch = useCallback((assignmentId: string) => {
+    void (async () => {
+      if (!assignmentId || assignmentId === activeStationContext?.assignmentId || !token) {
+        return
+      }
 
-        try {
-          const auth = await fetchJson<LoginResponse>('/api/v1/auth/switch-organization', {
+      setIsSwitchingStationContext(true)
+
+      try {
+        await fetchJson<{ stationContexts: StationContextSummary[]; activeStationContext: StationContextSummary | null }>(
+          '/api/v1/users/me/station-context',
+          {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ organizationId: tenantId }),
-          })
+            body: JSON.stringify({ assignmentId }),
+          },
+        )
 
-          const bearerToken = auth.accessToken ?? auth.token
-          if (bearerToken) {
-            setTokens(bearerToken, auth.refreshToken ?? null)
-          }
+        await refreshCurrentUser()
+      } catch (error) {
+        console.error('Failed to switch station context.', error)
+      } finally {
+        setIsSwitchingStationContext(false)
+      }
+    })()
+  }, [activeStationContext?.assignmentId, refreshCurrentUser, token])
 
-          if (auth.user) {
-            replaceUser(auth.user)
-          } else {
-            setActiveTenantId(tenantId)
-          }
-        } catch (error) {
-          console.error('Failed to switch organization context.', error)
-        } finally {
-          setIsSwitchingTenant(false)
-        }
-      })()
-    },
+  const value = useMemo<TenantContextType>(() => ({
+    activeTenant: contextData?.activeTenant ?? null,
+    activeTenantId: contextData?.activeTenant.id ?? activeTenantId,
+    activeStationContext,
+    activeScopeKey,
+    availableTenants: contextData?.availableTenants ?? [],
+    availableStationContexts,
+    canSwitchTenants: contextData?.canSwitchTenants ?? false,
+    canSwitchStationContexts,
+    dashboardMode: contextData?.dashboardMode ?? 'operations',
+    dataScopeLabel: contextData?.dataScopeLabel ?? 'Tenant scope loading',
+    isLoading: isAuthenticated ? isSwitchingTenant || isSwitchingStationContext || (!authDerivedContext && isFallbackLoading) : false,
+    isReady: !isAuthenticated || Boolean(authDerivedContext) || isFallbackSuccess || !isFallbackLoading,
+    setActiveTenantId: handleTenantSwitch,
+    setActiveStationContextId: handleStationContextSwitch,
   }), [
     activeTenantId,
+    activeScopeKey,
+    activeStationContext,
     authDerivedContext,
+    availableStationContexts,
+    canSwitchStationContexts,
     contextData,
+    handleStationContextSwitch,
+    handleTenantSwitch,
     isAuthenticated,
     isFallbackLoading,
     isFallbackSuccess,
+    isSwitchingStationContext,
     isSwitchingTenant,
-    replaceUser,
-    setActiveTenantId,
-    setTokens,
-    token,
-    user?.memberships,
   ])
 
   return (
