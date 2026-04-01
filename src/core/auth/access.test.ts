@@ -87,6 +87,28 @@ describe('getRoleHomePath', () => {
       }),
     ).toBe(PATHS.OCPI_PARTNERS)
   })
+
+  it('routes fleet-scoped users to sessions as the default operational home', () => {
+    expect(
+      getRoleHomePath({
+        role: 'FLEET_DISPATCHER',
+        accessProfile: buildAccessProfile({
+          legacyRole: 'FLEET_DISPATCHER',
+          canonicalRole: 'FLEET_DISPATCHER',
+          roleFamily: 'fleet',
+          permissions: ['sessions.read'],
+          scope: {
+            type: 'fleet_group',
+            organizationId: 'org-fleet-1',
+            stationId: null,
+            stationIds: [],
+            providerId: null,
+            isTemporary: false,
+          },
+        }),
+      }),
+    ).toBe(PATHS.SESSIONS)
+  })
 })
 
 describe('canAccessPolicy', () => {
@@ -129,6 +151,81 @@ describe('canAccessPolicy', () => {
         'billingRead',
       ),
     ).toBe(false)
+  })
+
+  it('blocks infrastructure pages for provider-scoped users even when a broad permission is present', () => {
+    expect(
+      canAccessPolicy(
+        {
+          role: 'CPO_ADMIN',
+          accessProfile: buildAccessProfile({
+            legacyRole: 'EXTERNAL_PROVIDER_ADMIN',
+            canonicalRole: 'EXTERNAL_PROVIDER_ADMIN',
+            roleFamily: 'provider',
+            permissions: ['charge_points.read', 'ocpi.partners.read'],
+            scope: {
+              type: 'provider',
+              organizationId: null,
+              stationId: null,
+              stationIds: [],
+              providerId: 'provider-1',
+              isTemporary: false,
+            },
+          }),
+        },
+        'chargePointsRead',
+      ),
+    ).toBe(false)
+  })
+
+  it('blocks site-scoped users from tenant infrastructure pages', () => {
+    expect(
+      canAccessPolicy(
+        {
+          role: 'SITE_HOST',
+          accessProfile: buildAccessProfile({
+            legacyRole: 'SITE_HOST',
+            canonicalRole: 'SITE_HOST',
+            roleFamily: 'tenant',
+            permissions: ['stations.read', 'finance.revenue_reports.read'],
+            scope: {
+              type: 'site',
+              organizationId: 'org-site-1',
+              stationId: null,
+              stationIds: ['st-1'],
+              providerId: null,
+              isTemporary: false,
+            },
+          }),
+        },
+        'stationsRead',
+      ),
+    ).toBe(false)
+  })
+
+  it('allows roaming pages for provider-scoped users', () => {
+    expect(
+      canAccessPolicy(
+        {
+          role: 'CPO_ADMIN',
+          accessProfile: buildAccessProfile({
+            legacyRole: 'EXTERNAL_PROVIDER_ADMIN',
+            canonicalRole: 'EXTERNAL_PROVIDER_ADMIN',
+            roleFamily: 'provider',
+            permissions: ['ocpi.partners.read'],
+            scope: {
+              type: 'provider',
+              organizationId: null,
+              stationId: null,
+              stationIds: [],
+              providerId: 'provider-1',
+              isTemporary: false,
+            },
+          }),
+        },
+        'roamingRead',
+      ),
+    ).toBe(true)
   })
 })
 

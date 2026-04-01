@@ -232,6 +232,32 @@ const TEMPORARY_EXPIRED_ALLOWED_POLICIES = new Set<AccessPolicyKey>([
   'notificationsRead',
 ])
 
+const SITE_SCOPE_ALLOWED_POLICIES = new Set<AccessPolicyKey>([
+  'tenancyContext',
+  'dashboardHome',
+  'siteDashboard',
+  'settingsRead',
+  'notificationsRead',
+])
+
+const PROVIDER_SCOPE_ALLOWED_POLICIES = new Set<AccessPolicyKey>([
+  'tenancyContext',
+  'dashboardHome',
+  'roamingRead',
+  'settingsRead',
+  'notificationsRead',
+])
+
+const FLEET_SCOPE_ALLOWED_POLICIES = new Set<AccessPolicyKey>([
+  'tenancyContext',
+  'dashboardHome',
+  'sessionsRead',
+  'swapSessionsRead',
+  'alertsRead',
+  'settingsRead',
+  'notificationsRead',
+])
+
 function isCPORole(role: string): role is CPORole {
   return (CPO_ROLE_VALUES as readonly string[]).includes(role)
 }
@@ -447,6 +473,38 @@ export function isSiteScopedUser(user?: AccessAwareUser) {
   return getUserScopeType(user) === 'site' || getResolvedUserRole(user) === 'SITE_HOST'
 }
 
+export function isProviderScopedUser(user?: AccessAwareUser) {
+  return getUserScopeType(user) === 'provider'
+}
+
+export function isFleetScopedUser(user?: AccessAwareUser) {
+  return getUserScopeType(user) === 'fleet_group'
+}
+
+function isScopePolicyAllowed(user: AccessAwareUser, policy: AccessPolicyKey) {
+  if (isTemporaryAccessExpired(user)) {
+    return TEMPORARY_EXPIRED_ALLOWED_POLICIES.has(policy)
+  }
+
+  if (isTemporaryScopeUser(user)) {
+    return TEMPORARY_SCOPE_ALLOWED_POLICIES.has(policy)
+  }
+
+  if (isSiteScopedUser(user)) {
+    return SITE_SCOPE_ALLOWED_POLICIES.has(policy)
+  }
+
+  if (isProviderScopedUser(user)) {
+    return PROVIDER_SCOPE_ALLOWED_POLICIES.has(policy)
+  }
+
+  if (isFleetScopedUser(user)) {
+    return FLEET_SCOPE_ALLOWED_POLICIES.has(policy)
+  }
+
+  return true
+}
+
 export function canAccessRole(role: string | undefined | null, allowedRoles: readonly CPORole[]) {
   return !!role && isCPORole(role) && allowedRoles.includes(role)
 }
@@ -462,15 +520,7 @@ export function canAccessPolicy(user: AccessAwareUser, policy: AccessPolicyKey) 
     return false
   }
 
-  if (isTemporaryAccessExpired(user)) {
-    return TEMPORARY_EXPIRED_ALLOWED_POLICIES.has(policy)
-  }
-
-  if (isTemporaryScopeUser(user) && !TEMPORARY_SCOPE_ALLOWED_POLICIES.has(policy)) {
-    return false
-  }
-
-  return true
+  return isScopePolicyAllowed(user, policy)
 }
 
 export function getUserRoleLabel(user?: AccessAwareUser) {
@@ -491,7 +541,39 @@ function getHomePathFromUser(user: AccessAwareUser) {
   const scopeType = user?.accessProfile?.scope.type
 
   if (scopeType === 'site' || resolvedRole === 'SITE_HOST') {
-    return PATHS.SITE_DASHBOARD
+    if (canAccessPolicy(user, 'siteDashboard')) {
+      return PATHS.SITE_DASHBOARD
+    }
+    if (canAccessPolicy(user, 'notificationsRead')) {
+      return PATHS.NOTIFICATIONS
+    }
+    return PATHS.LOGIN
+  }
+
+  if (scopeType === 'provider') {
+    if (canAccessPolicy(user, 'roamingRead')) {
+      return PATHS.OCPI_PARTNERS
+    }
+    if (canAccessPolicy(user, 'notificationsRead')) {
+      return PATHS.NOTIFICATIONS
+    }
+    return PATHS.LOGIN
+  }
+
+  if (scopeType === 'fleet_group') {
+    if (canAccessPolicy(user, 'sessionsRead')) {
+      return PATHS.SESSIONS
+    }
+    if (canAccessPolicy(user, 'swapSessionsRead')) {
+      return PATHS.SWAP_SESSIONS
+    }
+    if (canAccessPolicy(user, 'alertsRead')) {
+      return PATHS.ALERTS
+    }
+    if (canAccessPolicy(user, 'notificationsRead')) {
+      return PATHS.NOTIFICATIONS
+    }
+    return PATHS.LOGIN
   }
 
   if (permissions.includes('platform.tenants.read')) {

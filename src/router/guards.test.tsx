@@ -157,4 +157,42 @@ describe('RequireAuth', () => {
     expect(await screen.findByText('Temporary station access expired')).toBeInTheDocument()
     expect(screen.queryByText('Technician Dashboard')).not.toBeInTheDocument()
   })
+
+  it('redirects provider-scoped users away from infrastructure pages toward roaming home', async () => {
+    mockAuthState({
+      isAuthenticated: true,
+      user: {
+        ...buildUser('CPO_ADMIN'),
+        accessProfile: buildAccessProfile({
+          legacyRole: 'EXTERNAL_PROVIDER_ADMIN',
+          canonicalRole: 'EXTERNAL_PROVIDER_ADMIN',
+          roleFamily: 'provider',
+          permissions: ['charge_points.read', 'ocpi.partners.read'],
+          scope: {
+            type: 'provider',
+            organizationId: null,
+            stationId: null,
+            stationIds: [],
+            providerId: 'provider-1',
+            isTemporary: false,
+          },
+        }),
+      },
+    })
+
+    render(
+      <MemoryRouter initialEntries={[PATHS.CHARGE_POINTS]}>
+        <Routes>
+          <Route
+            path={PATHS.CHARGE_POINTS}
+            element={<RequireAuth policy="chargePointsRead"><div>Charge Points</div></RequireAuth>}
+          />
+          <Route path={PATHS.OCPI_PARTNERS} element={<div>Provider Roaming Home</div>} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByText('Provider Roaming Home')).toBeInTheDocument()
+    expect(screen.queryByText('Charge Points')).not.toBeInTheDocument()
+  })
 })
