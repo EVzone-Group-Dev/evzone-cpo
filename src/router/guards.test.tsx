@@ -108,4 +108,53 @@ describe('RequireAuth', () => {
     expect(await screen.findByText('Finance Billing')).toBeInTheDocument()
     expect(screen.queryByText('Operator Dashboard Home')).not.toBeInTheDocument()
   })
+
+  it('shows an expiry notice when temporary station access has ended', async () => {
+    mockAuthState({
+      isAuthenticated: true,
+      user: {
+        ...buildUser('TECHNICIAN'),
+        activeStationContext: {
+          assignmentId: 'assignment-1',
+          stationId: 'st-1',
+          stationName: 'Kampala Yard',
+          organizationId: 'org-1',
+          role: 'INSTALLER_AGENT',
+          isPrimary: true,
+          shiftStart: '2026-04-01T08:00:00.000Z',
+          shiftEnd: '2026-04-01T09:00:00.000Z',
+        },
+        accessProfile: buildAccessProfile({
+          legacyRole: 'INSTALLER_AGENT',
+          canonicalRole: 'INSTALLER_AGENT',
+          roleFamily: 'technical',
+          permissions: ['maintenance.dispatch.read'],
+          scope: {
+            type: 'temporary',
+            organizationId: 'org-1',
+            stationId: 'st-1',
+            stationIds: ['st-1'],
+            providerId: null,
+            isTemporary: true,
+          },
+        }),
+      },
+    })
+
+    vi.setSystemTime(new Date('2026-04-01T09:30:00.000Z'))
+
+    render(
+      <MemoryRouter initialEntries={[PATHS.DASHBOARD_TECHNICIAN]}>
+        <Routes>
+          <Route
+            path={PATHS.DASHBOARD_TECHNICIAN}
+            element={<RequireAuth policy="dashboardTechnician"><div>Technician Dashboard</div></RequireAuth>}
+          />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByText('Temporary station access expired')).toBeInTheDocument()
+    expect(screen.queryByText('Technician Dashboard')).not.toBeInTheDocument()
+  })
 })

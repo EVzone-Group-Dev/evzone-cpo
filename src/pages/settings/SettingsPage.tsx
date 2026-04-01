@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
-import { getUserRoleLabel, getUserScopeType } from '@/core/auth/access'
+import { getTemporaryAccessState, getTemporaryAccessWindowLabel, getUserRoleLabel, getUserScopeType, isTemporaryScopeUser } from '@/core/auth/access'
 import { useAuthStore } from '@/core/auth/authStore'
 import { useTenant } from '@/core/hooks/useTenant'
 import { BellRing, Building2, Globe2, LayoutGrid, Lock, Save, ShieldCheck, SlidersHorizontal, Sparkles, UserCog } from 'lucide-react'
@@ -91,6 +91,9 @@ export function SettingsPage() {
       ? user.accessProfile.scope.stationIds.join(', ')
       : 'All tenant stations'
   const scopeType = getUserScopeType(user)
+  const temporaryAccessState = getTemporaryAccessState(user)
+  const temporaryAccessWindowLabel = getTemporaryAccessWindowLabel(user)
+  const hasTemporaryScope = isTemporaryScopeUser(user)
 
   const hasUnsavedChanges = JSON.stringify(draft) !== JSON.stringify(baseline)
 
@@ -296,6 +299,8 @@ export function SettingsPage() {
                 <div><div className="form-label">Active Station</div><div>{activeStationContext?.stationName ?? activeStationContext?.stationId ?? 'All assigned stations'}</div></div>
                 <div><div className="form-label">Region</div><div>{activeTenant?.region ?? '-'}</div></div>
                 <div><div className="form-label">Coverage</div><div>{dataScopeLabel}</div></div>
+                {hasTemporaryScope && <div><div className="form-label">Temporary Access</div><div>{temporaryAccessState}</div></div>}
+                {hasTemporaryScope && <div><div className="form-label">Access Window</div><div>{temporaryAccessWindowLabel}</div></div>}
                 <div><div className="form-label">Station Contexts</div><div>{availableStationContexts.length}</div></div>
                 <div><div className="form-label">Available Tenants</div><div>{availableTenants.length}</div></div>
               </div>

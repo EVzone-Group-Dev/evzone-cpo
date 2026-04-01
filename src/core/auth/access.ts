@@ -102,10 +102,22 @@ export const ACCESS_POLICY = {
 export type AccessPolicyKey = keyof typeof ACCESS_POLICY
 
 type AccessAwareUser =
-  | Pick<CPOUser, 'role' | 'accessProfile' | 'legacyRole'>
-  | { role?: string | null; accessProfile?: AccessProfile | null; legacyRole?: string }
+  | Pick<CPOUser, 'role' | 'accessProfile' | 'legacyRole' | 'activeStationContext'>
+  | {
+    role?: string | null
+    accessProfile?: AccessProfile | null
+    legacyRole?: string
+    activeStationContext?: {
+      stationId?: string | null
+      stationName?: string | null
+      shiftStart?: string | null
+      shiftEnd?: string | null
+    } | null
+  }
   | null
   | undefined
+
+export type TemporaryAccessState = 'none' | 'unbounded' | 'upcoming' | 'active' | 'expired'
 
 const CPO_ROLE_VALUES = ['SUPER_ADMIN', 'CPO_ADMIN', 'STATION_MANAGER', 'FINANCE', 'OPERATOR', 'SITE_HOST', 'TECHNICIAN'] as const
 
@@ -198,6 +210,28 @@ const CANONICAL_ROLE_LABELS: Partial<Record<CanonicalAccessRole, string>> = {
   LEGACY_UNMAPPED: 'Legacy Access',
 }
 
+const TEMPORARY_SCOPE_ALLOWED_POLICIES = new Set<AccessPolicyKey>([
+  'tenancyContext',
+  'dashboardHome',
+  'dashboardTechnician',
+  'stationsRead',
+  'chargePointsRead',
+  'sessionsRead',
+  'incidentsRead',
+  'alertsRead',
+  'settingsRead',
+  'notificationsRead',
+  'remoteCommandStart',
+  'chargePointCommands',
+])
+
+const TEMPORARY_EXPIRED_ALLOWED_POLICIES = new Set<AccessPolicyKey>([
+  'tenancyContext',
+  'dashboardHome',
+  'settingsRead',
+  'notificationsRead',
+])
+
 function isCPORole(role: string): role is CPORole {
   return (CPO_ROLE_VALUES as readonly string[]).includes(role)
 }
@@ -209,6 +243,15 @@ function getPermissions(user: AccessAwareUser) {
 function matchesPermission(user: AccessAwareUser, permissions: readonly string[]) {
   const grantedPermissions = getPermissions(user)
   return permissions.some((permission) => grantedPermissions.includes(permission))
+}
+
+function parseDateValue(value?: string | null) {
+  if (!value) {
+    return null
+  }
+
+  const parsed = Date.parse(value)
+  return Number.isFinite(parsed) ? parsed : null
 }
 
 function deriveAssignedStationIds(user: { assignedStationIds?: string[]; stationContexts?: Array<{ stationId: string }>; activeStationContext?: { stationId: string } | null; accessProfile?: AccessProfile | null }) {
@@ -317,6 +360,69 @@ export function getUserScopeType(user?: AccessAwareUser) {
   return user?.accessProfile?.scope.type ?? null
 }
 
+export function isTemporaryScopeUser(user?: AccessAwareUser) {
+  return Boolean(
+    user?.accessProfile?.scope.isTemporary
+    || user?.accessProfile?.scope.type === 'temporary',
+  )
+}
+
+export function getTemporaryAccessState(user?: AccessAwareUser, referenceTime = Date.now()): TemporaryAccessState {
+  if (!isTemporaryScopeUser(user)) {
+    return 'none'
+  }
+
+  const shiftStart = parseDateValue(user?.activeStationContext?.shiftStart ?? null)
+  const shiftEnd = parseDateValue(user?.activeStationContext?.shiftEnd ?? null)
+
+  if (!shiftStart && !shiftEnd) {
+    return 'unbounded'
+  }
+
+  if (shiftStart && referenceTime < shiftStart) {
+    return 'upcoming'
+  }
+
+  if (shiftEnd && referenceTime > shiftEnd) {
+    return 'expired'
+  }
+
+  return 'active'
+}
+
+export function isTemporaryAccessExpired(user?: AccessAwareUser, referenceTime = Date.now()) {
+  return getTemporaryAccessState(user, referenceTime) === 'expired'
+}
+
+function formatDateLabel(timestamp: number | null) {
+  return timestamp ? new Date(timestamp).toLocaleString() : null
+}
+
+export function getTemporaryAccessWindowLabel(user?: AccessAwareUser) {
+  if (!isTemporaryScopeUser(user)) {
+    return 'Not a temporary scope.'
+  }
+
+  const shiftStart = parseDateValue(user?.activeStationContext?.shiftStart ?? null)
+  const shiftEnd = parseDateValue(user?.activeStationContext?.shiftEnd ?? null)
+  const startLabel = formatDateLabel(shiftStart)
+  const endLabel = formatDateLabel(shiftEnd)
+
+  if (startLabel && endLabel) {
+    return `${startLabel} - ${endLabel}`
+  }
+
+  if (startLabel) {
+    return `Starts ${startLabel}`
+  }
+
+  if (endLabel) {
+    return `Ends ${endLabel}`
+  }
+
+  return 'Temporary access is active until backend context changes.'
+}
+
 export function isFinanceDashboardUser(user?: AccessAwareUser) {
   const canonicalRole = getCanonicalUserRole(user)
   return canonicalRole === 'PLATFORM_BILLING_ADMIN'
@@ -347,12 +453,24 @@ export function canAccessRole(role: string | undefined | null, allowedRoles: rea
 
 export function canAccessPolicy(user: AccessAwareUser, policy: AccessPolicyKey) {
   const permissions = ACCESS_PERMISSION_MAP[policy]
+  const hasPermissionAccess = Boolean(user?.accessProfile && permissions && permissions.length > 0)
+  const hasBaseAccess = hasPermissionAccess
+    ? matchesPermission(user, permissions ?? [])
+    : canAccessRole(getResolvedUserRole(user), ACCESS_POLICY[policy])
 
-  if (user?.accessProfile && permissions && permissions.length > 0) {
-    return matchesPermission(user, permissions)
+  if (!hasBaseAccess) {
+    return false
   }
 
-  return canAccessRole(getResolvedUserRole(user), ACCESS_POLICY[policy])
+  if (isTemporaryAccessExpired(user)) {
+    return TEMPORARY_EXPIRED_ALLOWED_POLICIES.has(policy)
+  }
+
+  if (isTemporaryScopeUser(user) && !TEMPORARY_SCOPE_ALLOWED_POLICIES.has(policy)) {
+    return false
+  }
+
+  return true
 }
 
 export function getUserRoleLabel(user?: AccessAwareUser) {

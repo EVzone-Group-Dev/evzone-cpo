@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canAccessPolicy, getRoleHomePath } from '@/core/auth/access'
+import { canAccessPolicy, getRoleHomePath, getTemporaryAccessState, isTemporaryAccessExpired } from '@/core/auth/access'
 import { PATHS } from '@/router/paths'
 import type { AccessProfile, CPORole } from '@/core/types/domain'
 
@@ -104,5 +104,67 @@ describe('canAccessPolicy', () => {
         'billingRead',
       ),
     ).toBe(false)
+  })
+
+  it('blocks non-operational pages for temporary installer scope even if a permission slips through', () => {
+    expect(
+      canAccessPolicy(
+        {
+          role: 'TECHNICIAN',
+          accessProfile: buildAccessProfile({
+            legacyRole: 'INSTALLER_AGENT',
+            canonicalRole: 'INSTALLER_AGENT',
+            roleFamily: 'technical',
+            permissions: ['finance.billing.read'],
+            scope: {
+              type: 'temporary',
+              organizationId: 'org-1',
+              stationId: 'st-1',
+              stationIds: ['st-1'],
+              providerId: null,
+              isTemporary: true,
+            },
+          }),
+        },
+        'billingRead',
+      ),
+    ).toBe(false)
+  })
+})
+
+describe('temporary access helpers', () => {
+  it('marks temporary installer access as expired after the station window closes', () => {
+    const user = {
+      role: 'TECHNICIAN',
+      activeStationContext: {
+        assignmentId: 'assignment-1',
+        stationId: 'st-1',
+        stationName: 'Station 1',
+        organizationId: 'org-1',
+        role: 'INSTALLER_AGENT',
+        isPrimary: true,
+        shiftStart: '2026-04-01T08:00:00.000Z',
+        shiftEnd: '2026-04-01T09:00:00.000Z',
+      },
+      accessProfile: buildAccessProfile({
+        legacyRole: 'INSTALLER_AGENT',
+        canonicalRole: 'INSTALLER_AGENT',
+        roleFamily: 'technical',
+        permissions: ['maintenance.dispatch.read'],
+        scope: {
+          type: 'temporary',
+          organizationId: 'org-1',
+          stationId: 'st-1',
+          stationIds: ['st-1'],
+          providerId: null,
+          isTemporary: true,
+        },
+      }),
+    }
+
+    const referenceTime = Date.parse('2026-04-01T09:30:00.000Z')
+
+    expect(getTemporaryAccessState(user, referenceTime)).toBe('expired')
+    expect(isTemporaryAccessExpired(user, referenceTime)).toBe(true)
   })
 })

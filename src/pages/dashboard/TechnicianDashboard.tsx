@@ -1,4 +1,5 @@
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
+import { getTemporaryAccessState, getTemporaryAccessWindowLabel, isTemporaryScopeUser } from '@/core/auth/access'
 import { useAuthStore } from '@/core/auth/authStore'
 import { useAlerts, useIncidentCommand } from '@/core/hooks/usePlatformData'
 import { useTenant } from '@/core/hooks/useTenant'
@@ -15,6 +16,9 @@ export function TechnicianDashboard() {
   const { activeStationContext, availableStationContexts, dataScopeLabel } = useTenant()
   const { data: incidents, isLoading: incidentsLoading, error: incidentsError } = useIncidentCommand()
   const { data: alerts, isLoading: alertsLoading, error: alertsError } = useAlerts()
+  const temporaryAccessState = getTemporaryAccessState(user)
+  const temporaryAccessWindowLabel = getTemporaryAccessWindowLabel(user)
+  const hasTemporaryScope = isTemporaryScopeUser(user)
   const assignedStationsLabel = availableStationContexts.length > 0
     ? availableStationContexts
       .map((context) => context.stationName ?? context.stationId)
@@ -86,6 +90,8 @@ export function TechnicianDashboard() {
               <div><span className="text-subtle">Active Station:</span> {activeStationContext?.stationName ?? activeStationContext?.stationId ?? 'All assigned stations'}</div>
               <div><span className="text-subtle">Assigned Stations:</span> {assignedStationsLabel}</div>
               <div><span className="text-subtle">Shift Window:</span> {activeStationContext?.shiftStart && activeStationContext?.shiftEnd ? `${activeStationContext.shiftStart} - ${activeStationContext.shiftEnd}` : 'Not time-bound'}</div>
+              {hasTemporaryScope && <div><span className="text-subtle">Temporary Access:</span> {temporaryAccessState}</div>}
+              {hasTemporaryScope && <div><span className="text-subtle">Access Window:</span> {temporaryAccessWindowLabel}</div>}
               <div><span className="text-subtle">Coverage:</span> {dataScopeLabel}</div>
               <div><span className="text-subtle">Priority Action:</span> {incidents.predictiveAlert.cta}</div>
             </div>

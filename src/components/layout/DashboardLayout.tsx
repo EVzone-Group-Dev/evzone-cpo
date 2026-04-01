@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { Sidebar } from '@/components/layout/Sidebar'
-import { getUserRoleLabel } from '@/core/auth/access'
+import { getTemporaryAccessState, getTemporaryAccessWindowLabel, getUserRoleLabel, isTemporaryScopeUser } from '@/core/auth/access'
 import { useAuthStore } from '@/core/auth/authStore'
 import { useTenant } from '@/core/hooks/useTenant'
 import { Bell, LogOut, Settings } from 'lucide-react'
@@ -28,6 +28,9 @@ export function DashboardLayout({ children, pageTitle, actions }: Props) {
   } = useTenant()
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
   const profileMenuRef = useRef<HTMLDivElement | null>(null)
+  const temporaryAccessState = getTemporaryAccessState(user)
+  const temporaryAccessLabel = getTemporaryAccessWindowLabel(user)
+  const hasTemporaryScope = isTemporaryScopeUser(user)
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
@@ -179,6 +182,33 @@ export function DashboardLayout({ children, pageTitle, actions }: Props) {
             )}
           </div>
         </header>
+
+        {hasTemporaryScope && (
+          <div
+            className="border-b px-4 sm:px-6 py-3"
+            style={{
+              borderColor: temporaryAccessState === 'expired' ? 'var(--danger)' : temporaryAccessState === 'upcoming' ? 'var(--warning)' : 'var(--border)',
+              background: temporaryAccessState === 'expired'
+                ? 'rgba(248, 81, 73, 0.08)'
+                : temporaryAccessState === 'upcoming'
+                  ? 'rgba(187, 128, 9, 0.12)'
+                  : 'rgba(63, 185, 80, 0.08)',
+            }}
+          >
+            <div className="flex flex-col gap-1 text-sm">
+              <div className="font-semibold" style={{ color: temporaryAccessState === 'expired' ? 'var(--danger)' : 'var(--text)' }}>
+                {temporaryAccessState === 'expired'
+                  ? 'Temporary station access expired'
+                  : temporaryAccessState === 'upcoming'
+                    ? 'Temporary station access scheduled'
+                    : 'Temporary station access active'}
+              </div>
+              <div style={{ color: 'var(--text-subtle)' }}>
+                {activeStationContext?.stationName ?? activeStationContext?.stationId ?? 'Assigned station scope'} · {temporaryAccessLabel}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Page scroll area */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6">

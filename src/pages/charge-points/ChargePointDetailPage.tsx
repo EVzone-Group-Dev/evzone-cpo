@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { fetchJson } from '@/core/api/fetchJson'
+import { canAccessPolicy, getTemporaryAccessState } from '@/core/auth/access'
+import { useAuthStore } from '@/core/auth/authStore'
 import { useChargePoint, useSessions } from '@/core/hooks/usePlatformData'
 import { PATHS } from '@/router/paths'
 import { ArrowLeft, Cpu, Play, RotateCcw, Unlock, Wifi, WifiOff } from 'lucide-react'
@@ -15,11 +17,15 @@ const COMMAND_ICONS = {
 
 export function ChargePointDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const user = useAuthStore((state) => state.user)
   const { data: chargePoint, isLoading, error } = useChargePoint(id)
   const { data: sessions, isLoading: isSessionsLoading } = useSessions()
   const [roamingOverride, setRoamingOverride] = useState<boolean | null>(null)
   const [cmdFeedback, setCmdFeedback] = useState<string | null>(null)
   const [sessionConnectorFilter, setSessionConnectorFilter] = useState('All')
+  const canRunChargePointCommands = canAccessPolicy(user, 'chargePointCommands')
+  const canRunRemoteStart = canAccessPolicy(user, 'remoteCommandStart')
+  const temporaryAccessState = getTemporaryAccessState(user)
 
   const recentSessions = useMemo(() => {
     if (!chargePoint) {
@@ -216,9 +222,19 @@ export function ChargePointDetailPage() {
             {cmdFeedback && (
               <div className={`alert ${cmdFeedback.startsWith('✓') ? 'success' : 'info'} text-xs mb-3`}>{cmdFeedback}</div>
             )}
+            {(!canRunChargePointCommands || !canRunRemoteStart || temporaryAccessState === 'expired') && (
+              <div className="rounded-lg border border-border bg-bg-muted/40 px-3 py-3 text-xs text-subtle mb-3">
+                Remote control actions respect your current backend scope and temporary access window.
+              </div>
+            )}
             <div className="space-y-2">
               {remoteCommands.map((command) => (
-                <button key={command} className="btn secondary w-full flex items-center gap-2" onClick={() => sendCmd(command)}>
+                <button
+                  key={command}
+                  className="btn secondary w-full flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                  onClick={() => sendCmd(command)}
+                  disabled={command === 'Remote Start Session' ? !canRunRemoteStart : !canRunChargePointCommands}
+                >
                   {COMMAND_ICONS[command as keyof typeof COMMAND_ICONS]}
                   {command}
                 </button>
