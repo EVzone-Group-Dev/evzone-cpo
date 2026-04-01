@@ -298,6 +298,25 @@ export interface AccessProfile {
 
 export type UserStatus = 'Active' | 'Invited' | 'Suspended' | 'Pending'
 
+export interface OrganizationMembershipSummary {
+  id?: string
+  organizationId: OrganizationId
+  role: string
+  ownerCapability?: string | null
+  status?: string
+  organizationName?: string
+  organizationType?: string
+}
+
+export interface StationContextSummary {
+  assignmentId: string
+  stationId: StationId
+  stationName: string | null
+  organizationId: OrganizationId | null
+  role: string
+  isPrimary: boolean
+}
+
 export interface CPOUser {
   id: UserId
   name: string
@@ -307,11 +326,21 @@ export interface CPOUser {
   legacyRole?: string
   status: UserStatus
   organizationId?: OrganizationId
+  activeOrganizationId?: OrganizationId | null
+  orgId?: OrganizationId | null
   assignedStationIds?: StationId[]
+  memberships?: OrganizationMembershipSummary[]
+  stationContexts?: StationContextSummary[]
+  activeStationContext?: StationContextSummary | null
   avatarUrl?: string
   lastSeen?: string
-  createdAt: string
-  mfaEnabled: boolean
+  createdAt?: string
+  mfaEnabled?: boolean
+  providerId?: string | null
+  region?: string | null
+  zoneId?: string | null
+  ownerCapability?: string | null
+  mustChangePassword?: boolean
   accessProfile?: AccessProfile | null
 }
 

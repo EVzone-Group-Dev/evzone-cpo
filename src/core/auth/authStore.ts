@@ -13,10 +13,47 @@ export interface AuthState {
   isLoading: boolean
 
   setUser: (user: CPOUser | AuthenticatedApiUser, token: string, refreshToken?: string | null) => void
+  replaceUser: (user: CPOUser | AuthenticatedApiUser) => void
   setTokens: (token: string, refreshToken?: string | null) => void
   setActiveTenantId: (tenantId: string | null) => void
   logout: () => void
   setLoading: (v: boolean) => void
+}
+
+function resolveTenantIdFromUser(user: CPOUser | AuthenticatedApiUser) {
+  return user.activeOrganizationId ?? user.organizationId ?? null
+}
+
+function mergeAuthUser(currentUser: CPOUser | null, incomingUser: CPOUser | AuthenticatedApiUser) {
+  if (!currentUser) {
+    return incomingUser
+  }
+
+  return {
+    ...currentUser,
+    ...incomingUser,
+    activeOrganizationId:
+      incomingUser.activeOrganizationId
+      ?? incomingUser.organizationId
+      ?? currentUser.activeOrganizationId
+      ?? currentUser.organizationId
+      ?? null,
+    orgId:
+      incomingUser.orgId
+      ?? incomingUser.activeOrganizationId
+      ?? incomingUser.organizationId
+      ?? currentUser.orgId
+      ?? currentUser.activeOrganizationId
+      ?? currentUser.organizationId
+      ?? null,
+    accessProfile: incomingUser.accessProfile ?? currentUser.accessProfile ?? null,
+    memberships: incomingUser.memberships ?? currentUser.memberships,
+    stationContexts: incomingUser.stationContexts ?? currentUser.stationContexts,
+    activeStationContext: incomingUser.activeStationContext ?? currentUser.activeStationContext ?? null,
+    assignedStationIds: incomingUser.assignedStationIds ?? currentUser.assignedStationIds,
+    mfaEnabled: incomingUser.mfaEnabled ?? currentUser.mfaEnabled,
+    createdAt: incomingUser.createdAt ?? currentUser.createdAt,
+  }
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -31,12 +68,18 @@ export const useAuthStore = create<AuthState>()(
 
       setUser: (user, token, refreshToken = null) =>
         set({
-          activeTenantId: null,
+          activeTenantId: resolveTenantIdFromUser(user),
           user: normalizeAuthenticatedUser(user),
           token,
           refreshToken,
           isAuthenticated: true,
         }),
+      replaceUser: (user) =>
+        set((state) => ({
+          activeTenantId: resolveTenantIdFromUser(user) ?? state.activeTenantId,
+          user: normalizeAuthenticatedUser(mergeAuthUser(state.user, user)),
+          isAuthenticated: true,
+        })),
       setTokens: (token, refreshToken) =>
         set((state) => ({
           token,

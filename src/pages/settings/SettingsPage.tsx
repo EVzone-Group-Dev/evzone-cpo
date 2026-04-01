@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
+import { getUserRoleLabel, getUserScopeType } from '@/core/auth/access'
 import { useAuthStore } from '@/core/auth/authStore'
 import { useTenant } from '@/core/hooks/useTenant'
 import { BellRing, Building2, Globe2, LayoutGrid, Lock, Save, ShieldCheck, SlidersHorizontal, Sparkles, UserCog } from 'lucide-react'
@@ -84,6 +85,12 @@ export function SettingsPage() {
     () => userName.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'EV',
     [userName],
   )
+  const assignedStations = user?.assignedStationIds?.length
+    ? user.assignedStationIds.join(', ')
+    : user?.accessProfile?.scope.stationIds.length
+      ? user.accessProfile.scope.stationIds.join(', ')
+      : 'All tenant stations'
+  const scopeType = getUserScopeType(user)
 
   const hasUnsavedChanges = JSON.stringify(draft) !== JSON.stringify(baseline)
 
@@ -166,17 +173,27 @@ export function SettingsPage() {
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
                       <div className="form-label">Role</div>
-                      <div className="rounded-lg border border-border/70 bg-bg-muted/35 px-3 py-2 text-sm">{user?.role ?? '-'}</div>
+                      <div className="rounded-lg border border-border/70 bg-bg-muted/35 px-3 py-2 text-sm">{getUserRoleLabel(user)}</div>
                     </div>
                     <div>
                       <div className="form-label">Organization</div>
-                      <div className="rounded-lg border border-border/70 bg-bg-muted/35 px-3 py-2 text-sm">{user?.organizationId ?? 'Platform-wide access'}</div>
+                      <div className="rounded-lg border border-border/70 bg-bg-muted/35 px-3 py-2 text-sm">{user?.activeOrganizationId ?? user?.organizationId ?? 'Platform-wide access'}</div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div>
+                      <div className="form-label">Scope Type</div>
+                      <div className="rounded-lg border border-border/70 bg-bg-muted/35 px-3 py-2 text-sm">{scopeType ?? 'organization'}</div>
+                    </div>
+                    <div>
+                      <div className="form-label">Memberships</div>
+                      <div className="rounded-lg border border-border/70 bg-bg-muted/35 px-3 py-2 text-sm">{user?.memberships?.length ?? 0}</div>
                     </div>
                   </div>
                   <div>
                     <div className="form-label">Assigned Stations</div>
                     <div className="rounded-lg border border-border/70 bg-bg-muted/35 px-3 py-2 text-sm">
-                      {user?.assignedStationIds?.join(', ') ?? 'All tenant stations'}
+                      {assignedStations}
                     </div>
                   </div>
                 </div>

@@ -17,12 +17,14 @@ describe('fetchJson', () => {
     token: string | null
     refreshToken: string | null
     setTokens: ReturnType<typeof vi.fn<(token: string, refreshToken?: string | null) => void>>
+    replaceUser: ReturnType<typeof vi.fn<(user: unknown) => void>>
     logout: ReturnType<typeof vi.fn>
   } = {
     activeTenantId: 'tenant-evzone-ke',
     token: 'demo-token',
     refreshToken: 'demo-refresh-token',
     setTokens: vi.fn<(token: string, refreshToken?: string | null) => void>(),
+    replaceUser: vi.fn<(user: unknown) => void>(),
     logout: vi.fn(),
   }
 
@@ -32,6 +34,7 @@ describe('fetchJson', () => {
     authState.token = 'demo-token'
     authState.refreshToken = 'demo-refresh-token'
     authState.setTokens.mockReset()
+    authState.replaceUser.mockReset()
     authState.logout.mockReset()
 
     authState.setTokens.mockImplementation((token, refreshToken) => {
@@ -124,7 +127,17 @@ describe('fetchJson', () => {
         }),
       )
       .mockResolvedValueOnce(
-        new Response(JSON.stringify({ accessToken: 'new-access-token', refreshToken: 'new-refresh-token' }), {
+        new Response(JSON.stringify({
+          accessToken: 'new-access-token',
+          refreshToken: 'new-refresh-token',
+          user: {
+            id: 'u-1',
+            name: 'Operator',
+            email: 'operator@evzone.io',
+            role: 'MANAGER',
+            status: 'Active',
+          },
+        }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
         }),
@@ -152,6 +165,13 @@ describe('fetchJson', () => {
     expect(retryUrl).toBe('/api/protected')
     expect(new Headers(retryInit?.headers).get('Authorization')).toBe('Bearer new-access-token')
     expect(authState.setTokens).toHaveBeenCalledWith('new-access-token', 'new-refresh-token')
+    expect(authState.replaceUser).toHaveBeenCalledWith({
+      id: 'u-1',
+      name: 'Operator',
+      email: 'operator@evzone.io',
+      role: 'MANAGER',
+      status: 'Active',
+    })
     expect(authState.logout).not.toHaveBeenCalled()
   })
 

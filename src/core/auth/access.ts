@@ -211,6 +211,26 @@ function matchesPermission(user: AccessAwareUser, permissions: readonly string[]
   return permissions.some((permission) => grantedPermissions.includes(permission))
 }
 
+function deriveAssignedStationIds(user: { assignedStationIds?: string[]; stationContexts?: Array<{ stationId: string }>; activeStationContext?: { stationId: string } | null; accessProfile?: AccessProfile | null }) {
+  if (user.assignedStationIds && user.assignedStationIds.length > 0) {
+    return Array.from(new Set(user.assignedStationIds))
+  }
+
+  if (user.activeStationContext?.stationId) {
+    return [user.activeStationContext.stationId]
+  }
+
+  if (user.stationContexts && user.stationContexts.length > 0) {
+    return Array.from(new Set(user.stationContexts.map((context) => context.stationId)))
+  }
+
+  if (user.accessProfile?.scope.stationIds && user.accessProfile.scope.stationIds.length > 0) {
+    return Array.from(new Set(user.accessProfile.scope.stationIds))
+  }
+
+  return undefined
+}
+
 export function normalizeUserRole(role?: string | null, accessProfile?: AccessProfile | null): CPORole | null {
   const canonicalRole = accessProfile?.canonicalRole
 
@@ -268,11 +288,18 @@ export function normalizeUserRole(role?: string | null, accessProfile?: AccessPr
 export function normalizeAuthenticatedUser<T extends Omit<CPOUser, 'role'> & { role: string; accessProfile?: AccessProfile | null; legacyRole?: string }>(user: T): CPOUser {
   const normalizedRole = normalizeUserRole(user.role, user.accessProfile) ?? 'OPERATOR'
   const legacyRole = user.legacyRole ?? (isCPORole(user.role) ? undefined : user.role)
+  const assignedStationIds = deriveAssignedStationIds(user)
 
   return {
     ...user,
     role: normalizedRole,
     legacyRole,
+    assignedStationIds,
+    createdAt: user.createdAt ?? '',
+    mfaEnabled: user.mfaEnabled ?? ('twoFactorEnabled' in user ? Boolean(user.twoFactorEnabled) : false),
+    organizationId: user.activeOrganizationId ?? user.organizationId,
+    orgId: user.orgId ?? user.activeOrganizationId ?? user.organizationId ?? null,
+    activeOrganizationId: user.activeOrganizationId ?? user.organizationId ?? null,
     accessProfile: user.accessProfile ?? null,
   }
 }
@@ -280,6 +307,38 @@ export function normalizeAuthenticatedUser<T extends Omit<CPOUser, 'role'> & { r
 export function getResolvedUserRole(user?: AccessAwareUser) {
   if (!user) return null
   return normalizeUserRole(user.role ?? null, user.accessProfile ?? null)
+}
+
+export function getCanonicalUserRole(user?: AccessAwareUser) {
+  return user?.accessProfile?.canonicalRole ?? null
+}
+
+export function getUserScopeType(user?: AccessAwareUser) {
+  return user?.accessProfile?.scope.type ?? null
+}
+
+export function isFinanceDashboardUser(user?: AccessAwareUser) {
+  const canonicalRole = getCanonicalUserRole(user)
+  return canonicalRole === 'PLATFORM_BILLING_ADMIN'
+    || canonicalRole === 'TENANT_FINANCE_ANALYST'
+    || getResolvedUserRole(user) === 'FINANCE'
+}
+
+export function isStationManagerDashboardUser(user?: AccessAwareUser) {
+  return getCanonicalUserRole(user) === 'STATION_MANAGER'
+    || getResolvedUserRole(user) === 'STATION_MANAGER'
+}
+
+export function isTechnicianDashboardUser(user?: AccessAwareUser) {
+  const canonicalRole = getCanonicalUserRole(user)
+  return canonicalRole === 'FIELD_TECHNICIAN'
+    || canonicalRole === 'INSTALLER_AGENT'
+    || canonicalRole === 'SMART_CHARGING_ENGINEER'
+    || getResolvedUserRole(user) === 'TECHNICIAN'
+}
+
+export function isSiteScopedUser(user?: AccessAwareUser) {
+  return getUserScopeType(user) === 'site' || getResolvedUserRole(user) === 'SITE_HOST'
 }
 
 export function canAccessRole(role: string | undefined | null, allowedRoles: readonly CPORole[]) {

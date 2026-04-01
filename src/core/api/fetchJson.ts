@@ -1,8 +1,11 @@
 import { useAuthStore } from '@/core/auth/authStore'
+import type { AuthenticatedApiUser } from '@/core/types/mockApi'
 
-type AuthRefreshResponse = {
+type AuthSessionResponse = {
   accessToken?: string
   refreshToken?: string
+  token?: string
+  user?: AuthenticatedApiUser
 }
 
 let refreshTokenRequest: Promise<string | null> | null = null
@@ -63,7 +66,7 @@ async function readErrorMessage(response: Response): Promise<string | null> {
 }
 
 async function refreshAccessToken(): Promise<string | null> {
-  const { refreshToken, setTokens, logout } = useAuthStore.getState()
+  const { refreshToken, setTokens, replaceUser, logout } = useAuthStore.getState()
 
   if (!refreshToken) {
     logout()
@@ -88,14 +91,17 @@ async function refreshAccessToken(): Promise<string | null> {
         return null
       }
 
-      const payload = await response.json() as AuthRefreshResponse
-      const newAccessToken = payload.accessToken
+      const payload = await response.json() as AuthSessionResponse
+      const newAccessToken = payload.accessToken ?? payload.token
       if (!newAccessToken) {
         logout()
         return null
       }
 
       setTokens(newAccessToken, payload.refreshToken ?? refreshToken)
+      if (payload.user) {
+        replaceUser(payload.user)
+      }
       return newAccessToken
     } catch {
       logout()

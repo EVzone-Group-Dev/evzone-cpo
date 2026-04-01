@@ -17,6 +17,7 @@ export interface LoginResponse {
 
 export type AuthenticatedApiUser = Omit<CPOUser, 'role'> & {
   role: string
+  twoFactorEnabled?: boolean
   accessProfile?: AccessProfile | null
 }
 

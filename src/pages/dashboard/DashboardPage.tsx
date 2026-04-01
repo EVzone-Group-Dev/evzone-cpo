@@ -1,4 +1,10 @@
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
+import {
+  isFinanceDashboardUser,
+  isSiteScopedUser,
+  isStationManagerDashboardUser,
+  isTechnicianDashboardUser,
+} from '@/core/auth/access'
 import { useDashboardOverview } from '@/core/hooks/usePlatformData'
 import { useAuthStore } from '@/core/auth/authStore'
 import { useTenant } from '@/core/hooks/useTenant'
@@ -23,28 +29,28 @@ export function DashboardPage() {
   const { user } = useAuthStore()
   const { activeTenant, dashboardMode, isLoading: isTenantLoading } = useTenant()
   const usesOperationsDashboard = dashboardMode !== 'site'
-    && user?.role !== 'FINANCE'
-    && user?.role !== 'TECHNICIAN'
-    && user?.role !== 'STATION_MANAGER'
+    && !isFinanceDashboardUser(user)
+    && !isTechnicianDashboardUser(user)
+    && !isStationManagerDashboardUser(user)
   const { data, isLoading, error } = useDashboardOverview({ enabled: usesOperationsDashboard })
 
   if (isTenantLoading) {
     return <DashboardLayout pageTitle="Tenant Overview"><div className="p-8 text-center text-subtle">Loading tenant context...</div></DashboardLayout>
   }
 
-  if (user?.role === 'FINANCE') {
+  if (isFinanceDashboardUser(user)) {
     return <FinanceDashboard />
   }
 
-  if (user?.role === 'TECHNICIAN') {
+  if (isTechnicianDashboardUser(user)) {
     return <TechnicianDashboard />
   }
 
-  if (user?.role === 'STATION_MANAGER') {
+  if (isStationManagerDashboardUser(user)) {
     return <StationManagerDashboard />
   }
 
-  if (user?.role === 'SITE_HOST' || dashboardMode === 'site') {
+  if (isSiteScopedUser(user) || dashboardMode === 'site') {
     return <SiteOwnerDashboard />
   }
 
