@@ -1,5 +1,6 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { setupServer } from 'msw/node'
+import { resetDemoAuthSessions } from '@/mocks/data'
 import { handlers } from '@/mocks/handlers'
 
 const server = setupServer(...handlers)
@@ -17,6 +18,7 @@ beforeAll(() => {
 
 afterEach(() => {
   server.resetHandlers()
+  resetDemoAuthSessions()
 })
 
 afterAll(() => {
@@ -24,6 +26,112 @@ afterAll(() => {
 })
 
 describe('MSW RBAC authorization boundaries', () => {
+  it('logs in through v1 auth and returns canonical access context', async () => {
+    const response = await fetch('/api/v1/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: 'technician@evzone.io',
+        password: 'technician',
+      }),
+    })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      accessToken: 'demo-token-u6',
+      refreshToken: 'demo-refresh-u6',
+      user: {
+        activeOrganizationId: 'org-evzone-ke',
+        accessProfile: {
+          canonicalRole: 'FIELD_TECHNICIAN',
+          scope: {
+            type: 'station',
+          },
+        },
+        stationContexts: expect.arrayContaining([
+          expect.objectContaining({ assignmentId: 'asg-u6-st-1', stationId: 'st-1' }),
+          expect.objectContaining({ assignmentId: 'asg-u6-st-2', stationId: 'st-2' }),
+        ]),
+      },
+    })
+  })
+
+  it('switches organization context and reflects it in users/me', async () => {
+    const switchResponse = await fetch('/api/v1/auth/switch-organization', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer demo-token-u5',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        organizationId: 'org-evzone-ke',
+      }),
+    })
+
+    expect(switchResponse.status).toBe(200)
+    expect(await switchResponse.json()).toMatchObject({
+      user: {
+        activeOrganizationId: 'org-evzone-ke',
+      },
+    })
+
+    const currentUserResponse = await fetch('/api/v1/users/me', {
+      headers: {
+        Authorization: 'Bearer demo-token-u5',
+      },
+    })
+
+    expect(currentUserResponse.status).toBe(200)
+    expect(await currentUserResponse.json()).toMatchObject({
+      activeOrganizationId: 'org-evzone-ke',
+      accessProfile: {
+        canonicalRole: 'PLATFORM_BILLING_ADMIN',
+      },
+    })
+  })
+
+  it('switches station context and reflects it in users/me', async () => {
+    const switchResponse = await fetch('/api/v1/users/me/station-context', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer demo-token-u6',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        assignmentId: 'asg-u6-st-2',
+      }),
+    })
+
+    expect(switchResponse.status).toBe(200)
+    expect(await switchResponse.json()).toMatchObject({
+      activeStationContext: {
+        assignmentId: 'asg-u6-st-2',
+        stationId: 'st-2',
+      },
+    })
+
+    const currentUserResponse = await fetch('/api/v1/users/me', {
+      headers: {
+        Authorization: 'Bearer demo-token-u6',
+      },
+    })
+
+    expect(currentUserResponse.status).toBe(200)
+    expect(await currentUserResponse.json()).toMatchObject({
+      activeStationContext: {
+        assignmentId: 'asg-u6-st-2',
+        stationId: 'st-2',
+      },
+      accessProfile: {
+        scope: {
+          stationId: 'st-2',
+        },
+      },
+    })
+  })
+
   it('records failed inspection and moves pack to quarantined status', async () => {
     const inspectResponse = await fetch('/api/swapping/packs/PK-WL-001/inspection', {
       method: 'POST',

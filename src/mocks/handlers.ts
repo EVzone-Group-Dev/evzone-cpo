@@ -3,7 +3,7 @@ import {
   canAccessPolicy,
   type AccessPolicyKey,
 } from '@/core/auth/access'
-import type { CPORole } from '@/core/types/domain'
+import type { AuthenticatedApiUser } from '@/core/types/mockApi'
 import { http, HttpResponse } from 'msw'
 import {
   applySwapPackRetirementDecision,
@@ -45,8 +45,14 @@ import {
   listSwapStations,
   listTariffs,
   listTeamMembers,
+  listDemoTenants,
+  refreshDemoUserSession,
+  resetDemoAuthSessions,
+  resolveDemoAccess,
   transitionSwapPack,
   resolveTenantContext,
+  switchDemoOrganization,
+  switchDemoStationContext,
 } from './data'
 
 type TenantId = Parameters<typeof getDashboardOverview>[0]
@@ -55,61 +61,37 @@ type ResolvedTenantContext = NonNullable<ReturnType<typeof resolveTenantContext>
 interface RequestAccess {
   context: ResolvedTenantContext
   tenantId: TenantId
-  role: CPORole
+  user: AuthenticatedApiUser
 }
 
 type AccessResult =
   | { ok: true; access: RequestAccess }
   | { ok: false; response: Response }
 
-const DEMO_TOKEN_PREFIX = 'demo-token-'
-
-function getTokenValue(authorizationHeader: string | null) {
-  if (!authorizationHeader) return null
-  return authorizationHeader.startsWith('Bearer ')
-    ? authorizationHeader.slice('Bearer '.length)
-    : authorizationHeader
-}
-
-function getRoleFromAuthorization(authorizationHeader: string | null): CPORole | null {
-  const token = getTokenValue(authorizationHeader)
-  if (!token || !token.startsWith(DEMO_TOKEN_PREFIX)) {
-    return null
-  }
-
-  const userId = token.slice(DEMO_TOKEN_PREFIX.length)
-  const demoUser = getDemoUserHints().find((user) => user.id === userId)
-  return demoUser?.role ?? null
-}
-
 function getRequestAccess(request: Request): RequestAccess | null {
-  const authorization = request.headers.get('authorization')
-  const context = resolveTenantContext(
-    authorization,
+  const resolved = resolveDemoAccess(
+    request.headers.get('authorization'),
     request.headers.get('x-tenant-id'),
   )
-  const role = getRoleFromAuthorization(authorization)
 
-  if (!context || !role) {
-    return null
-  }
-
-  return {
-    context,
-    tenantId: context.activeTenant.id as TenantId,
-    role,
-  }
+  return resolved
+    ? {
+      context: resolved.context,
+      tenantId: resolved.tenantId,
+      user: resolved.user,
+    }
+    : null
 }
 
 function unauthorized() {
   return HttpResponse.json({ message: 'Unauthorized.' }, { status: 401 })
 }
 
-function forbidden(role: CPORole, policy: AccessPolicyKey) {
+function forbidden(user: AuthenticatedApiUser, policy: AccessPolicyKey) {
   return HttpResponse.json(
     {
       message: 'Forbidden.',
-      role,
+      role: user.role,
       allowedRoles: ACCESS_POLICY[policy],
       policy,
     },
@@ -123,25 +105,100 @@ function authorize(request: Request, policy: AccessPolicyKey): AccessResult {
     return { ok: false, response: unauthorized() }
   }
 
-  if (!canAccessPolicy({ role: access.role }, policy)) {
-    return { ok: false, response: forbidden(access.role, policy) }
+  if (!canAccessPolicy(access.user, policy)) {
+    return { ok: false, response: forbidden(access.user, policy) }
   }
 
   return { ok: true, access }
 }
 
+function loginResolver(request: Request) {
+  return request.json()
+    .then(({ email, password }) => {
+      const auth = authenticateDemoUser(email, password)
+      if (!auth) {
+        return HttpResponse.json({ message: 'Invalid credentials.' }, { status: 401 })
+      }
+      return HttpResponse.json(auth)
+    })
+}
+
 export const handlers = [
+  http.get('/api/v1/auth/demo-users', () => HttpResponse.json(getDemoUserHints())),
   http.get('/api/auth/demo-users', () => HttpResponse.json(getDemoUserHints())),
 
-  http.post('/api/auth/login', async ({ request }) => {
-    const { email, password } = await request.json() as { email: string; password: string }
-    const auth = authenticateDemoUser(email, password)
+  http.post('/api/v1/auth/login', ({ request }) => loginResolver(request)),
+  http.post('/api/auth/login', ({ request }) => loginResolver(request)),
+
+  http.post('/api/v1/auth/refresh', async ({ request }) => {
+    const body = await request.json() as { refreshToken?: string | null }
+    const auth = refreshDemoUserSession(body.refreshToken ?? null)
 
     if (!auth) {
-      return HttpResponse.json({ message: 'Invalid credentials.' }, { status: 401 })
+      return HttpResponse.json({ message: 'Unauthorized.' }, { status: 401 })
     }
 
     return HttpResponse.json(auth)
+  }),
+
+  http.get('/api/v1/users/me', ({ request }) => {
+    const access = getRequestAccess(request)
+    if (!access) {
+      return unauthorized()
+    }
+    return HttpResponse.json(access.user)
+  }),
+
+  http.get('/api/v1/auth/access-profile', ({ request }) => {
+    const access = getRequestAccess(request)
+    if (!access) {
+      return unauthorized()
+    }
+    return HttpResponse.json(access.user.accessProfile ?? null)
+  }),
+
+  http.post('/api/v1/auth/switch-organization', async ({ request }) => {
+    const authorization = request.headers.get('authorization')
+    const { organizationId } = await request.json() as { organizationId: string }
+    const auth = switchDemoOrganization(authorization, organizationId)
+
+    if (!auth) {
+      return HttpResponse.json({ message: 'Unauthorized.' }, { status: 401 })
+    }
+
+    return HttpResponse.json(auth)
+  }),
+
+  http.get('/api/v1/users/me/station-contexts', ({ request }) => {
+    const access = getRequestAccess(request)
+    if (!access) {
+      return unauthorized()
+    }
+
+    return HttpResponse.json({
+      stationContexts: access.user.stationContexts ?? [],
+      activeStationContext: access.user.activeStationContext ?? null,
+    })
+  }),
+
+  http.post('/api/v1/users/me/station-context', async ({ request }) => {
+    const authorization = request.headers.get('authorization')
+    const { assignmentId } = await request.json() as { assignmentId: string }
+    const stationContext = switchDemoStationContext(authorization, assignmentId)
+
+    if (!stationContext) {
+      return HttpResponse.json({ message: 'Unauthorized.' }, { status: 401 })
+    }
+
+    return HttpResponse.json(stationContext)
+  }),
+
+  http.get('/api/v1/tenants', ({ request }) => {
+    const tenants = listDemoTenants(request.headers.get('authorization'))
+    if (tenants.length === 0) {
+      return unauthorized()
+    }
+    return HttpResponse.json(tenants)
   }),
 
   http.get('/api/tenancy/context', ({ request }) => {
@@ -495,3 +552,5 @@ export const handlers = [
     return HttpResponse.json({ message: 'Kill command dispatched' })
   }),
 ]
+
+resetDemoAuthSessions()

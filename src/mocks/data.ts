@@ -1,6 +1,15 @@
-import type { CPOUser } from '@/core/types/domain'
+import type {
+  AccessProfile,
+  AccessRoleFamily,
+  AccessScopeSummary,
+  CanonicalAccessRole,
+  CPOUser,
+  OrganizationMembershipSummary,
+  StationContextSummary,
+} from '@/core/types/domain'
 import type {
   AlertRecord,
+  AuthenticatedApiUser,
   AuditLogRecord,
   BatteryInventoryResponse,
   BatteryPackRecord,
@@ -51,7 +60,12 @@ import type {
 type TenantId = 'tenant-global' | 'tenant-evzone-ke' | 'tenant-westlands-mall'
 
 interface DemoUserRecord extends DemoUserHint {
+  canonicalRole: CanonicalAccessRole
   defaultTenantId: TenantId
+  permissions: string[]
+  providerId?: string | null
+  roleFamily: AccessRoleFamily
+  stationContexts?: StationContextSummary[]
   tenantIds: TenantId[]
   user: CPOUser
 }
@@ -114,6 +128,206 @@ const tenantCatalog: Record<TenantId, TenantRecord> = {
   },
 }
 
+const tenantOrganizationCatalog: Record<TenantId, { organizationId: string; organizationName: string; organizationType: string }> = {
+  'tenant-global': {
+    organizationId: 'org-evzone-global',
+    organizationName: 'EVzone Global',
+    organizationType: 'Platform',
+  },
+  'tenant-evzone-ke': {
+    organizationId: 'org-evzone-ke',
+    organizationName: 'EVzone Kenya',
+    organizationType: 'Operating Company',
+  },
+  'tenant-westlands-mall': {
+    organizationId: 'org-westlands-mall',
+    organizationName: 'Westlands Mall Portfolio',
+    organizationType: 'Hosted Site',
+  },
+}
+
+const stationContextCatalog: Record<string, StationContextSummary[]> = {
+  u3: [
+    {
+      assignmentId: 'asg-u3-st-1',
+      stationId: 'st-1',
+      stationName: 'Westlands Hub',
+      organizationId: tenantOrganizationCatalog['tenant-westlands-mall'].organizationId,
+      role: 'OPERATIONS_OPERATOR',
+      isPrimary: true,
+      attendantMode: 'field',
+      timezone: 'Africa/Nairobi',
+    },
+  ],
+  u4: [
+    {
+      assignmentId: 'asg-u4-st-1',
+      stationId: 'st-1',
+      stationName: 'Westlands Hub',
+      organizationId: tenantOrganizationCatalog['tenant-evzone-ke'].organizationId,
+      role: 'STATION_MANAGER',
+      isPrimary: true,
+      timezone: 'Africa/Nairobi',
+    },
+    {
+      assignmentId: 'asg-u4-st-2',
+      stationId: 'st-2',
+      stationName: 'CBD Charging Station',
+      organizationId: tenantOrganizationCatalog['tenant-evzone-ke'].organizationId,
+      role: 'STATION_MANAGER',
+      isPrimary: false,
+      timezone: 'Africa/Nairobi',
+    },
+    {
+      assignmentId: 'asg-u4-st-3',
+      stationId: 'st-3',
+      stationName: 'Airport East Battery Exchange',
+      organizationId: tenantOrganizationCatalog['tenant-evzone-ke'].organizationId,
+      role: 'STATION_MANAGER',
+      isPrimary: false,
+      timezone: 'Africa/Nairobi',
+    },
+  ],
+  u6: [
+    {
+      assignmentId: 'asg-u6-st-1',
+      stationId: 'st-1',
+      stationName: 'Westlands Hub',
+      organizationId: tenantOrganizationCatalog['tenant-evzone-ke'].organizationId,
+      role: 'FIELD_TECHNICIAN',
+      isPrimary: true,
+      attendantMode: 'field-service',
+      timezone: 'Africa/Nairobi',
+    },
+    {
+      assignmentId: 'asg-u6-st-2',
+      stationId: 'st-2',
+      stationName: 'CBD Charging Station',
+      organizationId: tenantOrganizationCatalog['tenant-evzone-ke'].organizationId,
+      role: 'FIELD_TECHNICIAN',
+      isPrimary: false,
+      attendantMode: 'field-service',
+      timezone: 'Africa/Nairobi',
+    },
+  ],
+}
+
+const DEMO_PERMISSION_SETS = {
+  platformSuperAdmin: [
+    'platform.tenants.read',
+    'tenant.users.read',
+    'tenant.settings.read',
+    'tenant.branding.write',
+    'stations.read',
+    'stations.write',
+    'charge_points.read',
+    'charge_points.write',
+    'charge_points.command',
+    'sessions.read',
+    'commands.read',
+    'commands.write',
+    'incidents.read',
+    'alerts.read',
+    'smart_charging.read',
+    'load_profiles.read',
+    'battery_inventory.read',
+    'ocpi.partners.read',
+    'ocpi.sessions.read',
+    'ocpi.cdrs.read',
+    'ocpi.commands.read',
+    'tenant.tariffs.read',
+    'finance.billing.read',
+    'platform.billing.read',
+    'finance.payouts.read',
+    'finance.settlement.read',
+    'finance.revenue_reports.read',
+    'platform.audit.read',
+    'platform.integrations.read',
+  ],
+  tenantAdmin: [
+    'tenant.users.read',
+    'tenant.settings.read',
+    'stations.read',
+    'stations.write',
+    'charge_points.read',
+    'charge_points.write',
+    'charge_points.command',
+    'sessions.read',
+    'commands.read',
+    'commands.write',
+    'incidents.read',
+    'alerts.read',
+    'smart_charging.read',
+    'load_profiles.read',
+    'battery_inventory.read',
+    'tenant.tariffs.read',
+    'finance.revenue_reports.read',
+  ],
+  operator: [
+    'stations.read',
+    'charge_points.read',
+    'sessions.read',
+    'commands.read',
+    'commands.write',
+    'incidents.read',
+    'alerts.read',
+    'battery_inventory.read',
+  ],
+  stationManager: [
+    'stations.read',
+    'stations.write',
+    'charge_points.read',
+    'charge_points.write',
+    'charge_points.command',
+    'sessions.read',
+    'commands.read',
+    'commands.write',
+    'incidents.read',
+    'alerts.read',
+    'smart_charging.read',
+    'load_profiles.read',
+    'battery_inventory.read',
+    'finance.revenue_reports.read',
+  ],
+  finance: [
+    'finance.billing.read',
+    'platform.billing.read',
+    'finance.payouts.read',
+    'finance.settlement.read',
+    'finance.revenue_reports.read',
+  ],
+  technician: [
+    'stations.read',
+    'charge_points.read',
+    'charge_points.command',
+    'sessions.read',
+    'incidents.read',
+    'alerts.read',
+    'maintenance.dispatch.read',
+    'commands.write',
+  ],
+  siteHost: [
+    'finance.revenue_reports.read',
+    'sites.read',
+  ],
+  providerAdmin: [
+    'ocpi.partners.read',
+    'ocpi.sessions.read',
+    'ocpi.cdrs.read',
+    'ocpi.commands.read',
+  ],
+  fleetDispatcher: [
+    'sessions.read',
+    'alerts.read',
+  ],
+} as const
+
+interface DemoSessionState {
+  activeStationAssignmentId: string | null
+  activeTenantId: TenantId
+  userId: string
+}
+
 const demoUsers: DemoUserRecord[] = [
   {
     id: 'u1',
@@ -121,7 +335,10 @@ const demoUsers: DemoUserRecord[] = [
     email: 'admin@evzone.io',
     password: 'admin',
     role: 'SUPER_ADMIN',
+    canonicalRole: 'PLATFORM_SUPER_ADMIN',
     defaultTenantId: 'tenant-global',
+    permissions: [...DEMO_PERMISSION_SETS.platformSuperAdmin],
+    roleFamily: 'platform',
     tenantIds: ['tenant-global', 'tenant-evzone-ke', 'tenant-westlands-mall'],
     user: {
       id: 'u1',
@@ -139,7 +356,10 @@ const demoUsers: DemoUserRecord[] = [
     email: 'manager@evzone.io',
     password: 'manager',
     role: 'CPO_ADMIN',
+    canonicalRole: 'TENANT_ADMIN',
     defaultTenantId: 'tenant-evzone-ke',
+    permissions: [...DEMO_PERMISSION_SETS.tenantAdmin],
+    roleFamily: 'tenant',
     tenantIds: ['tenant-evzone-ke'],
     user: {
       id: 'u2',
@@ -158,7 +378,11 @@ const demoUsers: DemoUserRecord[] = [
     email: 'operator@evzone.io',
     password: 'operator',
     role: 'OPERATOR',
+    canonicalRole: 'OPERATIONS_OPERATOR',
     defaultTenantId: 'tenant-westlands-mall',
+    permissions: [...DEMO_PERMISSION_SETS.operator],
+    roleFamily: 'operations',
+    stationContexts: stationContextCatalog.u3,
     tenantIds: ['tenant-westlands-mall'],
     user: {
       id: 'u3',
@@ -178,7 +402,11 @@ const demoUsers: DemoUserRecord[] = [
     email: 'stationmanager@evzone.io',
     password: 'stationmanager',
     role: 'STATION_MANAGER',
+    canonicalRole: 'STATION_MANAGER',
     defaultTenantId: 'tenant-evzone-ke',
+    permissions: [...DEMO_PERMISSION_SETS.stationManager],
+    roleFamily: 'tenant',
+    stationContexts: stationContextCatalog.u4,
     tenantIds: ['tenant-evzone-ke'],
     user: {
       id: 'u4',
@@ -198,7 +426,10 @@ const demoUsers: DemoUserRecord[] = [
     email: 'finance@evzone.io',
     password: 'finance',
     role: 'FINANCE',
+    canonicalRole: 'PLATFORM_BILLING_ADMIN',
     defaultTenantId: 'tenant-global',
+    permissions: [...DEMO_PERMISSION_SETS.finance],
+    roleFamily: 'finance',
     tenantIds: ['tenant-global', 'tenant-evzone-ke'],
     user: {
       id: 'u5',
@@ -217,7 +448,11 @@ const demoUsers: DemoUserRecord[] = [
     email: 'technician@evzone.io',
     password: 'technician',
     role: 'TECHNICIAN',
+    canonicalRole: 'FIELD_TECHNICIAN',
     defaultTenantId: 'tenant-evzone-ke',
+    permissions: [...DEMO_PERMISSION_SETS.technician],
+    roleFamily: 'technical',
+    stationContexts: stationContextCatalog.u6,
     tenantIds: ['tenant-evzone-ke'],
     user: {
       id: 'u6',
@@ -229,6 +464,73 @@ const demoUsers: DemoUserRecord[] = [
       assignedStationIds: ['st-1', 'st-2'],
       mfaEnabled: false,
       createdAt: '2026-03-06T08:00:00.000Z',
+    },
+  },
+  {
+    id: 'u7',
+    name: 'Site Host',
+    email: 'sitehost@evzone.io',
+    password: 'sitehost',
+    role: 'SITE_HOST',
+    canonicalRole: 'SITE_HOST',
+    defaultTenantId: 'tenant-westlands-mall',
+    permissions: [...DEMO_PERMISSION_SETS.siteHost],
+    roleFamily: 'tenant',
+    tenantIds: ['tenant-westlands-mall'],
+    user: {
+      id: 'u7',
+      name: 'Site Host',
+      email: 'sitehost@evzone.io',
+      role: 'SITE_HOST',
+      status: 'Active',
+      organizationId: tenantOrganizationCatalog['tenant-westlands-mall'].organizationId,
+      mfaEnabled: true,
+      createdAt: '2026-03-07T08:00:00.000Z',
+    },
+  },
+  {
+    id: 'u8',
+    name: 'Roaming Provider Admin',
+    email: 'provider@evzone.io',
+    password: 'provider',
+    role: 'CPO_ADMIN',
+    canonicalRole: 'EXTERNAL_PROVIDER_ADMIN',
+    defaultTenantId: 'tenant-global',
+    permissions: [...DEMO_PERMISSION_SETS.providerAdmin],
+    providerId: 'provider-demo-1',
+    roleFamily: 'provider',
+    tenantIds: ['tenant-global'],
+    user: {
+      id: 'u8',
+      name: 'Roaming Provider Admin',
+      email: 'provider@evzone.io',
+      role: 'CPO_ADMIN',
+      status: 'Active',
+      providerId: 'provider-demo-1',
+      mfaEnabled: true,
+      createdAt: '2026-03-08T08:00:00.000Z',
+    },
+  },
+  {
+    id: 'u9',
+    name: 'Fleet Dispatcher',
+    email: 'fleet@evzone.io',
+    password: 'fleet',
+    role: 'OPERATOR',
+    canonicalRole: 'FLEET_DISPATCHER',
+    defaultTenantId: 'tenant-evzone-ke',
+    permissions: [...DEMO_PERMISSION_SETS.fleetDispatcher],
+    roleFamily: 'fleet',
+    tenantIds: ['tenant-evzone-ke'],
+    user: {
+      id: 'u9',
+      name: 'Fleet Dispatcher',
+      email: 'fleet@evzone.io',
+      role: 'OPERATOR',
+      status: 'Active',
+      organizationId: tenantOrganizationCatalog['tenant-evzone-ke'].organizationId,
+      mfaEnabled: true,
+      createdAt: '2026-03-09T08:00:00.000Z',
     },
   },
 ]
@@ -2103,6 +2405,10 @@ function initializeSwapPackLifecycleState() {
 
 initializeSwapPackLifecycleState()
 
+const DEMO_TOKEN_PREFIX = 'demo-token-'
+const DEMO_REFRESH_PREFIX = 'demo-refresh-'
+const demoSessionStore = new Map<string, DemoSessionState>()
+
 function getTokenValue(authorizationHeader?: string | null) {
   if (!authorizationHeader) return null
   return authorizationHeader.startsWith('Bearer ') ? authorizationHeader.slice('Bearer '.length) : authorizationHeader
@@ -2110,7 +2416,185 @@ function getTokenValue(authorizationHeader?: string | null) {
 
 function getDemoUserByToken(token: string | null) {
   if (!token) return null
-  return demoUsers.find((user) => `demo-token-${user.id}` === token) ?? null
+  if (token.startsWith(DEMO_TOKEN_PREFIX)) {
+    return demoUsers.find((user) => user.id === token.slice(DEMO_TOKEN_PREFIX.length)) ?? null
+  }
+  if (token.startsWith(DEMO_REFRESH_PREFIX)) {
+    return demoUsers.find((user) => user.id === token.slice(DEMO_REFRESH_PREFIX.length)) ?? null
+  }
+  return null
+}
+
+function getDemoAccessToken(userId: string) {
+  return `${DEMO_TOKEN_PREFIX}${userId}`
+}
+
+function getDemoRefreshToken(userId: string) {
+  return `${DEMO_REFRESH_PREFIX}${userId}`
+}
+
+function getStationContextsForTenant(demoUser: DemoUserRecord, tenantId: TenantId) {
+  const organizationId = tenantOrganizationCatalog[tenantId].organizationId
+  return (demoUser.stationContexts ?? []).filter((context) => context.organizationId === organizationId)
+}
+
+function getDefaultStationAssignmentId(demoUser: DemoUserRecord, tenantId: TenantId) {
+  const stationContexts = getStationContextsForTenant(demoUser, tenantId)
+  return stationContexts.find((context) => context.isPrimary)?.assignmentId ?? stationContexts[0]?.assignmentId ?? null
+}
+
+function getDemoSessionState(token: string | null) {
+  const demoUser = getDemoUserByToken(token)
+  if (!demoUser) {
+    return null
+  }
+
+  const accessToken = getDemoAccessToken(demoUser.id)
+  return demoSessionStore.get(accessToken) ?? {
+    userId: demoUser.id,
+    activeTenantId: demoUser.defaultTenantId,
+    activeStationAssignmentId: getDefaultStationAssignmentId(demoUser, demoUser.defaultTenantId),
+  }
+}
+
+function buildDemoMemberships(demoUser: DemoUserRecord): OrganizationMembershipSummary[] {
+  return demoUser.tenantIds.map((tenantId) => ({
+    organizationId: tenantOrganizationCatalog[tenantId].organizationId,
+    organizationName: tenantOrganizationCatalog[tenantId].organizationName,
+    organizationType: tenantOrganizationCatalog[tenantId].organizationType,
+    ownerCapability: demoUser.user.ownerCapability ?? null,
+    role: demoUser.canonicalRole,
+    status: 'ACTIVE',
+  }))
+}
+
+function buildDemoScope(
+  demoUser: DemoUserRecord,
+  activeTenantId: TenantId,
+  stationContexts: StationContextSummary[],
+  activeStationContext: StationContextSummary | null,
+): AccessScopeSummary {
+  let type: AccessScopeSummary['type'] = 'organization'
+
+  if (demoUser.canonicalRole === 'PLATFORM_SUPER_ADMIN' || demoUser.canonicalRole === 'PLATFORM_BILLING_ADMIN') {
+    type = 'platform'
+  } else if (demoUser.canonicalRole === 'SITE_HOST') {
+    type = 'site'
+  } else if (demoUser.canonicalRole === 'EXTERNAL_PROVIDER_ADMIN' || demoUser.canonicalRole === 'EXTERNAL_PROVIDER_OPERATOR') {
+    type = 'provider'
+  } else if (demoUser.canonicalRole === 'FLEET_DISPATCHER' || demoUser.canonicalRole === 'FLEET_DRIVER') {
+    type = 'fleet_group'
+  } else if (activeStationContext || stationContexts.length > 0) {
+    type = 'station'
+  }
+
+  return {
+    type,
+    organizationId: type === 'platform' ? null : tenantOrganizationCatalog[activeTenantId].organizationId,
+    stationId: activeStationContext?.stationId ?? null,
+    stationIds: stationContexts.map((context) => context.stationId),
+    providerId: demoUser.providerId ?? demoUser.user.providerId ?? null,
+    isTemporary: false,
+  }
+}
+
+function buildDemoUserSession(
+  demoUser: DemoUserRecord,
+  activeTenantId: TenantId,
+  activeStationAssignmentId: string | null,
+): AuthenticatedApiUser {
+  const stationContexts = getStationContextsForTenant(demoUser, activeTenantId)
+  const activeStationContext =
+    stationContexts.find((context) => context.assignmentId === activeStationAssignmentId)
+    ?? stationContexts.find((context) => context.isPrimary)
+    ?? stationContexts[0]
+    ?? null
+  const activeOrganizationId = tenantOrganizationCatalog[activeTenantId].organizationId
+  const accessProfile: AccessProfile = {
+    version: '2026-04-v1',
+    legacyRole: demoUser.user.legacyRole ?? demoUser.user.role,
+    canonicalRole: demoUser.canonicalRole,
+    roleFamily: demoUser.roleFamily,
+    permissions: demoUser.permissions,
+    scope: buildDemoScope(demoUser, activeTenantId, stationContexts, activeStationContext),
+  }
+
+  return {
+    ...demoUser.user,
+    activeOrganizationId,
+    accessProfile,
+    memberships: buildDemoMemberships(demoUser),
+    orgId: activeOrganizationId,
+    organizationId: activeOrganizationId,
+    providerId: demoUser.providerId ?? demoUser.user.providerId ?? null,
+    region: tenantCatalog[activeTenantId].region,
+    stationContexts,
+    activeStationContext,
+  }
+}
+
+function buildDemoLoginResponse(
+  demoUser: DemoUserRecord,
+  activeTenantId: TenantId,
+  activeStationAssignmentId: string | null,
+): LoginResponse {
+  const accessToken = getDemoAccessToken(demoUser.id)
+  const refreshToken = getDemoRefreshToken(demoUser.id)
+
+  demoSessionStore.set(accessToken, {
+    userId: demoUser.id,
+    activeTenantId,
+    activeStationAssignmentId,
+  })
+
+  return {
+    accessToken,
+    refreshToken,
+    token: accessToken,
+    user: buildDemoUserSession(demoUser, activeTenantId, activeStationAssignmentId),
+  }
+}
+
+interface ResolvedDemoAccess {
+  accessToken: string
+  context: TenantContextResponse
+  demoUser: DemoUserRecord
+  refreshToken: string
+  tenantId: TenantId
+  user: AuthenticatedApiUser
+}
+
+export function resetDemoAuthSessions() {
+  demoSessionStore.clear()
+}
+
+export function resolveDemoAccess(authorizationHeader?: string | null, requestedTenantId?: string | null): ResolvedDemoAccess | null {
+  const token = getTokenValue(authorizationHeader)
+  const sessionState = getDemoSessionState(token)
+  const demoUser = getDemoUserByToken(token)
+
+  if (!sessionState || !demoUser) {
+    return null
+  }
+
+  const activeTenantId = demoUser.tenantIds.includes(requestedTenantId as TenantId)
+    ? requestedTenantId as TenantId
+    : sessionState.activeTenantId
+
+  return {
+    accessToken: getDemoAccessToken(demoUser.id),
+    context: {
+      activeTenant: getTenantSummary(activeTenantId),
+      availableTenants: demoUser.tenantIds.map(getTenantSummary),
+      canSwitchTenants: demoUser.tenantIds.length > 1,
+      dashboardMode: tenantCatalog[activeTenantId].dashboardMode,
+      dataScopeLabel: tenantCatalog[activeTenantId].dataScopeLabel,
+    },
+    demoUser,
+    refreshToken: getDemoRefreshToken(demoUser.id),
+    tenantId: activeTenantId,
+    user: buildDemoUserSession(demoUser, activeTenantId, sessionState.activeStationAssignmentId),
+  }
 }
 
 function getTenantSummary(tenantId: TenantId): TenantSummary {
@@ -2122,7 +2606,9 @@ function getTenantSummary(tenantId: TenantId): TenantSummary {
 
 export function authenticateDemoUser(email: string, password: string): LoginResponse | null {
   const match = demoUsers.find((user) => user.email === email && user.password === password)
-  return match ? { token: `demo-token-${match.id}`, user: match.user } : null
+  return match
+    ? buildDemoLoginResponse(match, match.defaultTenantId, getDefaultStationAssignmentId(match, match.defaultTenantId))
+    : null
 }
 
 export function getDemoUserHints(): DemoUserHint[] {
@@ -2130,20 +2616,73 @@ export function getDemoUserHints(): DemoUserHint[] {
 }
 
 export function resolveTenantContext(authorizationHeader?: string | null, requestedTenantId?: string | null): TenantContextResponse | null {
-  const demoUser = getDemoUserByToken(getTokenValue(authorizationHeader))
-  if (!demoUser) return null
+  return resolveDemoAccess(authorizationHeader, requestedTenantId)?.context ?? null
+}
 
-  const activeTenantId = demoUser.tenantIds.includes(requestedTenantId as TenantId)
-    ? requestedTenantId as TenantId
-    : demoUser.defaultTenantId
+export function refreshDemoUserSession(refreshTokenValue: string | null): LoginResponse | null {
+  const demoUser = getDemoUserByToken(refreshTokenValue)
+  const sessionState = getDemoSessionState(refreshTokenValue)
 
-  return {
-    activeTenant: getTenantSummary(activeTenantId),
-    availableTenants: demoUser.tenantIds.map(getTenantSummary),
-    canSwitchTenants: demoUser.tenantIds.length > 1,
-    dashboardMode: tenantCatalog[activeTenantId].dashboardMode,
-    dataScopeLabel: tenantCatalog[activeTenantId].dataScopeLabel,
+  if (!demoUser || !sessionState) {
+    return null
   }
+
+  return buildDemoLoginResponse(demoUser, sessionState.activeTenantId, sessionState.activeStationAssignmentId)
+}
+
+export function switchDemoOrganization(authorizationHeader: string | null, organizationId: string): LoginResponse | null {
+  const access = resolveDemoAccess(authorizationHeader)
+
+  if (!access) {
+    return null
+  }
+
+  const nextTenantId = access.demoUser.tenantIds.find(
+    (tenantId) => tenantOrganizationCatalog[tenantId].organizationId === organizationId || tenantId === organizationId,
+  )
+
+  if (!nextTenantId) {
+    return null
+  }
+
+  return buildDemoLoginResponse(
+    access.demoUser,
+    nextTenantId,
+    getDefaultStationAssignmentId(access.demoUser, nextTenantId),
+  )
+}
+
+export function switchDemoStationContext(authorizationHeader: string | null, assignmentId: string) {
+  const access = resolveDemoAccess(authorizationHeader)
+
+  if (!access) {
+    return null
+  }
+
+  const targetContext = (access.demoUser.stationContexts ?? []).find((context) => context.assignmentId === assignmentId)
+  if (!targetContext) {
+    return null
+  }
+
+  const nextTenantId = access.demoUser.tenantIds.find(
+    (tenantId) => tenantOrganizationCatalog[tenantId].organizationId === targetContext.organizationId,
+  ) ?? access.tenantId
+
+  demoSessionStore.set(access.accessToken, {
+    userId: access.demoUser.id,
+    activeTenantId: nextTenantId,
+    activeStationAssignmentId: targetContext.assignmentId,
+  })
+
+  const updatedUser = buildDemoUserSession(access.demoUser, nextTenantId, targetContext.assignmentId)
+  return {
+    stationContexts: updatedUser.stationContexts ?? [],
+    activeStationContext: updatedUser.activeStationContext ?? null,
+  }
+}
+
+export function listDemoTenants(authorizationHeader?: string | null) {
+  return resolveDemoAccess(authorizationHeader)?.context.availableTenants ?? []
 }
 
 export function getDashboardOverview(tenantId: TenantId) { return dashboardOverviewByTenant[tenantId] }
