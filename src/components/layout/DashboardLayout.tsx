@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { Sidebar } from '@/components/layout/Sidebar'
+import { getUserRoleLabel } from '@/core/auth/access'
 import { useAuthStore } from '@/core/auth/authStore'
 import { useTenant } from '@/core/hooks/useTenant'
 import { Bell, LogOut, Settings } from 'lucide-react'
@@ -98,7 +99,7 @@ export function DashboardLayout({ children, pageTitle, actions }: Props) {
                   <div className="absolute right-0 top-10 z-50 w-64 rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-2 shadow-2xl">
                     <div className="px-3 py-2 border-b border-[var(--border)]">
                       <div className="text-sm font-semibold text-[var(--text)]">{user.name}</div>
-                      <div className="text-[11px] text-[var(--text-subtle)]">{user.role}</div>
+                      <div className="text-[11px] text-[var(--text-subtle)]">{getUserRoleLabel(user)}</div>
                       {activeTenant && (
                         <div className="text-[11px] text-[var(--accent)] mt-1">{activeTenant.name}</div>
                       )}

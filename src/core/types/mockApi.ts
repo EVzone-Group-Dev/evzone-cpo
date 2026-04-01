@@ -1,4 +1,4 @@
-import type { CPORole, CPOUser, ServiceMode } from '@/core/types/domain'
+import type { AccessProfile, CPORole, CPOUser, ServiceMode } from '@/core/types/domain'
 
 export interface DemoUserHint {
   id: string
@@ -12,7 +12,12 @@ export interface LoginResponse {
   accessToken?: string
   refreshToken?: string
   token?: string
-  user: CPOUser
+  user: AuthenticatedApiUser
+}
+
+export type AuthenticatedApiUser = Omit<CPOUser, 'role'> & {
+  role: string
+  accessProfile?: AccessProfile | null
 }
 
 export type TenantScope = 'platform' | 'organization' | 'site'

@@ -4,7 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { RequireAuth } from '@/router/guards'
 import { useAuthStore } from '@/core/auth/authStore'
 import { PATHS } from '@/router/paths'
-import type { CPOUser, CPORole } from '@/core/types/domain'
+import type { AccessProfile, CPOUser, CPORole } from '@/core/types/domain'
 
 vi.mock('@/core/auth/authStore', () => ({
   useAuthStore: vi.fn(),
@@ -24,6 +24,25 @@ function buildUser(role: CPORole): CPOUser {
 
 describe('RequireAuth', () => {
   const mockedUseAuthStore = vi.mocked(useAuthStore)
+
+  function buildAccessProfile(overrides: Partial<AccessProfile> = {}): AccessProfile {
+    return {
+      version: '2026-04-v1',
+      legacyRole: 'SUPER_ADMIN',
+      canonicalRole: 'PLATFORM_SUPER_ADMIN',
+      roleFamily: 'platform',
+      permissions: [],
+      scope: {
+        type: 'platform',
+        organizationId: null,
+        stationId: null,
+        stationIds: [],
+        providerId: null,
+        isTemporary: false,
+      },
+      ...overrides,
+    }
+  }
 
   function mockAuthState(state: { isAuthenticated: boolean; user: CPOUser | null }) {
     mockedUseAuthStore.mockImplementation(((selector: (store: { isAuthenticated: boolean; user: CPOUser | null }) => unknown) => (
@@ -49,7 +68,7 @@ describe('RequireAuth', () => {
         <Routes>
           <Route
             path={PATHS.BILLING}
-            element={<RequireAuth allowedRoles={['FINANCE']}><div>Finance Billing</div></RequireAuth>}
+            element={<RequireAuth policy="billingRead"><div>Finance Billing</div></RequireAuth>}
           />
           <Route path={PATHS.DASHBOARD_OPERATOR} element={<div>Operator Dashboard Home</div>} />
         </Routes>
@@ -58,5 +77,35 @@ describe('RequireAuth', () => {
 
     expect(await screen.findByText('Operator Dashboard Home')).toBeInTheDocument()
     expect(screen.queryByText('Finance Billing')).not.toBeInTheDocument()
+  })
+
+  it('allows permission-based access even when the fallback role would not match', async () => {
+    mockAuthState({
+      isAuthenticated: true,
+      user: {
+        ...buildUser('OPERATOR'),
+        accessProfile: buildAccessProfile({
+          legacyRole: 'STATION_ADMIN',
+          canonicalRole: 'TENANT_ADMIN',
+          roleFamily: 'tenant',
+          permissions: ['finance.billing.read'],
+        }),
+      },
+    })
+
+    render(
+      <MemoryRouter initialEntries={[PATHS.BILLING]}>
+        <Routes>
+          <Route
+            path={PATHS.BILLING}
+            element={<RequireAuth policy="billingRead"><div>Finance Billing</div></RequireAuth>}
+          />
+          <Route path={PATHS.DASHBOARD_OPERATOR} element={<div>Operator Dashboard Home</div>} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByText('Finance Billing')).toBeInTheDocument()
+    expect(screen.queryByText('Operator Dashboard Home')).not.toBeInTheDocument()
   })
 })

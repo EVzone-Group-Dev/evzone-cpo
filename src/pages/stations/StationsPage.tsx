@@ -11,10 +11,10 @@ export function StationsPage() {
   const [view, setView] = useState<'list' | 'map'>('list')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('All')
-  const userRole = useAuthStore((state) => state.user?.role)
+  const user = useAuthStore((state) => state.user)
   
   const { data: stations, isLoading, error } = useStations()
-  const canProvisionStations = !!userRole && canManageStations(userRole)
+  const canProvisionStations = canManageStations(user)
 
   const filtered = (stations || []).filter(s => 
     (statusFilter === 'All' || s.status === statusFilter) &&

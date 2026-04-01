@@ -44,7 +44,7 @@ export function DashboardPage() {
     return <StationManagerDashboard />
   }
 
-  if (dashboardMode === 'site') {
+  if (user?.role === 'SITE_HOST' || dashboardMode === 'site') {
     return <SiteOwnerDashboard />
   }
 

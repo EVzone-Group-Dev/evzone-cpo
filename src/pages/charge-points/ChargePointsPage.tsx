@@ -15,8 +15,8 @@ export function ChargePointsPage() {
   const [stationFilter, setStationFilter] = useState<string>('All')
   const [roamingFilter, setRoamingFilter] = useState<RoamingFilter>('All')
   const { data: chargePoints, isLoading, error } = useChargePoints()
-  const userRole = useAuthStore((state) => state.user?.role)
-  const canCreateChargePoints = !!userRole && canManageStations(userRole)
+  const user = useAuthStore((state) => state.user)
+  const canCreateChargePoints = canManageStations(user)
 
   const stationOptions = useMemo(
     () => ['All', ...Array.from(new Set((chargePoints || []).map((cp) => cp.stationName || 'Unassigned Station'))).sort((a, b) => a.localeCompare(b))],

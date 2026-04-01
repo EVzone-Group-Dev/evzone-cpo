@@ -1,22 +1,21 @@
 import type { ReactNode } from 'react'
 import { Navigate } from 'react-router-dom'
-import { canAccessRole, getRoleHomePath } from '@/core/auth/access'
+import { canAccessPolicy, getRoleHomePath, type AccessPolicyKey } from '@/core/auth/access'
 import { useAuthStore } from '@/core/auth/authStore'
-import type { CPORole } from '@/core/types/domain'
 
-export function RequireAuth({ children, allowedRoles }: { children: ReactNode; allowedRoles?: readonly CPORole[] }) {
+export function RequireAuth({ children, policy }: { children: ReactNode; policy?: AccessPolicyKey }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
-  const userRole = useAuthStore((state) => state.user?.role)
+  const user = useAuthStore((state) => state.user)
   if (!isAuthenticated) return <Navigate to="/login" replace />
-  if (allowedRoles && !canAccessRole(userRole, allowedRoles)) {
-    return <Navigate to={getRoleHomePath(userRole)} replace />
+  if (policy && !canAccessPolicy(user, policy)) {
+    return <Navigate to={getRoleHomePath(user)} replace />
   }
   return <>{children}</>
 }
 
 export function RequireGuest({ children }: { children: ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
-  const userRole = useAuthStore((state) => state.user?.role)
-  if (isAuthenticated) return <Navigate to={getRoleHomePath(userRole)} replace />
+  const user = useAuthStore((state) => state.user)
+  if (isAuthenticated) return <Navigate to={getRoleHomePath(user)} replace />
   return <>{children}</>
 }

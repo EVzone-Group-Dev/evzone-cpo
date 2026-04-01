@@ -36,7 +36,7 @@ export function LoginPage() {
       }
 
       setUser(auth.user, bearerToken, auth.refreshToken ?? null)
-      navigate(getRoleHomePath(auth.user.role), { replace: true })
+      navigate(getRoleHomePath(auth.user), { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to sign in.')
     } finally {

@@ -235,7 +235,66 @@ export type CPORole =
   | 'STATION_MANAGER'   // Manages stations & operators
   | 'OPERATOR'          // Field operator
   | 'TECHNICIAN'        // Maintenance only
+  | 'SITE_HOST'         // Site-level read-only owner view
   | 'FINANCE'           // Financial reports only
+
+export type CanonicalAccessRole =
+  | 'PLATFORM_SUPER_ADMIN'
+  | 'PLATFORM_BILLING_ADMIN'
+  | 'PLATFORM_NOC_LEAD'
+  | 'TENANT_ADMIN'
+  | 'SITE_HOST'
+  | 'ROAMING_MANAGER'
+  | 'STATION_MANAGER'
+  | 'OPERATIONS_OPERATOR'
+  | 'TENANT_FINANCE_ANALYST'
+  | 'FLEET_DISPATCHER'
+  | 'FLEET_DRIVER'
+  | 'INSTALLER_AGENT'
+  | 'SMART_CHARGING_ENGINEER'
+  | 'FIELD_TECHNICIAN'
+  | 'EXTERNAL_PROVIDER_ADMIN'
+  | 'EXTERNAL_PROVIDER_OPERATOR'
+  | 'LEGACY_UNMAPPED'
+
+export type AccessScopeType =
+  | 'platform'
+  | 'organization'
+  | 'site'
+  | 'station'
+  | 'fleet_group'
+  | 'charge_point'
+  | 'device'
+  | 'temporary'
+  | 'provider'
+
+export type AccessRoleFamily =
+  | 'platform'
+  | 'tenant'
+  | 'operations'
+  | 'finance'
+  | 'fleet'
+  | 'technical'
+  | 'provider'
+  | 'legacy'
+
+export interface AccessScopeSummary {
+  type: AccessScopeType
+  organizationId: string | null
+  stationId: string | null
+  stationIds: string[]
+  providerId: string | null
+  isTemporary: boolean
+}
+
+export interface AccessProfile {
+  version: string
+  legacyRole: string
+  canonicalRole: CanonicalAccessRole
+  roleFamily: AccessRoleFamily
+  permissions: string[]
+  scope: AccessScopeSummary
+}
 
 export type UserStatus = 'Active' | 'Invited' | 'Suspended' | 'Pending'
 
@@ -245,6 +304,7 @@ export interface CPOUser {
   email: string
   phone?: string
   role: CPORole
+  legacyRole?: string
   status: UserStatus
   organizationId?: OrganizationId
   assignedStationIds?: StationId[]
@@ -252,6 +312,7 @@ export interface CPOUser {
   lastSeen?: string
   createdAt: string
   mfaEnabled: boolean
+  accessProfile?: AccessProfile | null
 }
 
 // ── Finance ───────────────────────────────────────────────
