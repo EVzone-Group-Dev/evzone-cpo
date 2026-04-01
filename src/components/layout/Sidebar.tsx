@@ -11,8 +11,8 @@ import { PATHS } from '@/router/paths'
 import {
   LayoutDashboard, Cpu, Activity, AlertTriangle, Bell,
   DollarSign, BarChart3, Users, Globe2, FileText,
-  Webhook, Puzzle, ShieldCheck, TrendingUp, ChevronLeft,
-  ChevronRight, BookOpen, Gauge, Network, RefreshCw, Package, Settings, LogOut,
+  Webhook, Puzzle, ShieldCheck, TrendingUp,
+  BookOpen, Gauge, Network, RefreshCw, Package, Settings, LogOut,
 } from 'lucide-react'
 
 interface NavGroup {
@@ -94,7 +94,7 @@ export function Sidebar() {
   const location = useLocation()
   const { user, logout } = useAuthStore()
   const { activeTenant } = useTenant()
-  const [collapsed, setCollapsed] = useState(false)
+  const collapsed = false
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
 
   return (
@@ -103,23 +103,12 @@ export function Sidebar() {
       style={{ flexShrink: 0 }}
     >
       {/* Logo / Brand */}
-      <div className="flex items-center gap-2.5 px-4 py-4 border-b border-[var(--border)] min-h-[57px]">
+      <div className="flex items-center px-4 py-3 border-b border-[var(--border)] min-h-[68px]">
         <img
           src="/assets/logos/cpms.png"
           alt="EVzone CPO"
-          className={`${collapsed ? 'w-7 h-7 mx-auto' : 'h-6 max-w-[140px]'} flex-shrink-0 object-contain`}
+          className={`${collapsed ? 'w-8 h-8 mx-auto' : 'h-11 w-full'} flex-shrink-0 object-contain`}
         />
-        <button
-          onClick={() => {
-            setIsProfileMenuOpen(false)
-            setCollapsed((c) => !c)
-          }}
-          className="ml-auto btn ghost icon"
-          style={{ flexShrink: 0 }}
-          title={collapsed ? 'Expand' : 'Collapse'}
-        >
-          {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-        </button>
       </div>
 
       {/* Navigation */}
