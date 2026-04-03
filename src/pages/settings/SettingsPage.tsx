@@ -179,14 +179,14 @@ export function SettingsPage() {
                       <div className="rounded-lg border border-border/70 bg-bg-muted/35 px-3 py-2 text-sm">{getUserRoleLabel(user)}</div>
                     </div>
                     <div>
-                      <div className="form-label">Organization</div>
-                      <div className="rounded-lg border border-border/70 bg-bg-muted/35 px-3 py-2 text-sm">{user?.activeOrganizationId ?? user?.organizationId ?? 'Platform-wide access'}</div>
+                      <div className="form-label">Tenant</div>
+                      <div className="rounded-lg border border-border/70 bg-bg-muted/35 px-3 py-2 text-sm">{user?.activeTenantId ?? user?.tenantId ?? 'Platform-wide access'}</div>
                     </div>
                   </div>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
                       <div className="form-label">Scope Type</div>
-                      <div className="rounded-lg border border-border/70 bg-bg-muted/35 px-3 py-2 text-sm">{scopeType ?? 'organization'}</div>
+                      <div className="rounded-lg border border-border/70 bg-bg-muted/35 px-3 py-2 text-sm">{scopeType ?? 'tenant'}</div>
                     </div>
                     <div>
                       <div className="form-label">Memberships</div>

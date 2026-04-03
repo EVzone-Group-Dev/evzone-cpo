@@ -12,7 +12,7 @@ function buildAccessProfile(overrides: Partial<AccessProfile> = {}): AccessProfi
     permissions: [],
     scope: {
       type: 'platform',
-      organizationId: null,
+      tenantId: null,
       stationId: null,
       stationIds: [],
       providerId: null,
@@ -55,7 +55,7 @@ describe('getRoleHomePath', () => {
           permissions: ['finance.revenue_reports.read', 'sites.read'],
           scope: {
             type: 'site',
-            organizationId: 'org-1',
+            tenantId: 'org-1',
             stationId: null,
             stationIds: ['st-1'],
             providerId: null,
@@ -72,12 +72,12 @@ describe('getRoleHomePath', () => {
         role: 'SWAP_PROVIDER_ADMIN',
         accessProfile: buildAccessProfile({
           legacyRole: 'SWAP_PROVIDER_ADMIN',
-          canonicalRole: 'EXTERNAL_PROVIDER_ADMIN',
+          canonicalRole: 'EXTERNAL_PROVIDER_OPERATOR',
           roleFamily: 'provider',
           permissions: ['ocpi.partners.read'],
           scope: {
             type: 'provider',
-            organizationId: null,
+            tenantId: null,
             stationId: null,
             stationIds: [],
             providerId: 'provider-1',
@@ -99,7 +99,7 @@ describe('getRoleHomePath', () => {
           permissions: ['sessions.read'],
           scope: {
             type: 'fleet_group',
-            organizationId: 'org-fleet-1',
+            tenantId: 'org-fleet-1',
             stationId: null,
             stationIds: [],
             providerId: null,
@@ -140,7 +140,7 @@ describe('canAccessPolicy', () => {
             permissions: ['finance.billing.read'],
             scope: {
               type: 'temporary',
-              organizationId: 'org-1',
+              tenantId: 'org-1',
               stationId: 'st-1',
               stationIds: ['st-1'],
               providerId: null,
@@ -159,13 +159,13 @@ describe('canAccessPolicy', () => {
         {
           role: 'CPO_ADMIN',
           accessProfile: buildAccessProfile({
-            legacyRole: 'EXTERNAL_PROVIDER_ADMIN',
-            canonicalRole: 'EXTERNAL_PROVIDER_ADMIN',
+            legacyRole: 'EXTERNAL_PROVIDER_OPERATOR',
+            canonicalRole: 'EXTERNAL_PROVIDER_OPERATOR',
             roleFamily: 'provider',
             permissions: ['charge_points.read', 'ocpi.partners.read'],
             scope: {
               type: 'provider',
-              organizationId: null,
+              tenantId: null,
               stationId: null,
               stationIds: [],
               providerId: 'provider-1',
@@ -190,7 +190,7 @@ describe('canAccessPolicy', () => {
             permissions: ['stations.read', 'finance.revenue_reports.read'],
             scope: {
               type: 'site',
-              organizationId: 'org-site-1',
+              tenantId: 'org-site-1',
               stationId: null,
               stationIds: ['st-1'],
               providerId: null,
@@ -209,13 +209,13 @@ describe('canAccessPolicy', () => {
         {
           role: 'CPO_ADMIN',
           accessProfile: buildAccessProfile({
-            legacyRole: 'EXTERNAL_PROVIDER_ADMIN',
-            canonicalRole: 'EXTERNAL_PROVIDER_ADMIN',
+            legacyRole: 'EXTERNAL_PROVIDER_OPERATOR',
+            canonicalRole: 'EXTERNAL_PROVIDER_OPERATOR',
             roleFamily: 'provider',
             permissions: ['ocpi.partners.read'],
             scope: {
               type: 'provider',
-              organizationId: null,
+              tenantId: null,
               stationId: null,
               stationIds: [],
               providerId: 'provider-1',
@@ -237,7 +237,7 @@ describe('temporary access helpers', () => {
         assignmentId: 'assignment-1',
         stationId: 'st-1',
         stationName: 'Station 1',
-        organizationId: 'org-1',
+        tenantId: 'org-1',
         role: 'INSTALLER_AGENT',
         isPrimary: true,
         shiftStart: '2026-04-01T08:00:00.000Z',
@@ -250,7 +250,7 @@ describe('temporary access helpers', () => {
         permissions: ['maintenance.dispatch.read'],
         scope: {
           type: 'temporary',
-          organizationId: 'org-1',
+          tenantId: 'org-1',
           stationId: 'st-1',
           stationIds: ['st-1'],
           providerId: null,

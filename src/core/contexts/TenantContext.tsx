@@ -14,7 +14,7 @@ type BackendTenantRecord = {
   currency?: string
   description?: string
   region?: string
-  scope?: 'platform' | 'organization' | 'site'
+  scope?: 'platform' | 'tenant' | 'site'
   scopeLabel?: string
   slug?: string
   timeZone?: string
@@ -32,8 +32,8 @@ function toTenantSummary(raw: BackendTenantRecord): TenantSummary {
     currency: raw.currency ?? 'KES',
     description: raw.description ?? '',
     region: raw.region ?? 'Unknown',
-    scope: raw.scope ?? 'organization',
-    scopeLabel: raw.scopeLabel ?? 'Organization scope',
+    scope: raw.scope ?? 'tenant',
+    scopeLabel: raw.scopeLabel ?? 'Tenant scope',
     slug: raw.slug ?? raw.id,
     timeZone: raw.timeZone ?? 'Africa/Nairobi',
     stationCount: raw.stationCount ?? 0,
@@ -57,14 +57,14 @@ function toScopeLabel(scopeType: AccessScopeType | TenantSummary['scope'], organ
     case 'temporary':
       return 'Temporary scope'
     default:
-      return organizationType ? `${organizationType.toLowerCase()} scope` : 'Organization scope'
+      return organizationType ? `${organizationType.toLowerCase()} scope` : 'Tenant scope'
   }
 }
 
 function toTenantScope(scopeType?: AccessScopeType | null): TenantSummary['scope'] {
   if (scopeType === 'platform') return 'platform'
   if (scopeType === 'site') return 'site'
-  return 'organization'
+  return 'tenant'
 }
 
 function buildTenantCode(sourceId: string) {
@@ -79,15 +79,15 @@ function buildTenantFromMembership(membership: OrganizationMembershipSummary, us
   const scope = toTenantScope(activeScopeType)
 
   return {
-    id: membership.organizationId,
-    name: membership.organizationName ?? membership.organizationId,
-    code: buildTenantCode(membership.organizationId),
+    id: membership.tenantId,
+    name: membership.tenantName ?? membership.tenantId,
+    code: buildTenantCode(membership.tenantId),
     currency: 'KES',
-    description: membership.organizationType ? `${membership.organizationType} workspace` : '',
+    description: membership.tenantType ? `${membership.tenantType} workspace` : '',
     region: user.region ?? 'Unknown',
     scope,
-    scopeLabel: toScopeLabel(activeScopeType ?? scope, membership.organizationType),
-    slug: membership.organizationId,
+    scopeLabel: toScopeLabel(activeScopeType ?? scope, membership.tenantType),
+    slug: membership.tenantId,
     timeZone: 'Africa/Nairobi',
     stationCount: isActive ? user.stationContexts?.length ?? user.assignedStationIds?.length ?? 0 : 0,
     siteCount: scope === 'site' ? 1 : 0,
@@ -96,30 +96,30 @@ function buildTenantFromMembership(membership: OrganizationMembershipSummary, us
 }
 
 function buildFallbackTenant(user: CPOUser, requestedTenantId: string | null): TenantSummary | null {
-  const organizationId =
-    user.activeOrganizationId
-    ?? user.organizationId
-    ?? user.accessProfile?.scope.organizationId
+  const tenantIdProp =
+    user.activeTenantId
+    ?? user.tenantId
+    ?? user.accessProfile?.scope.tenantId
     ?? requestedTenantId
     ?? user.providerId
     ?? null
 
-  if (!organizationId) {
+  if (!tenantIdProp) {
     return null
   }
 
-  const scopeType = user.accessProfile?.scope.type ?? 'organization'
+  const scopeType = user.accessProfile?.scope.type ?? 'tenant'
 
   return {
-    id: organizationId,
-    name: organizationId,
-    code: buildTenantCode(organizationId),
+    id: tenantIdProp,
+    name: tenantIdProp,
+    code: buildTenantCode(tenantIdProp),
     currency: 'KES',
     description: '',
     region: user.region ?? 'Unknown',
     scope: toTenantScope(scopeType),
     scopeLabel: toScopeLabel(scopeType),
-    slug: organizationId,
+    slug: tenantIdProp,
     timeZone: 'Africa/Nairobi',
     stationCount: user.stationContexts?.length ?? user.assignedStationIds?.length ?? 0,
     siteCount: scopeType === 'site' ? 1 : 0,
@@ -151,7 +151,7 @@ function buildDataScopeLabel(user: CPOUser, activeTenant: TenantSummary) {
     case 'temporary':
       return 'Temporary commissioning scope with time-bound operational access.'
     default:
-      return `Organization-scoped visibility for ${activeTenant.name}.`
+      return `Tenant-scoped visibility for ${activeTenant.name}.`
   }
 }
 
@@ -160,15 +160,15 @@ function buildTenantContextFromUser(user: CPOUser | null, requestedTenantId: str
     return null
   }
 
-  const activeOrganizationId =
-    user.activeOrganizationId
-    ?? user.organizationId
-    ?? user.accessProfile?.scope.organizationId
+  const activeTenantIdProp =
+    user.activeTenantId
+    ?? user.tenantId
+    ?? user.accessProfile?.scope.tenantId
     ?? requestedTenantId
     ?? null
 
   const membershipTenants = (user.memberships ?? []).map((membership) =>
-    buildTenantFromMembership(membership, user, membership.organizationId === activeOrganizationId),
+    buildTenantFromMembership(membership, user, membership.tenantId === activeTenantIdProp),
   )
 
   const fallbackTenant = buildFallbackTenant(user, requestedTenantId)
@@ -183,7 +183,7 @@ function buildTenantContextFromUser(user: CPOUser | null, requestedTenantId: str
   }
 
   const activeTenant =
-    availableTenants.find((tenant) => tenant.id === activeOrganizationId)
+    availableTenants.find((tenant) => tenant.id === activeTenantIdProp)
     ?? availableTenants.find((tenant) => tenant.id === requestedTenantId)
     ?? availableTenants[0]
 
@@ -229,8 +229,8 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         currency: 'KES',
         description: '',
         region: 'Unknown',
-        scope: 'organization',
-        scopeLabel: 'Organization scope',
+        scope: 'tenant',
+        scopeLabel: 'Tenant scope',
         slug: 'default',
         timeZone: 'Africa/Nairobi',
         stationCount: 0,
@@ -257,8 +257,8 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
   const contextData = authDerivedContext ?? fallbackContext ?? null
   const resolvedTenantScopeId = contextData?.activeTenant.id
-    ?? user?.activeOrganizationId
-    ?? user?.organizationId
+    ?? user?.activeTenantId
+    ?? user?.tenantId
     ?? activeTenantId
     ?? 'default'
   const activeScopeKey = `${resolvedTenantScopeId}:${activeStationContext?.assignmentId ?? 'all'}`
@@ -269,11 +269,11 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   }, [replaceUser])
 
   useEffect(() => {
-    const synchronizedTenantId = user?.activeOrganizationId ?? contextData?.activeTenant.id
+    const synchronizedTenantId = user?.activeTenantId ?? contextData?.activeTenant.id
     if (synchronizedTenantId && synchronizedTenantId !== activeTenantId) {
       setActiveTenantId(synchronizedTenantId)
     }
-  }, [activeTenantId, contextData?.activeTenant.id, setActiveTenantId, user?.activeOrganizationId])
+  }, [activeTenantId, contextData?.activeTenant.id, setActiveTenantId, user?.activeTenantId])
 
   const handleTenantSwitch = useCallback((tenantId: string) => {
     void (async () => {
@@ -283,7 +283,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
       const canSwitchViaBackend = Boolean(
         token
-        && user?.memberships?.some((membership) => membership.organizationId === tenantId),
+        && user?.memberships?.some((membership) => membership.tenantId === tenantId),
       )
 
       if (!canSwitchViaBackend) {
@@ -294,12 +294,12 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       setIsSwitchingTenant(true)
 
       try {
-        const auth = await fetchJson<LoginResponse>('/api/v1/auth/switch-organization', {
+        const auth = await fetchJson<LoginResponse>('/api/v1/auth/switch-tenant', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ organizationId: tenantId }),
+          body: JSON.stringify({ tenantId }),
         })
 
         const bearerToken = auth.accessToken ?? auth.token

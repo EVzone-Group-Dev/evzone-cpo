@@ -21,7 +21,7 @@ export type AuthenticatedApiUser = Omit<CPOUser, 'role'> & {
   accessProfile?: AccessProfile | null
 }
 
-export type TenantScope = 'platform' | 'organization' | 'site'
+export type TenantScope = 'platform' | 'tenant' | 'site'
 export type DashboardMode = 'operations' | 'site'
 
 export interface TenantSummary {

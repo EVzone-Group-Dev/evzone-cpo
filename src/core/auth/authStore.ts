@@ -21,7 +21,7 @@ export interface AuthState {
 }
 
 function resolveTenantIdFromUser(user: CPOUser | AuthenticatedApiUser) {
-  return user.activeOrganizationId ?? user.organizationId ?? null
+  return user.activeTenantId ?? user.tenantId ?? null
 }
 
 function mergeAuthUser(currentUser: CPOUser | null, incomingUser: CPOUser | AuthenticatedApiUser) {
@@ -32,19 +32,19 @@ function mergeAuthUser(currentUser: CPOUser | null, incomingUser: CPOUser | Auth
   return {
     ...currentUser,
     ...incomingUser,
-    activeOrganizationId:
-      incomingUser.activeOrganizationId
-      ?? incomingUser.organizationId
-      ?? currentUser.activeOrganizationId
-      ?? currentUser.organizationId
+    activeTenantId:
+      incomingUser.activeTenantId
+      ?? incomingUser.tenantId
+      ?? currentUser.activeTenantId
+      ?? currentUser.tenantId
       ?? null,
     orgId:
       incomingUser.orgId
-      ?? incomingUser.activeOrganizationId
-      ?? incomingUser.organizationId
+      ?? incomingUser.activeTenantId
+      ?? incomingUser.tenantId
       ?? currentUser.orgId
-      ?? currentUser.activeOrganizationId
-      ?? currentUser.organizationId
+      ?? currentUser.activeTenantId
+      ?? currentUser.tenantId
       ?? null,
     accessProfile: incomingUser.accessProfile ?? currentUser.accessProfile ?? null,
     memberships: incomingUser.memberships ?? currentUser.memberships,

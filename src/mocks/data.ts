@@ -103,7 +103,7 @@ const tenantCatalog: Record<TenantId, TenantRecord> = {
     description: 'Kenya operating company for public charging operations.',
     name: 'EVzone Kenya',
     region: 'Kenya',
-    scope: 'organization',
+    scope: 'tenant',
     scopeLabel: 'Operating Company',
     siteCount: 3,
     slug: 'evzone-kenya',
@@ -152,7 +152,7 @@ const stationContextCatalog: Record<string, StationContextSummary[]> = {
       assignmentId: 'asg-u3-st-1',
       stationId: 'st-1',
       stationName: 'Westlands Hub',
-      organizationId: tenantOrganizationCatalog['tenant-westlands-mall'].organizationId,
+      tenantId: tenantOrganizationCatalog['tenant-westlands-mall'].organizationId,
       role: 'OPERATIONS_OPERATOR',
       isPrimary: true,
       attendantMode: 'field',
@@ -164,7 +164,7 @@ const stationContextCatalog: Record<string, StationContextSummary[]> = {
       assignmentId: 'asg-u4-st-1',
       stationId: 'st-1',
       stationName: 'Westlands Hub',
-      organizationId: tenantOrganizationCatalog['tenant-evzone-ke'].organizationId,
+      tenantId: tenantOrganizationCatalog['tenant-evzone-ke'].organizationId,
       role: 'STATION_MANAGER',
       isPrimary: true,
       timezone: 'Africa/Nairobi',
@@ -173,7 +173,7 @@ const stationContextCatalog: Record<string, StationContextSummary[]> = {
       assignmentId: 'asg-u4-st-2',
       stationId: 'st-2',
       stationName: 'CBD Charging Station',
-      organizationId: tenantOrganizationCatalog['tenant-evzone-ke'].organizationId,
+      tenantId: tenantOrganizationCatalog['tenant-evzone-ke'].organizationId,
       role: 'STATION_MANAGER',
       isPrimary: false,
       timezone: 'Africa/Nairobi',
@@ -182,7 +182,7 @@ const stationContextCatalog: Record<string, StationContextSummary[]> = {
       assignmentId: 'asg-u4-st-3',
       stationId: 'st-3',
       stationName: 'Airport East Battery Exchange',
-      organizationId: tenantOrganizationCatalog['tenant-evzone-ke'].organizationId,
+      tenantId: tenantOrganizationCatalog['tenant-evzone-ke'].organizationId,
       role: 'STATION_MANAGER',
       isPrimary: false,
       timezone: 'Africa/Nairobi',
@@ -193,7 +193,7 @@ const stationContextCatalog: Record<string, StationContextSummary[]> = {
       assignmentId: 'asg-u6-st-1',
       stationId: 'st-1',
       stationName: 'Westlands Hub',
-      organizationId: tenantOrganizationCatalog['tenant-evzone-ke'].organizationId,
+      tenantId: tenantOrganizationCatalog['tenant-evzone-ke'].organizationId,
       role: 'FIELD_TECHNICIAN',
       isPrimary: true,
       attendantMode: 'field-service',
@@ -203,7 +203,7 @@ const stationContextCatalog: Record<string, StationContextSummary[]> = {
       assignmentId: 'asg-u6-st-2',
       stationId: 'st-2',
       stationName: 'CBD Charging Station',
-      organizationId: tenantOrganizationCatalog['tenant-evzone-ke'].organizationId,
+      tenantId: tenantOrganizationCatalog['tenant-evzone-ke'].organizationId,
       role: 'FIELD_TECHNICIAN',
       isPrimary: false,
       attendantMode: 'field-service',
@@ -367,7 +367,7 @@ const demoUsers: DemoUserRecord[] = [
       email: 'manager@evzone.io',
       role: 'CPO_ADMIN',
       status: 'Active',
-      organizationId: 'org-evzone-ke',
+      tenantId: 'org-evzone-ke',
       mfaEnabled: true,
       createdAt: '2026-03-02T08:00:00.000Z',
     },
@@ -390,7 +390,7 @@ const demoUsers: DemoUserRecord[] = [
       email: 'operator@evzone.io',
       role: 'OPERATOR',
       status: 'Active',
-      organizationId: 'org-evzone-ke',
+      tenantId: 'org-evzone-ke',
       assignedStationIds: ['st-1'],
       mfaEnabled: false,
       createdAt: '2026-03-03T08:00:00.000Z',
@@ -414,7 +414,7 @@ const demoUsers: DemoUserRecord[] = [
       email: 'stationmanager@evzone.io',
       role: 'STATION_MANAGER',
       status: 'Active',
-      organizationId: 'org-evzone-ke',
+      tenantId: 'org-evzone-ke',
       assignedStationIds: ['st-1', 'st-2', 'st-3'],
       mfaEnabled: true,
       createdAt: '2026-03-04T08:00:00.000Z',
@@ -437,7 +437,7 @@ const demoUsers: DemoUserRecord[] = [
       email: 'finance@evzone.io',
       role: 'FINANCE',
       status: 'Active',
-      organizationId: 'org-evzone-finance',
+      tenantId: 'org-evzone-finance',
       mfaEnabled: true,
       createdAt: '2026-03-05T08:00:00.000Z',
     },
@@ -460,7 +460,7 @@ const demoUsers: DemoUserRecord[] = [
       email: 'technician@evzone.io',
       role: 'TECHNICIAN',
       status: 'Active',
-      organizationId: 'org-evzone-ke',
+      tenantId: 'org-evzone-ke',
       assignedStationIds: ['st-1', 'st-2'],
       mfaEnabled: false,
       createdAt: '2026-03-06T08:00:00.000Z',
@@ -483,7 +483,7 @@ const demoUsers: DemoUserRecord[] = [
       email: 'sitehost@evzone.io',
       role: 'SITE_HOST',
       status: 'Active',
-      organizationId: tenantOrganizationCatalog['tenant-westlands-mall'].organizationId,
+      tenantId: tenantOrganizationCatalog['tenant-westlands-mall'].organizationId,
       mfaEnabled: true,
       createdAt: '2026-03-07T08:00:00.000Z',
     },
@@ -494,7 +494,7 @@ const demoUsers: DemoUserRecord[] = [
     email: 'provider@evzone.io',
     password: 'provider',
     role: 'CPO_ADMIN',
-    canonicalRole: 'EXTERNAL_PROVIDER_ADMIN',
+    canonicalRole: 'EXTERNAL_PROVIDER_OPERATOR',
     defaultTenantId: 'tenant-global',
     permissions: [...DEMO_PERMISSION_SETS.providerAdmin],
     providerId: 'provider-demo-1',
@@ -528,7 +528,7 @@ const demoUsers: DemoUserRecord[] = [
       email: 'fleet@evzone.io',
       role: 'OPERATOR',
       status: 'Active',
-      organizationId: tenantOrganizationCatalog['tenant-evzone-ke'].organizationId,
+      tenantId: tenantOrganizationCatalog['tenant-evzone-ke'].organizationId,
       mfaEnabled: true,
       createdAt: '2026-03-09T08:00:00.000Z',
     },
@@ -2434,8 +2434,8 @@ function getDemoRefreshToken(userId: string) {
 }
 
 function getStationContextsForTenant(demoUser: DemoUserRecord, tenantId: TenantId) {
-  const organizationId = tenantOrganizationCatalog[tenantId].organizationId
-  return (demoUser.stationContexts ?? []).filter((context) => context.organizationId === organizationId)
+  const targetTenantId = tenantOrganizationCatalog[tenantId].organizationId
+  return (demoUser.stationContexts ?? []).filter((context) => context.tenantId === targetTenantId)
 }
 
 function getDefaultStationAssignmentId(demoUser: DemoUserRecord, tenantId: TenantId) {
@@ -2459,9 +2459,9 @@ function getDemoSessionState(token: string | null) {
 
 function buildDemoMemberships(demoUser: DemoUserRecord): OrganizationMembershipSummary[] {
   return demoUser.tenantIds.map((tenantId) => ({
-    organizationId: tenantOrganizationCatalog[tenantId].organizationId,
-    organizationName: tenantOrganizationCatalog[tenantId].organizationName,
-    organizationType: tenantOrganizationCatalog[tenantId].organizationType,
+    tenantId: tenantOrganizationCatalog[tenantId].organizationId,
+    tenantName: tenantOrganizationCatalog[tenantId].organizationName,
+    tenantType: tenantOrganizationCatalog[tenantId].organizationType,
     ownerCapability: demoUser.user.ownerCapability ?? null,
     role: demoUser.canonicalRole,
     status: 'ACTIVE',
@@ -2474,13 +2474,13 @@ function buildDemoScope(
   stationContexts: StationContextSummary[],
   activeStationContext: StationContextSummary | null,
 ): AccessScopeSummary {
-  let type: AccessScopeSummary['type'] = 'organization'
+  let type: AccessScopeSummary['type'] = 'tenant'
 
   if (demoUser.canonicalRole === 'PLATFORM_SUPER_ADMIN' || demoUser.canonicalRole === 'PLATFORM_BILLING_ADMIN') {
     type = 'platform'
   } else if (demoUser.canonicalRole === 'SITE_HOST') {
     type = 'site'
-  } else if (demoUser.canonicalRole === 'EXTERNAL_PROVIDER_ADMIN' || demoUser.canonicalRole === 'EXTERNAL_PROVIDER_OPERATOR') {
+  } else if (demoUser.canonicalRole === 'EXTERNAL_PROVIDER_OPERATOR') {
     type = 'provider'
   } else if (demoUser.canonicalRole === 'FLEET_DISPATCHER' || demoUser.canonicalRole === 'FLEET_DRIVER') {
     type = 'fleet_group'
@@ -2490,7 +2490,7 @@ function buildDemoScope(
 
   return {
     type,
-    organizationId: type === 'platform' ? null : tenantOrganizationCatalog[activeTenantId].organizationId,
+    tenantId: type === 'platform' ? null : tenantOrganizationCatalog[activeTenantId].organizationId,
     stationId: activeStationContext?.stationId ?? null,
     stationIds: stationContexts.map((context) => context.stationId),
     providerId: demoUser.providerId ?? demoUser.user.providerId ?? null,
@@ -2509,7 +2509,7 @@ function buildDemoUserSession(
     ?? stationContexts.find((context) => context.isPrimary)
     ?? stationContexts[0]
     ?? null
-  const activeOrganizationId = tenantOrganizationCatalog[activeTenantId].organizationId
+  const activeTenantIdProp = tenantOrganizationCatalog[activeTenantId].organizationId
   const accessProfile: AccessProfile = {
     version: '2026-04-v1',
     legacyRole: demoUser.user.legacyRole ?? demoUser.user.role,
@@ -2521,11 +2521,11 @@ function buildDemoUserSession(
 
   return {
     ...demoUser.user,
-    activeOrganizationId,
+    activeTenantId: activeTenantIdProp,
     accessProfile,
     memberships: buildDemoMemberships(demoUser),
-    orgId: activeOrganizationId,
-    organizationId: activeOrganizationId,
+    orgId: activeTenantIdProp,
+    tenantId: activeTenantIdProp,
     providerId: demoUser.providerId ?? demoUser.user.providerId ?? null,
     region: tenantCatalog[activeTenantId].region,
     stationContexts,
@@ -2630,7 +2630,7 @@ export function refreshDemoUserSession(refreshTokenValue: string | null): LoginR
   return buildDemoLoginResponse(demoUser, sessionState.activeTenantId, sessionState.activeStationAssignmentId)
 }
 
-export function switchDemoOrganization(authorizationHeader: string | null, organizationId: string): LoginResponse | null {
+export function switchDemoTenant(authorizationHeader: string | null, tenantId: string): LoginResponse | null {
   const access = resolveDemoAccess(authorizationHeader)
 
   if (!access) {
@@ -2638,7 +2638,7 @@ export function switchDemoOrganization(authorizationHeader: string | null, organ
   }
 
   const nextTenantId = access.demoUser.tenantIds.find(
-    (tenantId) => tenantOrganizationCatalog[tenantId].organizationId === organizationId || tenantId === organizationId,
+    (tid) => tenantOrganizationCatalog[tid].organizationId === tenantId || tid === tenantId,
   )
 
   if (!nextTenantId) {
@@ -2665,7 +2665,7 @@ export function switchDemoStationContext(authorizationHeader: string | null, ass
   }
 
   const nextTenantId = access.demoUser.tenantIds.find(
-    (tenantId) => tenantOrganizationCatalog[tenantId].organizationId === targetContext.organizationId,
+    (tenantId) => tenantOrganizationCatalog[tenantId].organizationId === targetContext.tenantId,
   ) ?? access.tenantId
 
   demoSessionStore.set(access.accessToken, {

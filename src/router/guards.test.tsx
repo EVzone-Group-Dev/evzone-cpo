@@ -34,7 +34,7 @@ describe('RequireAuth', () => {
       permissions: [],
       scope: {
         type: 'platform',
-        organizationId: null,
+        tenantId: null,
         stationId: null,
         stationIds: [],
         providerId: null,
@@ -118,7 +118,7 @@ describe('RequireAuth', () => {
           assignmentId: 'assignment-1',
           stationId: 'st-1',
           stationName: 'Kampala Yard',
-          organizationId: 'org-1',
+          tenantId: 'org-1',
           role: 'INSTALLER_AGENT',
           isPrimary: true,
           shiftStart: '2026-04-01T08:00:00.000Z',
@@ -131,7 +131,7 @@ describe('RequireAuth', () => {
           permissions: ['maintenance.dispatch.read'],
           scope: {
             type: 'temporary',
-            organizationId: 'org-1',
+            tenantId: 'org-1',
             stationId: 'st-1',
             stationIds: ['st-1'],
             providerId: null,
@@ -164,13 +164,13 @@ describe('RequireAuth', () => {
       user: {
         ...buildUser('CPO_ADMIN'),
         accessProfile: buildAccessProfile({
-          legacyRole: 'EXTERNAL_PROVIDER_ADMIN',
-          canonicalRole: 'EXTERNAL_PROVIDER_ADMIN',
+          legacyRole: 'EXTERNAL_PROVIDER_OPERATOR',
+          canonicalRole: 'EXTERNAL_PROVIDER_OPERATOR',
           roleFamily: 'provider',
           permissions: ['charge_points.read', 'ocpi.partners.read'],
           scope: {
             type: 'provider',
-            organizationId: null,
+            tenantId: null,
             stationId: null,
             stationIds: [],
             providerId: 'provider-1',

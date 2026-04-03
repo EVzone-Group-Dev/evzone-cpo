@@ -170,13 +170,12 @@ const CANONICAL_ROLE_TO_CPO_ROLE: Partial<Record<CanonicalAccessRole, CPORole>> 
   ROAMING_MANAGER: 'CPO_ADMIN',
   STATION_MANAGER: 'STATION_MANAGER',
   OPERATIONS_OPERATOR: 'OPERATOR',
-  TENANT_FINANCE_ANALYST: 'FINANCE',
   FLEET_DISPATCHER: 'OPERATOR',
   FLEET_DRIVER: 'OPERATOR',
   INSTALLER_AGENT: 'TECHNICIAN',
   SMART_CHARGING_ENGINEER: 'TECHNICIAN',
   FIELD_TECHNICIAN: 'TECHNICIAN',
-  EXTERNAL_PROVIDER_ADMIN: 'CPO_ADMIN',
+  TENANT_FINANCE_ANALYST: 'FINANCE',
   EXTERNAL_PROVIDER_OPERATOR: 'OPERATOR',
 }
 
@@ -199,13 +198,12 @@ const CANONICAL_ROLE_LABELS: Partial<Record<CanonicalAccessRole, string>> = {
   ROAMING_MANAGER: 'Roaming Manager',
   STATION_MANAGER: 'Station Manager',
   OPERATIONS_OPERATOR: 'Operations Operator',
-  TENANT_FINANCE_ANALYST: 'Tenant Finance Analyst',
   FLEET_DISPATCHER: 'Fleet Dispatcher',
   FLEET_DRIVER: 'Fleet Driver',
   INSTALLER_AGENT: 'Installer Agent',
   SMART_CHARGING_ENGINEER: 'Smart Charging Engineer',
   FIELD_TECHNICIAN: 'Field Technician',
-  EXTERNAL_PROVIDER_ADMIN: 'External Provider Admin',
+  TENANT_FINANCE_ANALYST: 'Tenant Finance Analyst',
   EXTERNAL_PROVIDER_OPERATOR: 'External Provider Operator',
   LEGACY_UNMAPPED: 'Legacy Access',
 }
@@ -366,9 +364,9 @@ export function normalizeAuthenticatedUser<T extends Omit<CPOUser, 'role'> & { r
     assignedStationIds,
     createdAt: user.createdAt ?? '',
     mfaEnabled: user.mfaEnabled ?? ('twoFactorEnabled' in user ? Boolean(user.twoFactorEnabled) : false),
-    organizationId: user.activeOrganizationId ?? user.organizationId,
-    orgId: user.orgId ?? user.activeOrganizationId ?? user.organizationId ?? null,
-    activeOrganizationId: user.activeOrganizationId ?? user.organizationId ?? null,
+    tenantId: (user as any).activeTenantId ?? (user as any).activeOrganizationId ?? (user as any).tenantId ?? (user as any).organizationId,
+    orgId: user.orgId ?? (user as any).activeTenantId ?? (user as any).activeOrganizationId ?? (user as any).tenantId ?? (user as any).organizationId ?? null,
+    activeTenantId: (user as any).activeTenantId ?? (user as any).activeOrganizationId ?? (user as any).tenantId ?? (user as any).organizationId ?? null,
     accessProfile: user.accessProfile ?? null,
   }
 }

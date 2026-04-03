@@ -51,7 +51,7 @@ import {
   resolveDemoAccess,
   transitionSwapPack,
   resolveTenantContext,
-  switchDemoOrganization,
+  switchDemoTenant,
   switchDemoStationContext,
 } from './data'
 
@@ -157,10 +157,10 @@ export const handlers = [
     return HttpResponse.json(access.user.accessProfile ?? null)
   }),
 
-  http.post('/api/v1/auth/switch-organization', async ({ request }) => {
+  http.post('/api/v1/auth/switch-tenant', async ({ request }) => {
     const authorization = request.headers.get('authorization')
-    const { organizationId } = await request.json() as { organizationId: string }
-    const auth = switchDemoOrganization(authorization, organizationId)
+    const { tenantId } = await request.json() as { tenantId: string }
+    const auth = switchDemoTenant(authorization, tenantId)
 
     if (!auth) {
       return HttpResponse.json({ message: 'Unauthorized.' }, { status: 401 })
