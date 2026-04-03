@@ -160,6 +160,7 @@ function normalizeChargePointDetail(value: unknown): ChargePointDetail {
       lastHeartbeat: asString(unitHealth.lastHeartbeat, base.lastHeartbeatLabel),
       errorCode: asString(unitHealth.errorCode, asString(record.errorCode, 'None')),
     },
+    smartChargingEnabled: Boolean(record.smartChargingEnabled),
   }
 }
 

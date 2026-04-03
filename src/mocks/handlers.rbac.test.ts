@@ -43,7 +43,7 @@ describe('MSW RBAC authorization boundaries', () => {
       accessToken: 'demo-token-u6',
       refreshToken: 'demo-refresh-u6',
       user: {
-        activeOrganizationId: 'org-evzone-ke',
+        activeTenantId: 'org-evzone-ke',
         accessProfile: {
           canonicalRole: 'FIELD_TECHNICIAN',
           scope: {
@@ -58,22 +58,22 @@ describe('MSW RBAC authorization boundaries', () => {
     })
   })
 
-  it('switches organization context and reflects it in users/me', async () => {
-    const switchResponse = await fetch('/api/v1/auth/switch-organization', {
+  it('switches tenant context and reflects it in users/me', async () => {
+    const switchResponse = await fetch('/api/v1/auth/switch-tenant', {
       method: 'POST',
       headers: {
         Authorization: 'Bearer demo-token-u5',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        organizationId: 'org-evzone-ke',
+        tenantId: 'org-evzone-ke',
       }),
     })
 
     expect(switchResponse.status).toBe(200)
     expect(await switchResponse.json()).toMatchObject({
       user: {
-        activeOrganizationId: 'org-evzone-ke',
+        activeTenantId: 'org-evzone-ke',
       },
     })
 
@@ -85,7 +85,7 @@ describe('MSW RBAC authorization boundaries', () => {
 
     expect(currentUserResponse.status).toBe(200)
     expect(await currentUserResponse.json()).toMatchObject({
-      activeOrganizationId: 'org-evzone-ke',
+      activeTenantId: 'org-evzone-ke',
       accessProfile: {
         canonicalRole: 'PLATFORM_BILLING_ADMIN',
       },

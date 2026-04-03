@@ -25,7 +25,7 @@ export const ASSET_MANAGER_ROLES = ['SUPER_ADMIN', 'CPO_ADMIN', 'STATION_MANAGER
 export const INFRASTRUCTURE_ROLES = ['SUPER_ADMIN', 'CPO_ADMIN', 'STATION_MANAGER', 'OPERATOR', 'TECHNICIAN'] as const satisfies readonly CPORole[]
 export const OPERATIONS_ROLES = ['SUPER_ADMIN', 'CPO_ADMIN', 'STATION_MANAGER', 'OPERATOR', 'TECHNICIAN'] as const satisfies readonly CPORole[]
 export const ENERGY_ROLES = ['SUPER_ADMIN', 'CPO_ADMIN', 'STATION_MANAGER', 'OPERATOR', 'TECHNICIAN'] as const satisfies readonly CPORole[]
-export const ROAMING_ROLES = ['SUPER_ADMIN', 'CPO_ADMIN', 'FINANCE'] as const satisfies readonly CPORole[]
+export const ROAMING_ROLES = ['SUPER_ADMIN', 'CPO_ADMIN', 'FINANCE', 'OPERATOR'] as const satisfies readonly CPORole[]
 export const FINANCE_ROLES = ['SUPER_ADMIN', 'CPO_ADMIN', 'FINANCE'] as const satisfies readonly CPORole[]
 export const REPORTING_ROLES = ['SUPER_ADMIN', 'CPO_ADMIN', 'FINANCE', 'STATION_MANAGER'] as const satisfies readonly CPORole[]
 export const TEAM_ROLES = ['SUPER_ADMIN', 'CPO_ADMIN'] as const satisfies readonly CPORole[]
@@ -145,7 +145,7 @@ const ACCESS_PERMISSION_MAP: Record<AccessPolicyKey, readonly string[] | undefin
   smartChargingRead: ['smart_charging.read'],
   loadPoliciesRead: ['load_profiles.read'],
   batteryInventoryRead: ['battery_inventory.read'],
-  roamingRead: ['ocpi.partners.read', 'ocpi.sessions.read', 'ocpi.cdrs.read', 'ocpi.commands.read'],
+  roamingRead: ['ocpi.partners.read', 'ocpi.sessions.read', 'ocpi.cdrs.read', 'ocpi.commands.read', 'ocpi.commands.write'],
   tariffsRead: ['tenant.tariffs.read'],
   billingRead: ['finance.billing.read', 'platform.billing.read'],
   payoutsRead: ['finance.payouts.read'],
@@ -364,9 +364,9 @@ export function normalizeAuthenticatedUser<T extends Omit<CPOUser, 'role'> & { r
     assignedStationIds,
     createdAt: user.createdAt ?? '',
     mfaEnabled: user.mfaEnabled ?? ('twoFactorEnabled' in user ? Boolean(user.twoFactorEnabled) : false),
-    tenantId: (user as any).activeTenantId ?? (user as any).activeOrganizationId ?? (user as any).tenantId ?? (user as any).organizationId,
-    orgId: user.orgId ?? (user as any).activeTenantId ?? (user as any).activeOrganizationId ?? (user as any).tenantId ?? (user as any).organizationId ?? null,
-    activeTenantId: (user as any).activeTenantId ?? (user as any).activeOrganizationId ?? (user as any).tenantId ?? (user as any).organizationId ?? null,
+    tenantId: (user as Record<string, unknown>).activeTenantId as string ?? (user as Record<string, unknown>).activeOrganizationId as string ?? (user as Record<string, unknown>).tenantId as string ?? (user as Record<string, unknown>).organizationId as string,
+    orgId: user.orgId ?? (user as Record<string, unknown>).activeTenantId as string ?? (user as Record<string, unknown>).activeOrganizationId as string ?? (user as Record<string, unknown>).tenantId as string ?? (user as Record<string, unknown>).organizationId as string ?? null,
+    activeTenantId: (user as Record<string, unknown>).activeTenantId as string ?? (user as Record<string, unknown>).activeOrganizationId as string ?? (user as Record<string, unknown>).tenantId as string ?? (user as Record<string, unknown>).organizationId as string ?? null,
     accessProfile: user.accessProfile ?? null,
   }
 }
@@ -582,7 +582,7 @@ function getHomePathFromUser(user: AccessAwareUser) {
     return ROLE_HOME.CPO_ADMIN
   }
 
-  if (permissions.includes('ocpi.partners.read') && !permissions.includes('stations.read')) {
+  if (permissions.includes('ocpi.partners.read') || permissions.includes('ocpi.sessions.read')) {
     return PATHS.OCPI_PARTNERS
   }
 

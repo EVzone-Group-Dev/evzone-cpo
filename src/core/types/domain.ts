@@ -67,6 +67,7 @@ export interface ChargePoint {
   power?: number
   type?: string
   roamingPublished?: boolean
+  smartChargingEnabled?: boolean
   createdAt: string
   updatedAt?: string
 }

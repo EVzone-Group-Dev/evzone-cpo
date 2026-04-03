@@ -385,6 +385,7 @@ export interface ChargePointDetail extends ChargePointSummary {
     lastHeartbeat: string
     ocppConnection: string
   }
+  smartChargingEnabled?: boolean
 }
 
 export interface SessionRecord {

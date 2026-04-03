@@ -6,14 +6,17 @@ import { canAccessPolicy, getTemporaryAccessState } from '@/core/auth/access'
 import { useAuthStore } from '@/core/auth/authStore'
 import { useChargePoint, useSessions } from '@/core/hooks/usePlatformData'
 import { PATHS } from '@/router/paths'
-import { ArrowLeft, Cpu, Play, RotateCcw, Unlock, Wifi, WifiOff } from 'lucide-react'
+import { ArrowLeft, Cpu, Play, RotateCcw, Unlock, Wifi, WifiOff, Square, Pause } from 'lucide-react'
 
-const COMMAND_ICONS = {
+const COMMAND_ICONS: Record<string, React.ReactNode> = {
   'Remote Start Session': <Play size={14} />,
+  'Remote Stop Session': <Square size={14} />,
+  'Pause Session': <Pause size={14} />,
+  'Resume Session': <Play size={14} />,
   'Soft Reset': <RotateCcw size={14} />,
   'Hard Reboot': <RotateCcw size={14} />,
   'Unlock Connector': <Unlock size={14} />,
-} as const
+}
 
 export function ChargePointDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -61,9 +64,13 @@ export function ChargePointDetailPage() {
   const connectorTypes = chargePoint.connectorTypes?.length
     ? chargePoint.connectorTypes
     : (chargePoint.connectorType ? [chargePoint.connectorType] : ['N/A'])
+  const defaultCommands = ['Remote Start Session', 'Remote Stop Session', 'Soft Reset', 'Hard Reboot', 'Unlock Connector']
+  if (chargePoint.smartChargingEnabled) {
+    defaultCommands.push('Pause Session', 'Resume Session')
+  }
   const remoteCommands = Array.isArray(chargePoint.remoteCommands) && chargePoint.remoteCommands.length > 0
     ? chargePoint.remoteCommands
-    : ['Remote Start Session', 'Soft Reset', 'Hard Reboot', 'Unlock Connector']
+    : defaultCommands
   const unitHealth = chargePoint.unitHealth ?? {
     ocppConnection: chargePoint.status === 'Online' ? 'Connected' : 'Disconnected',
     lastHeartbeat: chargePoint.lastHeartbeatLabel ?? 'No heartbeat',
@@ -83,6 +90,24 @@ export function ChargePointDetailPage() {
           return {
             path: `/api/v1/charge-points/${id}/commands/remote-start`,
             payload: { idTag: 'EVZONE_REMOTE' },
+          }
+        }
+        if (command === 'Remote Stop Session') {
+          return {
+            path: `/api/v1/charge-points/${id}/commands/remote-stop`,
+            payload: {},
+          }
+        }
+        if (command === 'Pause Session') {
+          return {
+            path: `/api/v1/charge-points/${id}/commands/pause`,
+            payload: undefined,
+          }
+        }
+        if (command === 'Resume Session') {
+          return {
+            path: `/api/v1/charge-points/${id}/commands/resume`,
+            payload: undefined,
           }
         }
         if (command === 'Soft Reset') {
