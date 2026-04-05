@@ -123,6 +123,64 @@ function loginResolver(request: Request) {
     })
 }
 
+const REFERENCE_COUNTRIES = [
+  {
+    code2: 'DE',
+    code3: 'DEU',
+    name: 'Germany',
+    officialName: 'Federal Republic of Germany',
+    flagUrl: 'https://flagcdn.com/de.svg',
+    currencyCode: 'EUR',
+    currencyName: 'Euro',
+    currencySymbol: 'EUR',
+    languages: ['German'],
+  },
+  {
+    code2: 'KE',
+    code3: 'KEN',
+    name: 'Kenya',
+    officialName: 'Republic of Kenya',
+    flagUrl: 'https://flagcdn.com/ke.svg',
+    currencyCode: 'KES',
+    currencyName: 'Kenyan shilling',
+    currencySymbol: 'KSh',
+    languages: ['English', 'Swahili'],
+  },
+  {
+    code2: 'NL',
+    code3: 'NLD',
+    name: 'Netherlands',
+    officialName: 'Kingdom of the Netherlands',
+    flagUrl: 'https://flagcdn.com/nl.svg',
+    currencyCode: 'EUR',
+    currencyName: 'Euro',
+    currencySymbol: 'EUR',
+    languages: ['Dutch'],
+  },
+  {
+    code2: 'UG',
+    code3: 'UGA',
+    name: 'Uganda',
+    officialName: 'Republic of Uganda',
+    flagUrl: 'https://flagcdn.com/ug.svg',
+    currencyCode: 'UGX',
+    currencyName: 'Ugandan shilling',
+    currencySymbol: 'USh',
+    languages: ['English', 'Swahili'],
+  },
+  {
+    code2: 'US',
+    code3: 'USA',
+    name: 'United States',
+    officialName: 'United States of America',
+    flagUrl: 'https://flagcdn.com/us.svg',
+    currencyCode: 'USD',
+    currencyName: 'United States dollar',
+    currencySymbol: '$',
+    languages: ['English'],
+  },
+]
+
 export const handlers = [
   http.get('/api/v1/auth/demo-users', () => HttpResponse.json(getDemoUserHints())),
   http.get('/api/auth/demo-users', () => HttpResponse.json(getDemoUserHints())),
@@ -200,6 +258,8 @@ export const handlers = [
     }
     return HttpResponse.json(tenants)
   }),
+
+  http.get('/api/v1/geography/reference/countries', () => HttpResponse.json(REFERENCE_COUNTRIES)),
 
   http.get('/api/tenancy/context', ({ request }) => {
     const result = authorize(request, 'tenancyContext')

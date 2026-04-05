@@ -73,6 +73,15 @@ function asNumber(value: unknown, fallback = 0): number {
   return Number.isFinite(parsed) ? parsed : fallback
 }
 
+function normalizeCurrencyCode(value: unknown, fallback = 'USD'): string {
+  const normalized = asString(value, fallback).trim().toUpperCase()
+  return normalized.length > 0 ? normalized : fallback
+}
+
+function formatAmount(value: unknown, currencyCode: string): string {
+  return `${currencyCode} ${asNumber(value, 0).toFixed(0)}`
+}
+
 const DEFAULT_REMOTE_COMMANDS: ChargePointDetail['remoteCommands'] = [
   'Remote Start Session',
   'Soft Reset',
@@ -184,6 +193,7 @@ function normalizeDashboardOverview(
   analyticsValue: unknown,
   sessionsValue: unknown,
   incidentsValue: unknown,
+  defaultCurrencyCode: string,
 ): DashboardOverviewResponse {
   const analytics = asRecord(analyticsValue)
   const realtime = asRecord(analytics.realTime)
@@ -214,7 +224,7 @@ function normalizeDashboardOverview(
     {
       id: 'revenue',
       label: 'Revenue',
-      value: `KES ${Math.round(revenue).toLocaleString()}`,
+      value: `${defaultCurrencyCode} ${Math.round(revenue).toLocaleString()}`,
       delta: 'Today',
       trend: 'up',
       iconKey: 'revenue',
@@ -237,7 +247,7 @@ function normalizeDashboardOverview(
     },
   ]
 
-  const recentSessions = normalizeSessionRecords(sessionsValue)
+  const recentSessions = normalizeSessionRecords(sessionsValue, defaultCurrencyCode)
     .sort((a, b) => toTimestamp(b.started) - toTimestamp(a.started))
     .slice(0, 5)
     .map((session) => ({
@@ -292,7 +302,7 @@ function normalizeSiteOwnerDashboard(value: unknown): SiteOwnerDashboardResponse
   }
 }
 
-function normalizeSessionRecords(value: unknown): SessionRecord[] {
+function normalizeSessionRecords(value: unknown, defaultCurrencyCode: string): SessionRecord[] {
   return asArray<Record<string, unknown>>(value).map((session) => ({
     id: asString(session.id, 'N/A'),
     station: asString((session.station as Record<string, unknown>)?.name ?? session.stationId, 'Unknown Station'),
@@ -301,7 +311,7 @@ function normalizeSessionRecords(value: unknown): SessionRecord[] {
     started: asString(session.startTime ?? session.createdAt, 'N/A'),
     ended: typeof session.endTime === 'string' ? session.endTime : null,
     energy: `${asNumber(session.totalEnergy, 0).toFixed(1)} kWh`,
-    amount: `KES ${asNumber(session.amount, 0).toFixed(0)}`,
+    amount: formatAmount(session.amount, normalizeCurrencyCode(session.currency, defaultCurrencyCode)),
     status: (asString(session.status, 'COMPLETED').toUpperCase() === 'ACTIVE'
       ? 'Active'
       : asString(session.status, 'COMPLETED').toUpperCase() === 'FAILED'
@@ -415,7 +425,7 @@ function normalizeAuditLogs(value: unknown): AuditLogRecord[] {
   }))
 }
 
-function normalizeBilling(value: unknown): BillingResponse {
+function normalizeBilling(value: unknown, defaultCurrencyCode: string): BillingResponse {
   const record = asRecord(value)
   const invoices = Array.isArray(record.invoices)
     ? asArray<BillingResponse['invoices'][number]>(record.invoices)
@@ -423,7 +433,7 @@ function normalizeBilling(value: unknown): BillingResponse {
       id: asString(invoice.id, 'N/A'),
       customer: asString(invoice.customerName ?? invoice.customer, 'N/A'),
       scope: asString(invoice.scope, 'General'),
-      amount: `KES ${asNumber(invoice.amount, 0).toFixed(0)}`,
+      amount: formatAmount(invoice.amount, normalizeCurrencyCode(invoice.currency, defaultCurrencyCode)),
       dueDate: asString(invoice.dueDate ?? invoice.createdAt, 'N/A'),
       status: 'Issued' as const,
     }))
@@ -444,19 +454,19 @@ function normalizeBilling(value: unknown): BillingResponse {
   }
 }
 
-function normalizePayouts(value: unknown): PayoutRecord[] {
+function normalizePayouts(value: unknown, defaultCurrencyCode: string): PayoutRecord[] {
   return asArray<Record<string, unknown>>(value).map((payout) => ({
     id: asString(payout.id, 'N/A'),
     period: asString(payout.period ?? payout.startedAt, 'N/A'),
     sessions: asNumber(payout.sessions, 0),
-    amount: `KES ${asNumber(payout.amount, 0).toFixed(0)}`,
-    fee: `KES ${asNumber(payout.fee, 0).toFixed(0)}`,
-    net: `KES ${asNumber(payout.netAmount ?? payout.amount, 0).toFixed(0)}`,
+    amount: formatAmount(payout.amount, normalizeCurrencyCode(payout.currency, defaultCurrencyCode)),
+    fee: formatAmount(payout.fee, normalizeCurrencyCode(payout.currency, defaultCurrencyCode)),
+    net: formatAmount(payout.netAmount ?? payout.amount, normalizeCurrencyCode(payout.currency, defaultCurrencyCode)),
     status: asString(payout.status).toLowerCase() === 'completed' ? 'Completed' : 'Processing',
   }))
 }
 
-function normalizeSettlement(value: unknown): SettlementResponse {
+function normalizeSettlement(value: unknown, defaultCurrencyCode: string): SettlementResponse {
   const record = asRecord(value)
   const records = Array.isArray(record.records)
     ? asArray<SettlementResponse['records'][number]>(record.records)
@@ -464,7 +474,7 @@ function normalizeSettlement(value: unknown): SettlementResponse {
       id: asString(entry.id, 'N/A'),
       partner: asString(entry.org ?? entry.region, 'N/A'),
       period: asString(entry.startedAt, 'N/A'),
-      netAmount: `KES ${asNumber(entry.amount, 0).toFixed(0)}`,
+      netAmount: formatAmount(entry.amount, normalizeCurrencyCode(entry.currency, defaultCurrencyCode)),
       status: (asString(entry.status).toLowerCase() === 'completed' ? 'Settled' : 'Reconciling') as SettlementResponse['records'][number]['status'],
     }))
 
@@ -566,7 +576,7 @@ function normalizeRoamingSessions(): RoamingSessionsResponse {
   }
 }
 
-function normalizeCdrs(value: unknown): OCPICdrsResponse {
+function normalizeCdrs(value: unknown, defaultCurrencyCode: string): OCPICdrsResponse {
   const records = asArray<Record<string, unknown>>(value).map((cdr) => ({
     id: asString(cdr.id, 'N/A'),
     partnerId: asString(cdr.partnerId, 'N/A'),
@@ -576,8 +586,8 @@ function normalizeCdrs(value: unknown): OCPICdrsResponse {
     start: asString(cdr.startTime ?? cdr.start, 'N/A'),
     end: asString(cdr.endTime ?? cdr.end, 'N/A'),
     kwh: asNumber(cdr.kwh ?? cdr.totalEnergy, 0),
-    totalCost: `KES ${asNumber(cdr.totalCost ?? cdr.amount, 0).toFixed(0)}`,
-    currency: asString(cdr.currency, 'KES'),
+    totalCost: asNumber(cdr.totalCost ?? cdr.amount, 0).toFixed(0),
+    currency: normalizeCurrencyCode(cdr.currency, defaultCurrencyCode),
     country: asString(cdr.country, 'N/A'),
     status: 'Sent' as const,
   }))
@@ -676,10 +686,11 @@ function normalizeNotifications(value: unknown): NotificationsModuleResponse {
 }
 
 function useTenantQueryContext(enabled = true) {
-  const { activeScopeKey, isReady } = useTenant()
+  const { activeScopeKey, isReady, activeTenant } = useTenant()
 
   return {
     enabled: enabled && isReady,
+    currencyCode: normalizeCurrencyCode(activeTenant?.currency),
     scopeKey: activeScopeKey,
   }
 }
@@ -693,7 +704,7 @@ export function useDemoUsers() {
 }
 
 export function useDashboardOverview(options?: { enabled?: boolean }) {
-  const { enabled, scopeKey } = useTenantQueryContext(options?.enabled ?? true)
+  const { currencyCode, enabled, scopeKey } = useTenantQueryContext(options?.enabled ?? true)
 
   return useQuery<DashboardOverviewResponse>({
     queryKey: ['dashboard', 'overview', scopeKey],
@@ -704,7 +715,7 @@ export function useDashboardOverview(options?: { enabled?: boolean }) {
         fetchJson<unknown>('/api/v1/incidents').catch(() => []),
       ])
 
-      return normalizeDashboardOverview(analytics, sessions, incidents)
+      return normalizeDashboardOverview(analytics, sessions, incidents, currencyCode)
     },
     enabled,
   })
@@ -774,11 +785,11 @@ export function useCreateChargePoint() {
 }
 
 export function useSessions() {
-  const { enabled, scopeKey } = useTenantQueryContext()
+  const { currencyCode, enabled, scopeKey } = useTenantQueryContext()
 
   return useQuery<SessionRecord[]>({
     queryKey: ['sessions', scopeKey],
-    queryFn: async () => normalizeSessionRecords(await fetchJson<unknown>('/api/v1/sessions/history/all')),
+    queryFn: async () => normalizeSessionRecords(await fetchJson<unknown>('/api/v1/sessions/history/all'), currencyCode),
     enabled,
   })
 }
@@ -877,11 +888,11 @@ export function useRoamingSessions() {
 }
 
 export function useOCPICdrs() {
-  const { enabled, scopeKey } = useTenantQueryContext()
+  const { currencyCode, enabled, scopeKey } = useTenantQueryContext()
 
   return useQuery<OCPICdrsResponse>({
     queryKey: ['roaming', 'cdrs', scopeKey],
-    queryFn: async () => normalizeCdrs(await fetchJson<unknown>('/api/v1/ocpi/actions/roaming-cdrs')),
+    queryFn: async () => normalizeCdrs(await fetchJson<unknown>('/api/v1/ocpi/actions/roaming-cdrs'), currencyCode),
     enabled,
   })
 }
@@ -897,31 +908,31 @@ export function useOCPICommands() {
 }
 
 export function useBilling() {
-  const { enabled, scopeKey } = useTenantQueryContext()
+  const { currencyCode, enabled, scopeKey } = useTenantQueryContext()
 
   return useQuery<BillingResponse>({
     queryKey: ['finance', 'billing', scopeKey],
-    queryFn: async () => normalizeBilling(await fetchJson<unknown>('/api/v1/billing/invoices')),
+    queryFn: async () => normalizeBilling(await fetchJson<unknown>('/api/v1/billing/invoices'), currencyCode),
     enabled,
   })
 }
 
 export function usePayouts() {
-  const { enabled, scopeKey } = useTenantQueryContext()
+  const { currencyCode, enabled, scopeKey } = useTenantQueryContext()
 
   return useQuery<PayoutRecord[]>({
     queryKey: ['finance', 'payouts', scopeKey],
-    queryFn: async () => normalizePayouts(await fetchJson<unknown>('/api/v1/finance/payments')),
+    queryFn: async () => normalizePayouts(await fetchJson<unknown>('/api/v1/finance/payments'), currencyCode),
     enabled,
   })
 }
 
 export function useSettlement() {
-  const { enabled, scopeKey } = useTenantQueryContext()
+  const { currencyCode, enabled, scopeKey } = useTenantQueryContext()
 
   return useQuery<SettlementResponse>({
     queryKey: ['finance', 'settlement', scopeKey],
-    queryFn: async () => normalizeSettlement(await fetchJson<unknown>('/api/v1/settlements')),
+    queryFn: async () => normalizeSettlement(await fetchJson<unknown>('/api/v1/settlements'), currencyCode),
     enabled,
   })
 }

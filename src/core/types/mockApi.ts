@@ -24,6 +24,18 @@ export type AuthenticatedApiUser = Omit<CPOUser, 'role'> & {
 export type TenantScope = 'platform' | 'tenant' | 'site'
 export type DashboardMode = 'operations' | 'site'
 
+export interface GeographyCountryReference {
+  code2: string
+  code3: string | null
+  name: string
+  officialName: string | null
+  flagUrl: string | null
+  currencyCode: string | null
+  currencyName: string | null
+  currencySymbol: string | null
+  languages: string[]
+}
+
 export interface TenantSummary {
   chargePointCount: number
   code: string

@@ -109,6 +109,15 @@ function asNumber(value: unknown, fallback = 0): number {
   return Number.isFinite(parsed) ? parsed : fallback
 }
 
+function normalizeCurrencyCode(value: unknown, fallback = 'USD'): string {
+  if (typeof value !== 'string') {
+    return fallback
+  }
+
+  const normalized = value.trim().toUpperCase()
+  return normalized.length > 0 ? normalized : fallback
+}
+
 function formatDateLabel(dateValue?: string | null): string {
   if (!dateValue) return 'N/A'
   const date = new Date(dateValue)
@@ -127,9 +136,9 @@ function formatDurationLabel(start?: string, end?: string | null): string {
   return `${minutes}m ${remainder.toString().padStart(2, '0')}s`
 }
 
-function formatCurrency(value: number | string | undefined): string {
+function formatCurrency(value: number | string | undefined, currencyCode: string): string {
   const amount = asNumber(value, 0)
-  return `KES ${amount.toFixed(0)}`
+  return `${currencyCode} ${amount.toFixed(0)}`
 }
 
 function toPackRecord(pack: BackendBatteryPack, stationName: string): BatteryPackRecord {
@@ -369,10 +378,11 @@ export function useSwapStation(id?: string) {
 }
 
 export function useSwapSessions() {
-  const { activeScopeKey, isReady } = useTenant()
+  const { activeScopeKey, activeTenant, isReady } = useTenant()
+  const defaultCurrencyCode = normalizeCurrencyCode(activeTenant?.currency)
 
   return useQuery<BatterySwapSessionRecord[]>({
-    queryKey: ['swapping', 'sessions', activeScopeKey],
+    queryKey: ['swapping', 'sessions', activeScopeKey, defaultCurrencyCode],
     queryFn: async () => {
       const [sessions, stations] = await Promise.all([
         fetchJson<BackendSession[]>('/api/v1/sessions/history/all'),
@@ -403,7 +413,7 @@ export function useSwapSessions() {
           riderLabel: `Rider ${session.id.slice(0, 4)}`,
           healthCheck: status === 'Flagged' ? 'Failed' : 'Passed',
           status,
-          revenue: formatCurrency(session.amount),
+          revenue: formatCurrency(session.amount, defaultCurrencyCode),
         }
       })
     },

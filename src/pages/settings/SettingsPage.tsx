@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { getTemporaryAccessState, getTemporaryAccessWindowLabel, getUserRoleLabel, getUserScopeType, isTemporaryScopeUser } from '@/core/auth/access'
 import { useAuthStore } from '@/core/auth/authStore'
@@ -6,13 +6,13 @@ import { useTenant } from '@/core/hooks/useTenant'
 import { BellRing, Building2, Globe2, LayoutGrid, Lock, Save, ShieldCheck, SlidersHorizontal, Sparkles, UserCog } from 'lucide-react'
 
 type ScreenDensity = 'Comfortable' | 'Compact'
-type LanguagePreference = 'English' | 'Swahili'
 type SessionTimeout = '15 minutes' | '30 minutes' | '1 hour'
 
 interface SettingsDraft {
+  currency: string
   dailyDigest: boolean
   email: string
-  language: LanguagePreference
+  language: string
   mfaEnabled: boolean
   name: string
   recentAccessAlerts: boolean
@@ -21,11 +21,18 @@ interface SettingsDraft {
   weeklyOpsReport: boolean
 }
 
-function buildInitialDraft(userName: string, userEmail: string, mfaEnabled: boolean): SettingsDraft {
+function buildInitialDraft(
+  userName: string,
+  userEmail: string,
+  mfaEnabled: boolean,
+  language: string,
+  currency: string,
+): SettingsDraft {
   return {
+    currency,
     dailyDigest: true,
     email: userEmail,
-    language: 'English',
+    language,
     mfaEnabled,
     name: userName,
     recentAccessAlerts: true,
@@ -72,12 +79,39 @@ function SettingToggle({
 
 export function SettingsPage() {
   const { user } = useAuthStore()
-  const { activeStationContext, activeTenant, availableStationContexts, availableTenants, dataScopeLabel } = useTenant()
+  const {
+    activeStationContext,
+    activeTenant,
+    availableCurrencies,
+    availableLanguages,
+    availableStationContexts,
+    availableTenants,
+    dataScopeLabel,
+  } = useTenant()
   const userName = user?.name ?? ''
   const userEmail = user?.email ?? ''
   const mfaEnabled = user?.mfaEnabled ?? false
-  const [draft, setDraft] = useState<SettingsDraft>(() => buildInitialDraft(userName, userEmail, mfaEnabled))
-  const [baseline, setBaseline] = useState<SettingsDraft>(() => buildInitialDraft(userName, userEmail, mfaEnabled))
+  const languageOptions = useMemo(() => availableLanguages?.length ? availableLanguages : ['English'], [availableLanguages])
+  const currencyOptions = useMemo(() => {
+    const defaults = availableCurrencies?.length ? [...availableCurrencies] : []
+    const activeCurrency = activeTenant?.currency?.trim()
+
+    if (activeCurrency && !defaults.includes(activeCurrency)) {
+      defaults.unshift(activeCurrency)
+    }
+
+    return defaults.length > 0 ? defaults : ['USD']
+  }, [activeTenant?.currency, availableCurrencies])
+  const initialLanguage = useMemo(
+    () => languageOptions.find((language) => language.toLowerCase() === 'english') ?? languageOptions[0] ?? 'English',
+    [languageOptions],
+  )
+  const initialCurrency = useMemo(
+    () => activeTenant?.currency?.trim() || currencyOptions[0] || 'USD',
+    [activeTenant?.currency, currencyOptions],
+  )
+  const [draft, setDraft] = useState<SettingsDraft>(() => buildInitialDraft(userName, userEmail, mfaEnabled, initialLanguage, initialCurrency))
+  const [baseline, setBaseline] = useState<SettingsDraft>(() => buildInitialDraft(userName, userEmail, mfaEnabled, initialLanguage, initialCurrency))
   const [isSaving, setIsSaving] = useState(false)
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
 
@@ -96,6 +130,30 @@ export function SettingsPage() {
   const hasTemporaryScope = isTemporaryScopeUser(user)
 
   const hasUnsavedChanges = JSON.stringify(draft) !== JSON.stringify(baseline)
+
+  useEffect(() => {
+    if (hasUnsavedChanges || isSaving) {
+      return
+    }
+
+    const normalizeDraft = (current: SettingsDraft): SettingsDraft => {
+      const normalizedLanguage = languageOptions.includes(current.language) ? current.language : initialLanguage
+      const normalizedCurrency = currencyOptions.includes(current.currency) ? current.currency : initialCurrency
+
+      if (normalizedLanguage === current.language && normalizedCurrency === current.currency) {
+        return current
+      }
+
+      return {
+        ...current,
+        language: normalizedLanguage,
+        currency: normalizedCurrency,
+      }
+    }
+
+    setDraft((current) => normalizeDraft(current))
+    setBaseline((current) => normalizeDraft(current))
+  }, [currencyOptions, hasUnsavedChanges, initialCurrency, initialLanguage, isSaving, languageOptions])
 
   const handleSaveChanges = () => {
     if (!hasUnsavedChanges || isSaving) {
@@ -261,7 +319,7 @@ export function SettingsPage() {
 
             <div className="card">
               <div className="section-title"><LayoutGrid size={16} className="text-accent" />Interface Preferences</div>
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid gap-3 md:grid-cols-3">
                 <div>
                   <label htmlFor="settings-density" className="form-label">Screen Density</label>
                   <select
@@ -280,10 +338,24 @@ export function SettingsPage() {
                     id="settings-language"
                     className="input"
                     value={draft.language}
-                    onChange={(event) => setDraft((current) => ({ ...current, language: event.target.value as LanguagePreference }))}
+                    onChange={(event) => setDraft((current) => ({ ...current, language: event.target.value }))}
                   >
-                    <option value="English">English</option>
-                    <option value="Swahili">Swahili</option>
+                    {languageOptions.map((language) => (
+                      <option key={language} value={language}>{language}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="settings-currency" className="form-label">Currency</label>
+                  <select
+                    id="settings-currency"
+                    className="input"
+                    value={draft.currency}
+                    onChange={(event) => setDraft((current) => ({ ...current, currency: event.target.value }))}
+                  >
+                    {currencyOptions.map((currencyCode) => (
+                      <option key={currencyCode} value={currencyCode}>{currencyCode}</option>
+                    ))}
                   </select>
                 </div>
               </div>
