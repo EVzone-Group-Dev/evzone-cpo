@@ -9,7 +9,7 @@ import { useAuthStore } from '@/core/auth/authStore'
 import { useTenant } from '@/core/hooks/useTenant'
 import { PATHS } from '@/router/paths'
 import {
-  LayoutDashboard, Zap, Cpu, Activity, AlertTriangle, Bell,
+  LayoutDashboard, Cpu, Activity, AlertTriangle, Bell,
   DollarSign, BarChart3, Users, Globe2, FileText,
   Webhook, Puzzle, ShieldCheck, TrendingUp, ChevronLeft,
   ChevronRight, BookOpen, Gauge, Network, RefreshCw, Package, Settings, LogOut,
@@ -37,8 +37,8 @@ const NAV: NavGroup[] = [
   {
     label: 'Infrastructure',
     items: [
-      { label: 'Stations', icon: <Zap size={16} />, path: PATHS.STATIONS, policy: 'stationsRead' },
-      { label: 'Charge Points', icon: <Cpu size={16} />, path: PATHS.CHARGE_POINTS, policy: 'chargePointsRead' },
+      { label: 'Stations', icon: <Cpu size={16} />, path: PATHS.STATIONS, policy: 'stationsRead' },
+      { label: 'Charge Points', icon: <Gauge size={16} />, path: PATHS.CHARGE_POINTS, policy: 'chargePointsRead' },
       { label: 'Swap Stations', icon: <RefreshCw size={16} />, path: PATHS.SWAP_STATIONS, policy: 'swapStationsRead' },
     ],
   },
@@ -104,9 +104,12 @@ export function Sidebar() {
     >
       {/* Logo / Brand */}
       <div className="flex items-center gap-2.5 px-4 py-4 border-b border-[var(--border)] min-h-[57px]">
-        <div className="w-7 h-7 rounded-lg bg-[var(--accent)] flex items-center justify-center flex-shrink-0">
-          <Zap size={14} className="text-[#0d1117]" />
-        </div>
+        <img
+          src="/assets/logos/cpms.png"
+          alt="EVzone CPO"
+          className="w-7 h-7 flex-shrink-0 object-contain"
+          //title="EVzone CPO Platform"
+        />
         {!collapsed && (
           <span className="font-extrabold text-sm tracking-tight text-[var(--text)]">
             EVzone <span className="text-[var(--accent)]">CPO</span>
@@ -204,3 +207,4 @@ export function Sidebar() {
     </aside>
   )
 }
+

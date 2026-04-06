@@ -1,6 +1,8 @@
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
+import { getTemporaryAccessState, getTemporaryAccessWindowLabel, isTemporaryScopeUser } from '@/core/auth/access'
 import { useAuthStore } from '@/core/auth/authStore'
 import { useAlerts, useIncidentCommand } from '@/core/hooks/usePlatformData'
+import { useTenant } from '@/core/hooks/useTenant'
 import { AlertTriangle, Shield, Wrench } from 'lucide-react'
 
 const ALERT_CLASS = {
@@ -11,8 +13,17 @@ const ALERT_CLASS = {
 
 export function TechnicianDashboard() {
   const user = useAuthStore((state) => state.user)
+  const { activeStationContext, availableStationContexts, dataScopeLabel } = useTenant()
   const { data: incidents, isLoading: incidentsLoading, error: incidentsError } = useIncidentCommand()
   const { data: alerts, isLoading: alertsLoading, error: alertsError } = useAlerts()
+  const temporaryAccessState = getTemporaryAccessState(user)
+  const temporaryAccessWindowLabel = getTemporaryAccessWindowLabel(user)
+  const hasTemporaryScope = isTemporaryScopeUser(user)
+  const assignedStationsLabel = availableStationContexts.length > 0
+    ? availableStationContexts
+      .map((context) => context.stationName ?? context.stationId)
+      .join(', ')
+    : user?.assignedStationIds?.join(', ') ?? 'Tenant-wide queue'
 
   if (incidentsLoading || alertsLoading) {
     return <DashboardLayout pageTitle="Field Service"><div className="p-8 text-center text-subtle">Loading technician dashboard...</div></DashboardLayout>
@@ -76,7 +87,12 @@ export function TechnicianDashboard() {
             <div className="section-title"><Shield size={16} className="text-ok" />Technician Scope</div>
             <div className="space-y-3 mt-4 text-sm">
               <div><span className="text-subtle">User:</span> {user?.name}</div>
-              <div><span className="text-subtle">Assigned Stations:</span> {user?.assignedStationIds?.join(', ') ?? 'Tenant-wide queue'}</div>
+              <div><span className="text-subtle">Active Station:</span> {activeStationContext?.stationName ?? activeStationContext?.stationId ?? 'All assigned stations'}</div>
+              <div><span className="text-subtle">Assigned Stations:</span> {assignedStationsLabel}</div>
+              <div><span className="text-subtle">Shift Window:</span> {activeStationContext?.shiftStart && activeStationContext?.shiftEnd ? `${activeStationContext.shiftStart} - ${activeStationContext.shiftEnd}` : 'Not time-bound'}</div>
+              {hasTemporaryScope && <div><span className="text-subtle">Temporary Access:</span> {temporaryAccessState}</div>}
+              {hasTemporaryScope && <div><span className="text-subtle">Access Window:</span> {temporaryAccessWindowLabel}</div>}
+              <div><span className="text-subtle">Coverage:</span> {dataScopeLabel}</div>
               <div><span className="text-subtle">Priority Action:</span> {incidents.predictiveAlert.cta}</div>
             </div>
           </div>

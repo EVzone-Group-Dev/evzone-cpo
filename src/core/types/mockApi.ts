@@ -17,11 +17,36 @@ export interface LoginResponse {
 
 export type AuthenticatedApiUser = Omit<CPOUser, 'role'> & {
   role: string
+  twoFactorEnabled?: boolean
   accessProfile?: AccessProfile | null
 }
 
-export type TenantScope = 'platform' | 'organization' | 'site'
+export type TenantScope = 'platform' | 'tenant' | 'site'
 export type DashboardMode = 'operations' | 'site'
+
+export interface GeographyCountryReference {
+  code2: string
+  code3: string | null
+  name: string
+  officialName: string | null
+  flagUrl: string | null
+  currencyCode: string | null
+  currencyName: string | null
+  currencySymbol: string | null
+  languages: string[]
+}
+
+export interface GeographyStateReference {
+  countryCode: string
+  code: string
+  name: string
+}
+
+export interface GeographyCityReference {
+  countryCode: string
+  stateCode: string
+  name: string
+}
 
 export interface TenantSummary {
   chargePointCount: number
@@ -384,6 +409,7 @@ export interface ChargePointDetail extends ChargePointSummary {
     lastHeartbeat: string
     ocppConnection: string
   }
+  smartChargingEnabled?: boolean
 }
 
 export interface SessionRecord {

@@ -3,7 +3,7 @@ import {
   canAccessPolicy,
   type AccessPolicyKey,
 } from '@/core/auth/access'
-import type { CPORole } from '@/core/types/domain'
+import type { AuthenticatedApiUser } from '@/core/types/mockApi'
 import { http, HttpResponse } from 'msw'
 import {
   applySwapPackRetirementDecision,
@@ -45,8 +45,14 @@ import {
   listSwapStations,
   listTariffs,
   listTeamMembers,
+  listDemoTenants,
+  refreshDemoUserSession,
+  resetDemoAuthSessions,
+  resolveDemoAccess,
   transitionSwapPack,
   resolveTenantContext,
+  switchDemoTenant,
+  switchDemoStationContext,
 } from './data'
 
 type TenantId = Parameters<typeof getDashboardOverview>[0]
@@ -55,61 +61,37 @@ type ResolvedTenantContext = NonNullable<ReturnType<typeof resolveTenantContext>
 interface RequestAccess {
   context: ResolvedTenantContext
   tenantId: TenantId
-  role: CPORole
+  user: AuthenticatedApiUser
 }
 
 type AccessResult =
   | { ok: true; access: RequestAccess }
   | { ok: false; response: Response }
 
-const DEMO_TOKEN_PREFIX = 'demo-token-'
-
-function getTokenValue(authorizationHeader: string | null) {
-  if (!authorizationHeader) return null
-  return authorizationHeader.startsWith('Bearer ')
-    ? authorizationHeader.slice('Bearer '.length)
-    : authorizationHeader
-}
-
-function getRoleFromAuthorization(authorizationHeader: string | null): CPORole | null {
-  const token = getTokenValue(authorizationHeader)
-  if (!token || !token.startsWith(DEMO_TOKEN_PREFIX)) {
-    return null
-  }
-
-  const userId = token.slice(DEMO_TOKEN_PREFIX.length)
-  const demoUser = getDemoUserHints().find((user) => user.id === userId)
-  return demoUser?.role ?? null
-}
-
 function getRequestAccess(request: Request): RequestAccess | null {
-  const authorization = request.headers.get('authorization')
-  const context = resolveTenantContext(
-    authorization,
+  const resolved = resolveDemoAccess(
+    request.headers.get('authorization'),
     request.headers.get('x-tenant-id'),
   )
-  const role = getRoleFromAuthorization(authorization)
 
-  if (!context || !role) {
-    return null
-  }
-
-  return {
-    context,
-    tenantId: context.activeTenant.id as TenantId,
-    role,
-  }
+  return resolved
+    ? {
+      context: resolved.context,
+      tenantId: resolved.tenantId,
+      user: resolved.user,
+    }
+    : null
 }
 
 function unauthorized() {
   return HttpResponse.json({ message: 'Unauthorized.' }, { status: 401 })
 }
 
-function forbidden(role: CPORole, policy: AccessPolicyKey) {
+function forbidden(user: AuthenticatedApiUser, policy: AccessPolicyKey) {
   return HttpResponse.json(
     {
       message: 'Forbidden.',
-      role,
+      role: user.role,
       allowedRoles: ACCESS_POLICY[policy],
       policy,
     },
@@ -123,25 +105,260 @@ function authorize(request: Request, policy: AccessPolicyKey): AccessResult {
     return { ok: false, response: unauthorized() }
   }
 
-  if (!canAccessPolicy({ role: access.role }, policy)) {
-    return { ok: false, response: forbidden(access.role, policy) }
+  if (!canAccessPolicy(access.user, policy)) {
+    return { ok: false, response: forbidden(access.user, policy) }
   }
 
   return { ok: true, access }
 }
 
+function loginResolver(request: Request) {
+  return request.json()
+    .then(({ email, password }) => {
+      const auth = authenticateDemoUser(email, password)
+      if (!auth) {
+        return HttpResponse.json({ message: 'Invalid credentials.' }, { status: 401 })
+      }
+      return HttpResponse.json(auth)
+    })
+}
+
+const REFERENCE_COUNTRIES = [
+  {
+    code2: 'DE',
+    code3: 'DEU',
+    name: 'Germany',
+    officialName: 'Federal Republic of Germany',
+    flagUrl: 'https://flagcdn.com/de.svg',
+    currencyCode: 'EUR',
+    currencyName: 'Euro',
+    currencySymbol: 'EUR',
+    languages: ['German'],
+  },
+  {
+    code2: 'KE',
+    code3: 'KEN',
+    name: 'Kenya',
+    officialName: 'Republic of Kenya',
+    flagUrl: 'https://flagcdn.com/ke.svg',
+    currencyCode: 'KES',
+    currencyName: 'Kenyan shilling',
+    currencySymbol: 'KSh',
+    languages: ['English', 'Swahili'],
+  },
+  {
+    code2: 'NL',
+    code3: 'NLD',
+    name: 'Netherlands',
+    officialName: 'Kingdom of the Netherlands',
+    flagUrl: 'https://flagcdn.com/nl.svg',
+    currencyCode: 'EUR',
+    currencyName: 'Euro',
+    currencySymbol: 'EUR',
+    languages: ['Dutch'],
+  },
+  {
+    code2: 'UG',
+    code3: 'UGA',
+    name: 'Uganda',
+    officialName: 'Republic of Uganda',
+    flagUrl: 'https://flagcdn.com/ug.svg',
+    currencyCode: 'UGX',
+    currencyName: 'Ugandan shilling',
+    currencySymbol: 'USh',
+    languages: ['English', 'Swahili'],
+  },
+  {
+    code2: 'US',
+    code3: 'USA',
+    name: 'United States',
+    officialName: 'United States of America',
+    flagUrl: 'https://flagcdn.com/us.svg',
+    currencyCode: 'USD',
+    currencyName: 'United States dollar',
+    currencySymbol: '$',
+    languages: ['English'],
+  },
+]
+
+const REFERENCE_STATES: Record<string, Array<{ countryCode: string; code: string; name: string }>> = {
+  DE: [
+    { countryCode: 'DE', code: 'BE', name: 'Berlin' },
+    { countryCode: 'DE', code: 'BW', name: 'Baden-Wurttemberg' },
+    { countryCode: 'DE', code: 'BY', name: 'Bavaria' },
+  ],
+  KE: [
+    { countryCode: 'KE', code: 'NA', name: 'Nairobi County' },
+    { countryCode: 'KE', code: 'MU', name: 'Mombasa County' },
+    { countryCode: 'KE', code: 'KI', name: 'Kiambu County' },
+  ],
+  NL: [
+    { countryCode: 'NL', code: 'NH', name: 'North Holland' },
+    { countryCode: 'NL', code: 'ZH', name: 'South Holland' },
+  ],
+  UG: [
+    { countryCode: 'UG', code: 'C', name: 'Central Region' },
+    { countryCode: 'UG', code: 'E', name: 'Eastern Region' },
+    { countryCode: 'UG', code: 'N', name: 'Northern Region' },
+    { countryCode: 'UG', code: 'W', name: 'Western Region' },
+  ],
+  US: [
+    { countryCode: 'US', code: 'CA', name: 'California' },
+    { countryCode: 'US', code: 'NY', name: 'New York' },
+    { countryCode: 'US', code: 'TX', name: 'Texas' },
+  ],
+}
+
+const REFERENCE_CITIES: Record<string, Array<{ countryCode: string; stateCode: string; name: string }>> = {
+  'DE:BE': [
+    { countryCode: 'DE', stateCode: 'BE', name: 'Berlin' },
+  ],
+  'DE:BW': [
+    { countryCode: 'DE', stateCode: 'BW', name: 'Stuttgart' },
+    { countryCode: 'DE', stateCode: 'BW', name: 'Mannheim' },
+  ],
+  'DE:BY': [
+    { countryCode: 'DE', stateCode: 'BY', name: 'Munich' },
+    { countryCode: 'DE', stateCode: 'BY', name: 'Nuremberg' },
+  ],
+  'KE:NA': [
+    { countryCode: 'KE', stateCode: 'NA', name: 'Nairobi' },
+    { countryCode: 'KE', stateCode: 'NA', name: 'Westlands' },
+  ],
+  'KE:MU': [
+    { countryCode: 'KE', stateCode: 'MU', name: 'Mombasa' },
+  ],
+  'KE:KI': [
+    { countryCode: 'KE', stateCode: 'KI', name: 'Kiambu' },
+    { countryCode: 'KE', stateCode: 'KI', name: 'Thika' },
+  ],
+  'NL:NH': [
+    { countryCode: 'NL', stateCode: 'NH', name: 'Amsterdam' },
+    { countryCode: 'NL', stateCode: 'NH', name: 'Haarlem' },
+  ],
+  'NL:ZH': [
+    { countryCode: 'NL', stateCode: 'ZH', name: 'Rotterdam' },
+    { countryCode: 'NL', stateCode: 'ZH', name: 'The Hague' },
+  ],
+  'UG:C': [
+    { countryCode: 'UG', stateCode: 'C', name: 'Kampala' },
+    { countryCode: 'UG', stateCode: 'C', name: 'Entebbe' },
+  ],
+  'UG:E': [
+    { countryCode: 'UG', stateCode: 'E', name: 'Jinja' },
+    { countryCode: 'UG', stateCode: 'E', name: 'Mbale' },
+  ],
+  'UG:N': [
+    { countryCode: 'UG', stateCode: 'N', name: 'Gulu' },
+  ],
+  'UG:W': [
+    { countryCode: 'UG', stateCode: 'W', name: 'Mbarara' },
+  ],
+  'US:CA': [
+    { countryCode: 'US', stateCode: 'CA', name: 'San Francisco' },
+    { countryCode: 'US', stateCode: 'CA', name: 'Los Angeles' },
+  ],
+  'US:NY': [
+    { countryCode: 'US', stateCode: 'NY', name: 'New York' },
+    { countryCode: 'US', stateCode: 'NY', name: 'Buffalo' },
+  ],
+  'US:TX': [
+    { countryCode: 'US', stateCode: 'TX', name: 'Austin' },
+    { countryCode: 'US', stateCode: 'TX', name: 'Houston' },
+  ],
+}
+
+function normalizeGeographyToken(value: unknown) {
+  return typeof value === 'string' ? value.trim().toUpperCase() : ''
+}
+
 export const handlers = [
+  http.get('/api/v1/auth/demo-users', () => HttpResponse.json(getDemoUserHints())),
   http.get('/api/auth/demo-users', () => HttpResponse.json(getDemoUserHints())),
 
-  http.post('/api/auth/login', async ({ request }) => {
-    const { email, password } = await request.json() as { email: string; password: string }
-    const auth = authenticateDemoUser(email, password)
+  http.post('/api/v1/auth/login', ({ request }) => loginResolver(request)),
+  http.post('/api/auth/login', ({ request }) => loginResolver(request)),
+
+  http.post('/api/v1/auth/refresh', async ({ request }) => {
+    const body = await request.json() as { refreshToken?: string | null }
+    const auth = refreshDemoUserSession(body.refreshToken ?? null)
 
     if (!auth) {
-      return HttpResponse.json({ message: 'Invalid credentials.' }, { status: 401 })
+      return HttpResponse.json({ message: 'Unauthorized.' }, { status: 401 })
     }
 
     return HttpResponse.json(auth)
+  }),
+
+  http.get('/api/v1/users/me', ({ request }) => {
+    const access = getRequestAccess(request)
+    if (!access) {
+      return unauthorized()
+    }
+    return HttpResponse.json(access.user)
+  }),
+
+  http.get('/api/v1/auth/access-profile', ({ request }) => {
+    const access = getRequestAccess(request)
+    if (!access) {
+      return unauthorized()
+    }
+    return HttpResponse.json(access.user.accessProfile ?? null)
+  }),
+
+  http.post('/api/v1/auth/switch-tenant', async ({ request }) => {
+    const authorization = request.headers.get('authorization')
+    const { tenantId } = await request.json() as { tenantId: string }
+    const auth = switchDemoTenant(authorization, tenantId)
+
+    if (!auth) {
+      return HttpResponse.json({ message: 'Unauthorized.' }, { status: 401 })
+    }
+
+    return HttpResponse.json(auth)
+  }),
+
+  http.get('/api/v1/users/me/station-contexts', ({ request }) => {
+    const access = getRequestAccess(request)
+    if (!access) {
+      return unauthorized()
+    }
+
+    return HttpResponse.json({
+      stationContexts: access.user.stationContexts ?? [],
+      activeStationContext: access.user.activeStationContext ?? null,
+    })
+  }),
+
+  http.post('/api/v1/users/me/station-context', async ({ request }) => {
+    const authorization = request.headers.get('authorization')
+    const { assignmentId } = await request.json() as { assignmentId: string }
+    const stationContext = switchDemoStationContext(authorization, assignmentId)
+
+    if (!stationContext) {
+      return HttpResponse.json({ message: 'Unauthorized.' }, { status: 401 })
+    }
+
+    return HttpResponse.json(stationContext)
+  }),
+
+  http.get('/api/v1/tenants', ({ request }) => {
+    const tenants = listDemoTenants(request.headers.get('authorization'))
+    if (tenants.length === 0) {
+      return unauthorized()
+    }
+    return HttpResponse.json(tenants)
+  }),
+
+  http.get('/api/v1/geography/reference/countries', () => HttpResponse.json(REFERENCE_COUNTRIES)),
+  http.get('/api/v1/geography/reference/countries/:countryCode/states', ({ params }) => {
+    const countryCode = normalizeGeographyToken(params.countryCode)
+    return HttpResponse.json(REFERENCE_STATES[countryCode] ?? [])
+  }),
+  http.get('/api/v1/geography/reference/countries/:countryCode/states/:stateCode/cities', ({ params }) => {
+    const countryCode = normalizeGeographyToken(params.countryCode)
+    const stateCode = normalizeGeographyToken(params.stateCode)
+    return HttpResponse.json(REFERENCE_CITIES[`${countryCode}:${stateCode}`] ?? [])
   }),
 
   http.get('/api/tenancy/context', ({ request }) => {
@@ -495,3 +712,5 @@ export const handlers = [
     return HttpResponse.json({ message: 'Kill command dispatched' })
   }),
 ]
+
+resetDemoAuthSessions()

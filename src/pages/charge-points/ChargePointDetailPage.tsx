@@ -2,24 +2,33 @@ import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { fetchJson } from '@/core/api/fetchJson'
+import { canAccessPolicy, getTemporaryAccessState } from '@/core/auth/access'
+import { useAuthStore } from '@/core/auth/authStore'
 import { useChargePoint, useSessions } from '@/core/hooks/usePlatformData'
 import { PATHS } from '@/router/paths'
-import { ArrowLeft, Cpu, Play, RotateCcw, Unlock, Wifi, WifiOff } from 'lucide-react'
+import { ArrowLeft, Cpu, Play, RotateCcw, Unlock, Wifi, WifiOff, Square, Pause } from 'lucide-react'
 
-const COMMAND_ICONS = {
+const COMMAND_ICONS: Record<string, React.ReactNode> = {
   'Remote Start Session': <Play size={14} />,
+  'Remote Stop Session': <Square size={14} />,
+  'Pause Session': <Pause size={14} />,
+  'Resume Session': <Play size={14} />,
   'Soft Reset': <RotateCcw size={14} />,
   'Hard Reboot': <RotateCcw size={14} />,
   'Unlock Connector': <Unlock size={14} />,
-} as const
+}
 
 export function ChargePointDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const user = useAuthStore((state) => state.user)
   const { data: chargePoint, isLoading, error } = useChargePoint(id)
   const { data: sessions, isLoading: isSessionsLoading } = useSessions()
   const [roamingOverride, setRoamingOverride] = useState<boolean | null>(null)
   const [cmdFeedback, setCmdFeedback] = useState<string | null>(null)
   const [sessionConnectorFilter, setSessionConnectorFilter] = useState('All')
+  const canRunChargePointCommands = canAccessPolicy(user, 'chargePointCommands')
+  const canRunRemoteStart = canAccessPolicy(user, 'remoteCommandStart')
+  const temporaryAccessState = getTemporaryAccessState(user)
 
   const recentSessions = useMemo(() => {
     if (!chargePoint) {
@@ -55,9 +64,13 @@ export function ChargePointDetailPage() {
   const connectorTypes = chargePoint.connectorTypes?.length
     ? chargePoint.connectorTypes
     : (chargePoint.connectorType ? [chargePoint.connectorType] : ['N/A'])
+  const defaultCommands = ['Remote Start Session', 'Remote Stop Session', 'Soft Reset', 'Hard Reboot', 'Unlock Connector']
+  if (chargePoint.smartChargingEnabled) {
+    defaultCommands.push('Pause Session', 'Resume Session')
+  }
   const remoteCommands = Array.isArray(chargePoint.remoteCommands) && chargePoint.remoteCommands.length > 0
     ? chargePoint.remoteCommands
-    : ['Remote Start Session', 'Soft Reset', 'Hard Reboot', 'Unlock Connector']
+    : defaultCommands
   const unitHealth = chargePoint.unitHealth ?? {
     ocppConnection: chargePoint.status === 'Online' ? 'Connected' : 'Disconnected',
     lastHeartbeat: chargePoint.lastHeartbeatLabel ?? 'No heartbeat',
@@ -77,6 +90,24 @@ export function ChargePointDetailPage() {
           return {
             path: `/api/v1/charge-points/${id}/commands/remote-start`,
             payload: { idTag: 'EVZONE_REMOTE' },
+          }
+        }
+        if (command === 'Remote Stop Session') {
+          return {
+            path: `/api/v1/charge-points/${id}/commands/remote-stop`,
+            payload: {},
+          }
+        }
+        if (command === 'Pause Session') {
+          return {
+            path: `/api/v1/charge-points/${id}/commands/pause`,
+            payload: undefined,
+          }
+        }
+        if (command === 'Resume Session') {
+          return {
+            path: `/api/v1/charge-points/${id}/commands/resume`,
+            payload: undefined,
           }
         }
         if (command === 'Soft Reset') {
@@ -216,9 +247,19 @@ export function ChargePointDetailPage() {
             {cmdFeedback && (
               <div className={`alert ${cmdFeedback.startsWith('✓') ? 'success' : 'info'} text-xs mb-3`}>{cmdFeedback}</div>
             )}
+            {(!canRunChargePointCommands || !canRunRemoteStart || temporaryAccessState === 'expired') && (
+              <div className="rounded-lg border border-border bg-bg-muted/40 px-3 py-3 text-xs text-subtle mb-3">
+                Remote control actions respect your current backend scope and temporary access window.
+              </div>
+            )}
             <div className="space-y-2">
               {remoteCommands.map((command) => (
-                <button key={command} className="btn secondary w-full flex items-center gap-2" onClick={() => sendCmd(command)}>
+                <button
+                  key={command}
+                  className="btn secondary w-full flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                  onClick={() => sendCmd(command)}
+                  disabled={command === 'Remote Start Session' ? !canRunRemoteStart : !canRunChargePointCommands}
+                >
                   {COMMAND_ICONS[command as keyof typeof COMMAND_ICONS]}
                   {command}
                 </button>

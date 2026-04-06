@@ -73,6 +73,15 @@ function asNumber(value: unknown, fallback = 0): number {
   return Number.isFinite(parsed) ? parsed : fallback
 }
 
+function normalizeCurrencyCode(value: unknown, fallback = 'USD'): string {
+  const normalized = asString(value, fallback).trim().toUpperCase()
+  return normalized.length > 0 ? normalized : fallback
+}
+
+function formatAmount(value: unknown, currencyCode: string): string {
+  return `${currencyCode} ${asNumber(value, 0).toFixed(0)}`
+}
+
 const DEFAULT_REMOTE_COMMANDS: ChargePointDetail['remoteCommands'] = [
   'Remote Start Session',
   'Soft Reset',
@@ -160,6 +169,7 @@ function normalizeChargePointDetail(value: unknown): ChargePointDetail {
       lastHeartbeat: asString(unitHealth.lastHeartbeat, base.lastHeartbeatLabel),
       errorCode: asString(unitHealth.errorCode, asString(record.errorCode, 'None')),
     },
+    smartChargingEnabled: Boolean(record.smartChargingEnabled),
   }
 }
 
@@ -183,6 +193,7 @@ function normalizeDashboardOverview(
   analyticsValue: unknown,
   sessionsValue: unknown,
   incidentsValue: unknown,
+  defaultCurrencyCode: string,
 ): DashboardOverviewResponse {
   const analytics = asRecord(analyticsValue)
   const realtime = asRecord(analytics.realTime)
@@ -213,7 +224,7 @@ function normalizeDashboardOverview(
     {
       id: 'revenue',
       label: 'Revenue',
-      value: `KES ${Math.round(revenue).toLocaleString()}`,
+      value: `${defaultCurrencyCode} ${Math.round(revenue).toLocaleString()}`,
       delta: 'Today',
       trend: 'up',
       iconKey: 'revenue',
@@ -236,7 +247,7 @@ function normalizeDashboardOverview(
     },
   ]
 
-  const recentSessions = normalizeSessionRecords(sessionsValue)
+  const recentSessions = normalizeSessionRecords(sessionsValue, defaultCurrencyCode)
     .sort((a, b) => toTimestamp(b.started) - toTimestamp(a.started))
     .slice(0, 5)
     .map((session) => ({
@@ -291,7 +302,7 @@ function normalizeSiteOwnerDashboard(value: unknown): SiteOwnerDashboardResponse
   }
 }
 
-function normalizeSessionRecords(value: unknown): SessionRecord[] {
+function normalizeSessionRecords(value: unknown, defaultCurrencyCode: string): SessionRecord[] {
   return asArray<Record<string, unknown>>(value).map((session) => ({
     id: asString(session.id, 'N/A'),
     station: asString((session.station as Record<string, unknown>)?.name ?? session.stationId, 'Unknown Station'),
@@ -300,7 +311,7 @@ function normalizeSessionRecords(value: unknown): SessionRecord[] {
     started: asString(session.startTime ?? session.createdAt, 'N/A'),
     ended: typeof session.endTime === 'string' ? session.endTime : null,
     energy: `${asNumber(session.totalEnergy, 0).toFixed(1)} kWh`,
-    amount: `KES ${asNumber(session.amount, 0).toFixed(0)}`,
+    amount: formatAmount(session.amount, normalizeCurrencyCode(session.currency, defaultCurrencyCode)),
     status: (asString(session.status, 'COMPLETED').toUpperCase() === 'ACTIVE'
       ? 'Active'
       : asString(session.status, 'COMPLETED').toUpperCase() === 'FAILED'
@@ -414,7 +425,7 @@ function normalizeAuditLogs(value: unknown): AuditLogRecord[] {
   }))
 }
 
-function normalizeBilling(value: unknown): BillingResponse {
+function normalizeBilling(value: unknown, defaultCurrencyCode: string): BillingResponse {
   const record = asRecord(value)
   const invoices = Array.isArray(record.invoices)
     ? asArray<BillingResponse['invoices'][number]>(record.invoices)
@@ -422,7 +433,7 @@ function normalizeBilling(value: unknown): BillingResponse {
       id: asString(invoice.id, 'N/A'),
       customer: asString(invoice.customerName ?? invoice.customer, 'N/A'),
       scope: asString(invoice.scope, 'General'),
-      amount: `KES ${asNumber(invoice.amount, 0).toFixed(0)}`,
+      amount: formatAmount(invoice.amount, normalizeCurrencyCode(invoice.currency, defaultCurrencyCode)),
       dueDate: asString(invoice.dueDate ?? invoice.createdAt, 'N/A'),
       status: 'Issued' as const,
     }))
@@ -443,19 +454,19 @@ function normalizeBilling(value: unknown): BillingResponse {
   }
 }
 
-function normalizePayouts(value: unknown): PayoutRecord[] {
+function normalizePayouts(value: unknown, defaultCurrencyCode: string): PayoutRecord[] {
   return asArray<Record<string, unknown>>(value).map((payout) => ({
     id: asString(payout.id, 'N/A'),
     period: asString(payout.period ?? payout.startedAt, 'N/A'),
     sessions: asNumber(payout.sessions, 0),
-    amount: `KES ${asNumber(payout.amount, 0).toFixed(0)}`,
-    fee: `KES ${asNumber(payout.fee, 0).toFixed(0)}`,
-    net: `KES ${asNumber(payout.netAmount ?? payout.amount, 0).toFixed(0)}`,
+    amount: formatAmount(payout.amount, normalizeCurrencyCode(payout.currency, defaultCurrencyCode)),
+    fee: formatAmount(payout.fee, normalizeCurrencyCode(payout.currency, defaultCurrencyCode)),
+    net: formatAmount(payout.netAmount ?? payout.amount, normalizeCurrencyCode(payout.currency, defaultCurrencyCode)),
     status: asString(payout.status).toLowerCase() === 'completed' ? 'Completed' : 'Processing',
   }))
 }
 
-function normalizeSettlement(value: unknown): SettlementResponse {
+function normalizeSettlement(value: unknown, defaultCurrencyCode: string): SettlementResponse {
   const record = asRecord(value)
   const records = Array.isArray(record.records)
     ? asArray<SettlementResponse['records'][number]>(record.records)
@@ -463,7 +474,7 @@ function normalizeSettlement(value: unknown): SettlementResponse {
       id: asString(entry.id, 'N/A'),
       partner: asString(entry.org ?? entry.region, 'N/A'),
       period: asString(entry.startedAt, 'N/A'),
-      netAmount: `KES ${asNumber(entry.amount, 0).toFixed(0)}`,
+      netAmount: formatAmount(entry.amount, normalizeCurrencyCode(entry.currency, defaultCurrencyCode)),
       status: (asString(entry.status).toLowerCase() === 'completed' ? 'Settled' : 'Reconciling') as SettlementResponse['records'][number]['status'],
     }))
 
@@ -565,7 +576,7 @@ function normalizeRoamingSessions(): RoamingSessionsResponse {
   }
 }
 
-function normalizeCdrs(value: unknown): OCPICdrsResponse {
+function normalizeCdrs(value: unknown, defaultCurrencyCode: string): OCPICdrsResponse {
   const records = asArray<Record<string, unknown>>(value).map((cdr) => ({
     id: asString(cdr.id, 'N/A'),
     partnerId: asString(cdr.partnerId, 'N/A'),
@@ -575,8 +586,8 @@ function normalizeCdrs(value: unknown): OCPICdrsResponse {
     start: asString(cdr.startTime ?? cdr.start, 'N/A'),
     end: asString(cdr.endTime ?? cdr.end, 'N/A'),
     kwh: asNumber(cdr.kwh ?? cdr.totalEnergy, 0),
-    totalCost: `KES ${asNumber(cdr.totalCost ?? cdr.amount, 0).toFixed(0)}`,
-    currency: asString(cdr.currency, 'KES'),
+    totalCost: asNumber(cdr.totalCost ?? cdr.amount, 0).toFixed(0),
+    currency: normalizeCurrencyCode(cdr.currency, defaultCurrencyCode),
     country: asString(cdr.country, 'N/A'),
     status: 'Sent' as const,
   }))
@@ -675,11 +686,12 @@ function normalizeNotifications(value: unknown): NotificationsModuleResponse {
 }
 
 function useTenantQueryContext(enabled = true) {
-  const { activeTenantId, isReady } = useTenant()
+  const { activeScopeKey, isReady, activeTenant } = useTenant()
 
   return {
     enabled: enabled && isReady,
-    tenantKey: activeTenantId ?? 'default',
+    currencyCode: normalizeCurrencyCode(activeTenant?.currency),
+    scopeKey: activeScopeKey,
   }
 }
 
@@ -692,10 +704,10 @@ export function useDemoUsers() {
 }
 
 export function useDashboardOverview(options?: { enabled?: boolean }) {
-  const { enabled, tenantKey } = useTenantQueryContext(options?.enabled ?? true)
+  const { currencyCode, enabled, scopeKey } = useTenantQueryContext(options?.enabled ?? true)
 
   return useQuery<DashboardOverviewResponse>({
-    queryKey: ['dashboard', 'overview', tenantKey],
+    queryKey: ['dashboard', 'overview', scopeKey],
     queryFn: async () => {
       const [analytics, sessions, incidents] = await Promise.all([
         fetchJson<unknown>('/api/v1/analytics/dashboard'),
@@ -703,27 +715,27 @@ export function useDashboardOverview(options?: { enabled?: boolean }) {
         fetchJson<unknown>('/api/v1/incidents').catch(() => []),
       ])
 
-      return normalizeDashboardOverview(analytics, sessions, incidents)
+      return normalizeDashboardOverview(analytics, sessions, incidents, currencyCode)
     },
     enabled,
   })
 }
 
 export function useSiteOwnerDashboard(options?: { enabled?: boolean }) {
-  const { enabled, tenantKey } = useTenantQueryContext(options?.enabled ?? true)
+  const { enabled, scopeKey } = useTenantQueryContext(options?.enabled ?? true)
 
   return useQuery<SiteOwnerDashboardResponse>({
-    queryKey: ['dashboard', 'site-owner', tenantKey],
+    queryKey: ['dashboard', 'site-owner', scopeKey],
     queryFn: async () => normalizeSiteOwnerDashboard(await fetchJson<unknown>('/api/v1/analytics/owner/dashboard')),
     enabled,
   })
 }
 
 export function useChargePoints() {
-  const { enabled, tenantKey } = useTenantQueryContext()
+  const { enabled, scopeKey } = useTenantQueryContext()
 
   return useQuery<ChargePointSummary[]>({
-    queryKey: ['charge-points', tenantKey],
+    queryKey: ['charge-points', scopeKey],
     queryFn: async () => {
       const seen = new Set<string>()
       const records = asArray<unknown>(await fetchJson<unknown>('/api/v1/charge-points'))
@@ -745,10 +757,10 @@ export function useChargePoints() {
 }
 
 export function useChargePoint(id?: string) {
-  const { enabled, tenantKey } = useTenantQueryContext(!!id)
+  const { enabled, scopeKey } = useTenantQueryContext(!!id)
 
   return useQuery<ChargePointDetail>({
-    queryKey: ['charge-points', tenantKey, id],
+    queryKey: ['charge-points', scopeKey, id],
     queryFn: async () =>
       normalizeChargePointDetail(await fetchJson<unknown>(`/api/v1/charge-points/${id}`)),
     enabled,
@@ -756,7 +768,7 @@ export function useChargePoint(id?: string) {
 }
 
 export function useCreateChargePoint() {
-  const { tenantKey } = useTenantQueryContext()
+  const { scopeKey } = useTenantQueryContext()
   const queryClient = useQueryClient()
 
   return useMutation({
@@ -767,106 +779,106 @@ export function useCreateChargePoint() {
         body: JSON.stringify(payload),
       }).then((value) => normalizeChargePointDetail(value)),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['charge-points', tenantKey] })
+      queryClient.invalidateQueries({ queryKey: ['charge-points', scopeKey] })
     },
   })
 }
 
 export function useSessions() {
-  const { enabled, tenantKey } = useTenantQueryContext()
+  const { currencyCode, enabled, scopeKey } = useTenantQueryContext()
 
   return useQuery<SessionRecord[]>({
-    queryKey: ['sessions', tenantKey],
-    queryFn: async () => normalizeSessionRecords(await fetchJson<unknown>('/api/v1/sessions/history/all')),
+    queryKey: ['sessions', scopeKey],
+    queryFn: async () => normalizeSessionRecords(await fetchJson<unknown>('/api/v1/sessions/history/all'), currencyCode),
     enabled,
   })
 }
 
 export function useIncidentCommand() {
-  const { enabled, tenantKey } = useTenantQueryContext()
+  const { enabled, scopeKey } = useTenantQueryContext()
 
   return useQuery<IncidentCommandResponse>({
-    queryKey: ['incidents', 'command', tenantKey],
+    queryKey: ['incidents', 'command', scopeKey],
     queryFn: async () => normalizeIncidentCommand(await fetchJson<unknown>('/api/v1/incidents')),
     enabled,
   })
 }
 
 export function useAlerts() {
-  const { enabled, tenantKey } = useTenantQueryContext()
+  const { enabled, scopeKey } = useTenantQueryContext()
 
   return useQuery<AlertRecord[]>({
-    queryKey: ['alerts', tenantKey],
+    queryKey: ['alerts', scopeKey],
     queryFn: async () => normalizeAlerts(await fetchJson<unknown>('/api/v1/incidents')),
     enabled,
   })
 }
 
 export function useTariffs() {
-  const { enabled, tenantKey } = useTenantQueryContext()
+  const { enabled, scopeKey } = useTenantQueryContext()
 
   return useQuery<TariffRecord[]>({
-    queryKey: ['tariffs', tenantKey],
+    queryKey: ['tariffs', scopeKey],
     queryFn: async () => asArray<TariffRecord>(await fetchJson<unknown>('/api/v1/tariffs')),
     enabled,
   })
 }
 
 export function useSmartCharging() {
-  const { enabled, tenantKey } = useTenantQueryContext()
+  const { enabled, scopeKey } = useTenantQueryContext()
 
   return useQuery<SmartChargingResponse>({
-    queryKey: ['energy', 'smart-charging', tenantKey],
+    queryKey: ['energy', 'smart-charging', scopeKey],
     queryFn: async () => normalizeSmartCharging(await fetchJson<unknown>('/api/v1/analytics/realtime')),
     enabled,
   })
 }
 
 export function useLoadPolicies() {
-  const { enabled, tenantKey } = useTenantQueryContext()
+  const { enabled, scopeKey } = useTenantQueryContext()
 
   return useQuery<LoadPolicyRecord[]>({
-    queryKey: ['energy', 'load-policies', tenantKey],
+    queryKey: ['energy', 'load-policies', scopeKey],
     queryFn: async () => asArray<LoadPolicyRecord>(await fetchJson<unknown>('/api/v1/analytics/usage')),
     enabled,
   })
 }
 
 export function useRoamingPartners() {
-  const { enabled, tenantKey } = useTenantQueryContext()
+  const { enabled, scopeKey } = useTenantQueryContext()
 
   return useQuery<RoamingPartnerRecord[]>({
-    queryKey: ['roaming', 'partners', tenantKey],
+    queryKey: ['roaming', 'partners', scopeKey],
     queryFn: async () => normalizeRoamingPartners(await fetchJson<unknown>('/api/v1/ocpi/partners')),
     enabled,
   })
 }
 
 export function useRoamingPartnerObservability() {
-  const { enabled, tenantKey } = useTenantQueryContext()
+  const { enabled, scopeKey } = useTenantQueryContext()
 
   return useQuery<RoamingPartnerObservabilityResponse>({
-    queryKey: ['roaming', 'partners', 'observability', tenantKey],
+    queryKey: ['roaming', 'partners', 'observability', scopeKey],
     queryFn: async () => normalizeObservability(await fetchJson<unknown>('/api/v1/ocpi/partners')),
     enabled,
   })
 }
 
 export function useRoamingPartnerObservabilityDetail(id?: string) {
-  const { enabled, tenantKey } = useTenantQueryContext(!!id)
+  const { enabled, scopeKey } = useTenantQueryContext(!!id)
 
   return useQuery<RoamingPartnerObservabilityDetail>({
-    queryKey: ['roaming', 'partners', 'observability', tenantKey, id],
+    queryKey: ['roaming', 'partners', 'observability', scopeKey, id],
     queryFn: async () => normalizeObservabilityDetail(await fetchJson<unknown>(`/api/v1/ocpi/partners/${id}`)),
     enabled,
   })
 }
 
 export function useRoamingSessions() {
-  const { enabled, tenantKey } = useTenantQueryContext()
+  const { enabled, scopeKey } = useTenantQueryContext()
 
   return useQuery<RoamingSessionsResponse>({
-    queryKey: ['roaming', 'sessions', tenantKey],
+    queryKey: ['roaming', 'sessions', scopeKey],
     queryFn: async () => {
       await fetchJson<unknown>('/api/v1/ocpi/actions/roaming-sessions')
       return normalizeRoamingSessions()
@@ -876,120 +888,120 @@ export function useRoamingSessions() {
 }
 
 export function useOCPICdrs() {
-  const { enabled, tenantKey } = useTenantQueryContext()
+  const { currencyCode, enabled, scopeKey } = useTenantQueryContext()
 
   return useQuery<OCPICdrsResponse>({
-    queryKey: ['roaming', 'cdrs', tenantKey],
-    queryFn: async () => normalizeCdrs(await fetchJson<unknown>('/api/v1/ocpi/actions/roaming-cdrs')),
+    queryKey: ['roaming', 'cdrs', scopeKey],
+    queryFn: async () => normalizeCdrs(await fetchJson<unknown>('/api/v1/ocpi/actions/roaming-cdrs'), currencyCode),
     enabled,
   })
 }
 
 export function useOCPICommands() {
-  const { enabled, tenantKey } = useTenantQueryContext()
+  const { enabled, scopeKey } = useTenantQueryContext()
 
   return useQuery<OCPICommandsResponse>({
-    queryKey: ['roaming', 'commands', tenantKey],
+    queryKey: ['roaming', 'commands', scopeKey],
     queryFn: async () => normalizeOcpiCommands(await fetchJson<unknown>('/api/v1/commands')),
     enabled,
   })
 }
 
 export function useBilling() {
-  const { enabled, tenantKey } = useTenantQueryContext()
+  const { currencyCode, enabled, scopeKey } = useTenantQueryContext()
 
   return useQuery<BillingResponse>({
-    queryKey: ['finance', 'billing', tenantKey],
-    queryFn: async () => normalizeBilling(await fetchJson<unknown>('/api/v1/billing/invoices')),
+    queryKey: ['finance', 'billing', scopeKey],
+    queryFn: async () => normalizeBilling(await fetchJson<unknown>('/api/v1/billing/invoices'), currencyCode),
     enabled,
   })
 }
 
 export function usePayouts() {
-  const { enabled, tenantKey } = useTenantQueryContext()
+  const { currencyCode, enabled, scopeKey } = useTenantQueryContext()
 
   return useQuery<PayoutRecord[]>({
-    queryKey: ['finance', 'payouts', tenantKey],
-    queryFn: async () => normalizePayouts(await fetchJson<unknown>('/api/v1/finance/payments')),
+    queryKey: ['finance', 'payouts', scopeKey],
+    queryFn: async () => normalizePayouts(await fetchJson<unknown>('/api/v1/finance/payments'), currencyCode),
     enabled,
   })
 }
 
 export function useSettlement() {
-  const { enabled, tenantKey } = useTenantQueryContext()
+  const { currencyCode, enabled, scopeKey } = useTenantQueryContext()
 
   return useQuery<SettlementResponse>({
-    queryKey: ['finance', 'settlement', tenantKey],
-    queryFn: async () => normalizeSettlement(await fetchJson<unknown>('/api/v1/settlements')),
+    queryKey: ['finance', 'settlement', scopeKey],
+    queryFn: async () => normalizeSettlement(await fetchJson<unknown>('/api/v1/settlements'), currencyCode),
     enabled,
   })
 }
 
 export function useTeamMembers() {
-  const { enabled, tenantKey } = useTenantQueryContext()
+  const { enabled, scopeKey } = useTenantQueryContext()
 
   return useQuery<TeamMember[]>({
-    queryKey: ['team', tenantKey],
+    queryKey: ['team', scopeKey],
     queryFn: async () => normalizeTeamMembers(await fetchJson<unknown>('/api/v1/users/team')),
     enabled,
   })
 }
 
 export function useAuditLogs() {
-  const { enabled, tenantKey } = useTenantQueryContext()
+  const { enabled, scopeKey } = useTenantQueryContext()
 
   return useQuery<AuditLogRecord[]>({
-    queryKey: ['audit-logs', tenantKey],
+    queryKey: ['audit-logs', scopeKey],
     queryFn: async () => normalizeAuditLogs(await fetchJson<unknown>('/api/v1/audit-logs')),
     enabled,
   })
 }
 
 export function useReports() {
-  const { enabled, tenantKey } = useTenantQueryContext()
+  const { enabled, scopeKey } = useTenantQueryContext()
 
   return useQuery<ReportsResponse>({
-    queryKey: ['reports', tenantKey],
+    queryKey: ['reports', scopeKey],
     queryFn: async () => normalizeReports(await fetchJson<unknown>('/api/v1/analytics/usage')),
     enabled,
   })
 }
 
 export function useProtocolEngine() {
-  const { enabled, tenantKey } = useTenantQueryContext()
+  const { enabled, scopeKey } = useTenantQueryContext()
 
   return useQuery<ProtocolEngineResponse>({
-    queryKey: ['protocols', tenantKey],
+    queryKey: ['protocols', scopeKey],
     queryFn: async () => normalizeProtocolEngine(await fetchJson<unknown>('/api/v1/analytics/system-health')),
     enabled,
   })
 }
 
 export function useIntegrationsModule() {
-  const { enabled, tenantKey } = useTenantQueryContext()
+  const { enabled, scopeKey } = useTenantQueryContext()
 
   return useQuery<IntegrationModuleResponse>({
-    queryKey: ['platform', 'integrations', tenantKey],
+    queryKey: ['platform', 'integrations', scopeKey],
     queryFn: async () => normalizeIntegrations(await fetchJson<unknown>('/api/v1/analytics/system-health')),
     enabled,
   })
 }
 
 export function useWebhooksModule() {
-  const { enabled, tenantKey } = useTenantQueryContext()
+  const { enabled, scopeKey } = useTenantQueryContext()
 
   return useQuery<WebhooksModuleResponse>({
-    queryKey: ['platform', 'webhooks', tenantKey],
+    queryKey: ['platform', 'webhooks', scopeKey],
     queryFn: async () => normalizeWebhooks(await fetchJson<unknown>('/api/v1/webhooks')),
     enabled,
   })
 }
 
 export function useNotificationsModule() {
-  const { enabled, tenantKey } = useTenantQueryContext()
+  const { enabled, scopeKey } = useTenantQueryContext()
 
   return useQuery<NotificationsModuleResponse>({
-    queryKey: ['platform', 'notifications', tenantKey],
+    queryKey: ['platform', 'notifications', scopeKey],
     queryFn: async () => normalizeNotifications(await fetchJson<unknown>('/api/v1/notifications')),
     enabled,
   })

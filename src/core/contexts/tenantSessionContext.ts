@@ -1,16 +1,25 @@
 import { createContext } from 'react'
-import type { DashboardMode, TenantSummary } from '@/core/types/mockApi'
+import type { StationContextSummary } from '@/core/types/domain'
+import type { DashboardMode, GeographyCountryReference, TenantSummary } from '@/core/types/mockApi'
 
 export interface TenantContextType {
   activeTenant: TenantSummary | null
   activeTenantId: string | null
+  activeStationContext: StationContextSummary | null
+  activeScopeKey: string
   availableTenants: TenantSummary[]
+  availableStationContexts: StationContextSummary[]
   canSwitchTenants: boolean
+  canSwitchStationContexts: boolean
   dashboardMode: DashboardMode
   dataScopeLabel: string
+  availableCountries?: GeographyCountryReference[]
+  availableLanguages?: string[]
+  availableCurrencies?: string[]
   isLoading: boolean
   isReady: boolean
   setActiveTenantId: (tenantId: string) => void
+  setActiveStationContextId: (assignmentId: string) => void
 }
 
 export const TenantContext = createContext<TenantContextType | undefined>(undefined)

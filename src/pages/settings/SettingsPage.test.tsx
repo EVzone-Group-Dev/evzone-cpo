@@ -1,8 +1,9 @@
 import type { ReactNode } from 'react'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { SettingsPage } from '@/pages/settings/SettingsPage'
 import { useAuthStore } from '@/core/auth/authStore'
+import { useReferenceCities, useReferenceStates } from '@/core/hooks/useGeography'
 import { useTenant } from '@/core/hooks/useTenant'
 
 vi.mock('@/components/layout/DashboardLayout', () => ({
@@ -22,8 +23,15 @@ vi.mock('@/core/hooks/useTenant', () => ({
   useTenant: vi.fn(),
 }))
 
+vi.mock('@/core/hooks/useGeography', () => ({
+  useReferenceStates: vi.fn(),
+  useReferenceCities: vi.fn(),
+}))
+
 describe('SettingsPage', () => {
   const mockedUseAuthStore = vi.mocked(useAuthStore)
+  const mockedUseReferenceCities = vi.mocked(useReferenceCities)
+  const mockedUseReferenceStates = vi.mocked(useReferenceStates)
   const mockedUseTenant = vi.mocked(useTenant)
 
   beforeEach(() => {
@@ -36,7 +44,7 @@ describe('SettingsPage', () => {
           email: 'stationmanager@evzone.io',
           role: 'STATION_MANAGER',
           status: 'Active',
-          organizationId: 'org-evzone-ke',
+          tenantId: 'org-evzone-ke',
           assignedStationIds: ['st-1', 'st-2', 'st-3'],
           createdAt: '2026-01-01 09:00',
           mfaEnabled: true,
@@ -50,7 +58,7 @@ describe('SettingsPage', () => {
         slug: 'evzone-ke',
         name: 'EVzone Kenya',
         description: 'Kenya operating company',
-        scope: 'organization',
+        scope: 'tenant',
         scopeLabel: 'Operating Company',
         region: 'Kenya',
         timeZone: 'Africa/Nairobi',
@@ -66,7 +74,7 @@ describe('SettingsPage', () => {
           slug: 'evzone-ke',
           name: 'EVzone Kenya',
           description: 'Kenya operating company',
-          scope: 'organization',
+          scope: 'tenant',
           scopeLabel: 'Operating Company',
           region: 'Kenya',
           timeZone: 'Africa/Nairobi',
@@ -76,14 +84,55 @@ describe('SettingsPage', () => {
           chargePointCount: 124,
         },
       ],
+      activeStationContext: null,
+      activeScopeKey: 'tenant-evzone-ke:all',
+      availableStationContexts: [],
       dataScopeLabel: 'Operating company scope for EVzone Kenya public infrastructure.',
       activeTenantId: 'tenant-evzone-ke',
       dashboardMode: 'operations',
+      canSwitchStationContexts: false,
       canSwitchTenants: true,
+      setActiveStationContextId: vi.fn(),
       setActiveTenantId: vi.fn(),
       isLoading: false,
       isReady: true,
+      availableCountries: [
+        {
+          code2: 'KE',
+          code3: 'KEN',
+          name: 'Kenya',
+          officialName: 'Republic of Kenya',
+          flagUrl: null,
+          currencyCode: 'KES',
+          currencyName: 'Kenyan shilling',
+          currencySymbol: 'KES',
+          languages: ['English', 'Swahili'],
+        },
+        {
+          code2: 'UG',
+          code3: 'UGA',
+          name: 'Uganda',
+          officialName: 'Republic of Uganda',
+          flagUrl: null,
+          currencyCode: 'UGX',
+          currencyName: 'Ugandan shilling',
+          currencySymbol: 'UGX',
+          languages: ['English'],
+        },
+      ],
+      availableCurrencies: ['KES', 'UGX'],
+      availableLanguages: ['English', 'Swahili'],
     })
+
+    mockedUseReferenceStates.mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useReferenceStates>)
+
+    mockedUseReferenceCities.mockReturnValue({
+      data: [],
+      isLoading: false,
+    } as unknown as ReturnType<typeof useReferenceCities>)
   })
 
   afterEach(() => {
@@ -114,5 +163,62 @@ describe('SettingsPage', () => {
     })
 
     expect(screen.getByRole('button', { name: 'All changes saved' })).toBeDisabled()
+  })
+
+  it('loads tenant provisioning states and cities from geography references', async () => {
+    vi.useRealTimers()
+
+    mockedUseReferenceStates.mockImplementation((countryCode?: string | null) => ({
+      data:
+        countryCode === 'KE'
+          ? [
+              { countryCode: 'KE', code: 'NA', name: 'Nairobi County' },
+              { countryCode: 'KE', code: 'MU', name: 'Mombasa County' },
+            ]
+          : [],
+      isLoading: false,
+    }) as unknown as ReturnType<typeof useReferenceStates>)
+
+    mockedUseReferenceCities.mockImplementation((countryCode?: string | null, stateCode?: string | null) => ({
+      data:
+        countryCode === 'KE' && stateCode === 'NA'
+          ? [
+              { countryCode: 'KE', stateCode: 'NA', name: 'Nairobi' },
+              { countryCode: 'KE', stateCode: 'NA', name: 'Westlands' },
+            ]
+          : [],
+      isLoading: false,
+    }) as unknown as ReturnType<typeof useReferenceCities>)
+
+    render(<SettingsPage />)
+
+    const countrySelect = screen.getByLabelText('Country')
+    fireEvent.change(countrySelect, { target: { value: 'KE' } })
+
+    await waitFor(() => {
+      const stateSelect = screen.getByLabelText('State / Province') as HTMLSelectElement
+      expect(stateSelect.tagName).toBe('SELECT')
+      expect(screen.getByRole('option', { name: 'Nairobi County' })).toBeInTheDocument()
+    })
+
+    fireEvent.change(screen.getByLabelText('State / Province'), { target: { value: 'NA' } })
+
+    await waitFor(() => {
+      const citySelect = screen.getByLabelText('City') as HTMLSelectElement
+      expect(citySelect.tagName).toBe('SELECT')
+      expect(screen.getByRole('option', { name: 'Nairobi' })).toBeInTheDocument()
+      expect(citySelect).toHaveValue('')
+    })
+
+    fireEvent.change(screen.getByLabelText('City'), { target: { value: 'Nairobi' } })
+    expect(screen.getByLabelText('City')).toHaveValue('Nairobi')
+
+    await waitFor(() => {
+      const lastStateCall = mockedUseReferenceStates.mock.calls.at(-1)
+      const lastCityCall = mockedUseReferenceCities.mock.calls.at(-1)
+      expect(lastStateCall?.[0]).toBe('KE')
+      expect(lastCityCall?.[0]).toBe('KE')
+      expect(lastCityCall?.[1]).toBe('NA')
+    })
   })
 })

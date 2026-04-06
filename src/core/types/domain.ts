@@ -67,6 +67,7 @@ export interface ChargePoint {
   power?: number
   type?: string
   roamingPublished?: boolean
+  smartChargingEnabled?: boolean
   createdAt: string
   updatedAt?: string
 }
@@ -243,23 +244,22 @@ export type CanonicalAccessRole =
   | 'PLATFORM_BILLING_ADMIN'
   | 'PLATFORM_NOC_LEAD'
   | 'TENANT_ADMIN'
+  | 'STATION_MANAGER'
   | 'SITE_HOST'
   | 'ROAMING_MANAGER'
-  | 'STATION_MANAGER'
-  | 'OPERATIONS_OPERATOR'
-  | 'TENANT_FINANCE_ANALYST'
   | 'FLEET_DISPATCHER'
   | 'FLEET_DRIVER'
   | 'INSTALLER_AGENT'
   | 'SMART_CHARGING_ENGINEER'
+  | 'OPERATIONS_OPERATOR'
   | 'FIELD_TECHNICIAN'
-  | 'EXTERNAL_PROVIDER_ADMIN'
+  | 'TENANT_FINANCE_ANALYST'
   | 'EXTERNAL_PROVIDER_OPERATOR'
   | 'LEGACY_UNMAPPED'
 
 export type AccessScopeType =
   | 'platform'
-  | 'organization'
+  | 'tenant'
   | 'site'
   | 'station'
   | 'fleet_group'
@@ -280,7 +280,7 @@ export type AccessRoleFamily =
 
 export interface AccessScopeSummary {
   type: AccessScopeType
-  organizationId: string | null
+  tenantId: string | null
   stationId: string | null
   stationIds: string[]
   providerId: string | null
@@ -298,6 +298,29 @@ export interface AccessProfile {
 
 export type UserStatus = 'Active' | 'Invited' | 'Suspended' | 'Pending'
 
+export interface OrganizationMembershipSummary {
+  id?: string
+  tenantId: OrganizationId
+  role: string
+  ownerCapability?: string | null
+  status?: string
+  tenantName?: string
+  tenantType?: string
+}
+
+export interface StationContextSummary {
+  assignmentId: string
+  stationId: StationId
+  stationName: string | null
+  tenantId: OrganizationId | null
+  role: string
+  isPrimary: boolean
+  attendantMode?: string | null
+  shiftStart?: string | null
+  shiftEnd?: string | null
+  timezone?: string | null
+}
+
 export interface CPOUser {
   id: UserId
   name: string
@@ -306,12 +329,22 @@ export interface CPOUser {
   role: CPORole
   legacyRole?: string
   status: UserStatus
-  organizationId?: OrganizationId
+  tenantId?: OrganizationId
+  activeTenantId?: OrganizationId | null
+  orgId?: OrganizationId | null
   assignedStationIds?: StationId[]
+  memberships?: OrganizationMembershipSummary[]
+  stationContexts?: StationContextSummary[]
+  activeStationContext?: StationContextSummary | null
   avatarUrl?: string
   lastSeen?: string
-  createdAt: string
-  mfaEnabled: boolean
+  createdAt?: string
+  mfaEnabled?: boolean
+  providerId?: string | null
+  region?: string | null
+  zoneId?: string | null
+  ownerCapability?: string | null
+  mustChangePassword?: boolean
   accessProfile?: AccessProfile | null
 }
 

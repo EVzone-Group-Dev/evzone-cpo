@@ -25,7 +25,7 @@ export const ASSET_MANAGER_ROLES = ['SUPER_ADMIN', 'CPO_ADMIN', 'STATION_MANAGER
 export const INFRASTRUCTURE_ROLES = ['SUPER_ADMIN', 'CPO_ADMIN', 'STATION_MANAGER', 'OPERATOR', 'TECHNICIAN'] as const satisfies readonly CPORole[]
 export const OPERATIONS_ROLES = ['SUPER_ADMIN', 'CPO_ADMIN', 'STATION_MANAGER', 'OPERATOR', 'TECHNICIAN'] as const satisfies readonly CPORole[]
 export const ENERGY_ROLES = ['SUPER_ADMIN', 'CPO_ADMIN', 'STATION_MANAGER', 'OPERATOR', 'TECHNICIAN'] as const satisfies readonly CPORole[]
-export const ROAMING_ROLES = ['SUPER_ADMIN', 'CPO_ADMIN', 'FINANCE'] as const satisfies readonly CPORole[]
+export const ROAMING_ROLES = ['SUPER_ADMIN', 'CPO_ADMIN', 'FINANCE', 'OPERATOR'] as const satisfies readonly CPORole[]
 export const FINANCE_ROLES = ['SUPER_ADMIN', 'CPO_ADMIN', 'FINANCE'] as const satisfies readonly CPORole[]
 export const REPORTING_ROLES = ['SUPER_ADMIN', 'CPO_ADMIN', 'FINANCE', 'STATION_MANAGER'] as const satisfies readonly CPORole[]
 export const TEAM_ROLES = ['SUPER_ADMIN', 'CPO_ADMIN'] as const satisfies readonly CPORole[]
@@ -102,10 +102,22 @@ export const ACCESS_POLICY = {
 export type AccessPolicyKey = keyof typeof ACCESS_POLICY
 
 type AccessAwareUser =
-  | Pick<CPOUser, 'role' | 'accessProfile' | 'legacyRole'>
-  | { role?: string | null; accessProfile?: AccessProfile | null; legacyRole?: string }
+  | Pick<CPOUser, 'role' | 'accessProfile' | 'legacyRole' | 'activeStationContext'>
+  | {
+    role?: string | null
+    accessProfile?: AccessProfile | null
+    legacyRole?: string
+    activeStationContext?: {
+      stationId?: string | null
+      stationName?: string | null
+      shiftStart?: string | null
+      shiftEnd?: string | null
+    } | null
+  }
   | null
   | undefined
+
+export type TemporaryAccessState = 'none' | 'unbounded' | 'upcoming' | 'active' | 'expired'
 
 const CPO_ROLE_VALUES = ['SUPER_ADMIN', 'CPO_ADMIN', 'STATION_MANAGER', 'FINANCE', 'OPERATOR', 'SITE_HOST', 'TECHNICIAN'] as const
 
@@ -133,7 +145,7 @@ const ACCESS_PERMISSION_MAP: Record<AccessPolicyKey, readonly string[] | undefin
   smartChargingRead: ['smart_charging.read'],
   loadPoliciesRead: ['load_profiles.read'],
   batteryInventoryRead: ['battery_inventory.read'],
-  roamingRead: ['ocpi.partners.read', 'ocpi.sessions.read', 'ocpi.cdrs.read', 'ocpi.commands.read'],
+  roamingRead: ['ocpi.partners.read', 'ocpi.sessions.read', 'ocpi.cdrs.read', 'ocpi.commands.read', 'ocpi.commands.write'],
   tariffsRead: ['tenant.tariffs.read'],
   billingRead: ['finance.billing.read', 'platform.billing.read'],
   payoutsRead: ['finance.payouts.read'],
@@ -158,13 +170,12 @@ const CANONICAL_ROLE_TO_CPO_ROLE: Partial<Record<CanonicalAccessRole, CPORole>> 
   ROAMING_MANAGER: 'CPO_ADMIN',
   STATION_MANAGER: 'STATION_MANAGER',
   OPERATIONS_OPERATOR: 'OPERATOR',
-  TENANT_FINANCE_ANALYST: 'FINANCE',
   FLEET_DISPATCHER: 'OPERATOR',
   FLEET_DRIVER: 'OPERATOR',
   INSTALLER_AGENT: 'TECHNICIAN',
   SMART_CHARGING_ENGINEER: 'TECHNICIAN',
   FIELD_TECHNICIAN: 'TECHNICIAN',
-  EXTERNAL_PROVIDER_ADMIN: 'CPO_ADMIN',
+  TENANT_FINANCE_ANALYST: 'FINANCE',
   EXTERNAL_PROVIDER_OPERATOR: 'OPERATOR',
 }
 
@@ -187,16 +198,63 @@ const CANONICAL_ROLE_LABELS: Partial<Record<CanonicalAccessRole, string>> = {
   ROAMING_MANAGER: 'Roaming Manager',
   STATION_MANAGER: 'Station Manager',
   OPERATIONS_OPERATOR: 'Operations Operator',
-  TENANT_FINANCE_ANALYST: 'Tenant Finance Analyst',
   FLEET_DISPATCHER: 'Fleet Dispatcher',
   FLEET_DRIVER: 'Fleet Driver',
   INSTALLER_AGENT: 'Installer Agent',
   SMART_CHARGING_ENGINEER: 'Smart Charging Engineer',
   FIELD_TECHNICIAN: 'Field Technician',
-  EXTERNAL_PROVIDER_ADMIN: 'External Provider Admin',
+  TENANT_FINANCE_ANALYST: 'Tenant Finance Analyst',
   EXTERNAL_PROVIDER_OPERATOR: 'External Provider Operator',
   LEGACY_UNMAPPED: 'Legacy Access',
 }
+
+const TEMPORARY_SCOPE_ALLOWED_POLICIES = new Set<AccessPolicyKey>([
+  'tenancyContext',
+  'dashboardHome',
+  'dashboardTechnician',
+  'stationsRead',
+  'chargePointsRead',
+  'sessionsRead',
+  'incidentsRead',
+  'alertsRead',
+  'settingsRead',
+  'notificationsRead',
+  'remoteCommandStart',
+  'chargePointCommands',
+])
+
+const TEMPORARY_EXPIRED_ALLOWED_POLICIES = new Set<AccessPolicyKey>([
+  'tenancyContext',
+  'dashboardHome',
+  'settingsRead',
+  'notificationsRead',
+])
+
+const SITE_SCOPE_ALLOWED_POLICIES = new Set<AccessPolicyKey>([
+  'tenancyContext',
+  'dashboardHome',
+  'siteDashboard',
+  'settingsRead',
+  'notificationsRead',
+])
+
+const PROVIDER_SCOPE_ALLOWED_POLICIES = new Set<AccessPolicyKey>([
+  'tenancyContext',
+  'dashboardHome',
+  'roamingRead',
+  'settingsRead',
+  'notificationsRead',
+])
+
+const FLEET_SCOPE_ALLOWED_POLICIES = new Set<AccessPolicyKey>([
+  'tenancyContext',
+  'dashboardHome',
+  'sessionsRead',
+  'swapSessionsRead',
+  'alertsRead',
+  'settingsRead',
+  'notificationsRead',
+])
 
 function isCPORole(role: string): role is CPORole {
   return (CPO_ROLE_VALUES as readonly string[]).includes(role)
@@ -209,6 +267,35 @@ function getPermissions(user: AccessAwareUser) {
 function matchesPermission(user: AccessAwareUser, permissions: readonly string[]) {
   const grantedPermissions = getPermissions(user)
   return permissions.some((permission) => grantedPermissions.includes(permission))
+}
+
+function parseDateValue(value?: string | null) {
+  if (!value) {
+    return null
+  }
+
+  const parsed = Date.parse(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function deriveAssignedStationIds(user: { assignedStationIds?: string[]; stationContexts?: Array<{ stationId: string }>; activeStationContext?: { stationId: string } | null; accessProfile?: AccessProfile | null }) {
+  if (user.assignedStationIds && user.assignedStationIds.length > 0) {
+    return Array.from(new Set(user.assignedStationIds))
+  }
+
+  if (user.activeStationContext?.stationId) {
+    return [user.activeStationContext.stationId]
+  }
+
+  if (user.stationContexts && user.stationContexts.length > 0) {
+    return Array.from(new Set(user.stationContexts.map((context) => context.stationId)))
+  }
+
+  if (user.accessProfile?.scope.stationIds && user.accessProfile.scope.stationIds.length > 0) {
+    return Array.from(new Set(user.accessProfile.scope.stationIds))
+  }
+
+  return undefined
 }
 
 export function normalizeUserRole(role?: string | null, accessProfile?: AccessProfile | null): CPORole | null {
@@ -268,11 +355,18 @@ export function normalizeUserRole(role?: string | null, accessProfile?: AccessPr
 export function normalizeAuthenticatedUser<T extends Omit<CPOUser, 'role'> & { role: string; accessProfile?: AccessProfile | null; legacyRole?: string }>(user: T): CPOUser {
   const normalizedRole = normalizeUserRole(user.role, user.accessProfile) ?? 'OPERATOR'
   const legacyRole = user.legacyRole ?? (isCPORole(user.role) ? undefined : user.role)
+  const assignedStationIds = deriveAssignedStationIds(user)
 
   return {
     ...user,
     role: normalizedRole,
     legacyRole,
+    assignedStationIds,
+    createdAt: user.createdAt ?? '',
+    mfaEnabled: user.mfaEnabled ?? ('twoFactorEnabled' in user ? Boolean(user.twoFactorEnabled) : false),
+    tenantId: (user as Record<string, unknown>).activeTenantId as string ?? (user as Record<string, unknown>).activeOrganizationId as string ?? (user as Record<string, unknown>).tenantId as string ?? (user as Record<string, unknown>).organizationId as string,
+    orgId: user.orgId ?? (user as Record<string, unknown>).activeTenantId as string ?? (user as Record<string, unknown>).activeOrganizationId as string ?? (user as Record<string, unknown>).tenantId as string ?? (user as Record<string, unknown>).organizationId as string ?? null,
+    activeTenantId: (user as Record<string, unknown>).activeTenantId as string ?? (user as Record<string, unknown>).activeOrganizationId as string ?? (user as Record<string, unknown>).tenantId as string ?? (user as Record<string, unknown>).organizationId as string ?? null,
     accessProfile: user.accessProfile ?? null,
   }
 }
@@ -282,18 +376,149 @@ export function getResolvedUserRole(user?: AccessAwareUser) {
   return normalizeUserRole(user.role ?? null, user.accessProfile ?? null)
 }
 
+export function getCanonicalUserRole(user?: AccessAwareUser) {
+  return user?.accessProfile?.canonicalRole ?? null
+}
+
+export function getUserScopeType(user?: AccessAwareUser) {
+  return user?.accessProfile?.scope.type ?? null
+}
+
+export function isTemporaryScopeUser(user?: AccessAwareUser) {
+  return Boolean(
+    user?.accessProfile?.scope.isTemporary
+    || user?.accessProfile?.scope.type === 'temporary',
+  )
+}
+
+export function getTemporaryAccessState(user?: AccessAwareUser, referenceTime = Date.now()): TemporaryAccessState {
+  if (!isTemporaryScopeUser(user)) {
+    return 'none'
+  }
+
+  const shiftStart = parseDateValue(user?.activeStationContext?.shiftStart ?? null)
+  const shiftEnd = parseDateValue(user?.activeStationContext?.shiftEnd ?? null)
+
+  if (!shiftStart && !shiftEnd) {
+    return 'unbounded'
+  }
+
+  if (shiftStart && referenceTime < shiftStart) {
+    return 'upcoming'
+  }
+
+  if (shiftEnd && referenceTime > shiftEnd) {
+    return 'expired'
+  }
+
+  return 'active'
+}
+
+export function isTemporaryAccessExpired(user?: AccessAwareUser, referenceTime = Date.now()) {
+  return getTemporaryAccessState(user, referenceTime) === 'expired'
+}
+
+function formatDateLabel(timestamp: number | null) {
+  return timestamp ? new Date(timestamp).toLocaleString() : null
+}
+
+export function getTemporaryAccessWindowLabel(user?: AccessAwareUser) {
+  if (!isTemporaryScopeUser(user)) {
+    return 'Not a temporary scope.'
+  }
+
+  const shiftStart = parseDateValue(user?.activeStationContext?.shiftStart ?? null)
+  const shiftEnd = parseDateValue(user?.activeStationContext?.shiftEnd ?? null)
+  const startLabel = formatDateLabel(shiftStart)
+  const endLabel = formatDateLabel(shiftEnd)
+
+  if (startLabel && endLabel) {
+    return `${startLabel} - ${endLabel}`
+  }
+
+  if (startLabel) {
+    return `Starts ${startLabel}`
+  }
+
+  if (endLabel) {
+    return `Ends ${endLabel}`
+  }
+
+  return 'Temporary access is active until backend context changes.'
+}
+
+export function isFinanceDashboardUser(user?: AccessAwareUser) {
+  const canonicalRole = getCanonicalUserRole(user)
+  return canonicalRole === 'PLATFORM_BILLING_ADMIN'
+    || canonicalRole === 'TENANT_FINANCE_ANALYST'
+    || getResolvedUserRole(user) === 'FINANCE'
+}
+
+export function isStationManagerDashboardUser(user?: AccessAwareUser) {
+  return getCanonicalUserRole(user) === 'STATION_MANAGER'
+    || getResolvedUserRole(user) === 'STATION_MANAGER'
+}
+
+export function isTechnicianDashboardUser(user?: AccessAwareUser) {
+  const canonicalRole = getCanonicalUserRole(user)
+  return canonicalRole === 'FIELD_TECHNICIAN'
+    || canonicalRole === 'INSTALLER_AGENT'
+    || canonicalRole === 'SMART_CHARGING_ENGINEER'
+    || getResolvedUserRole(user) === 'TECHNICIAN'
+}
+
+export function isSiteScopedUser(user?: AccessAwareUser) {
+  return getUserScopeType(user) === 'site' || getResolvedUserRole(user) === 'SITE_HOST'
+}
+
+export function isProviderScopedUser(user?: AccessAwareUser) {
+  return getUserScopeType(user) === 'provider'
+}
+
+export function isFleetScopedUser(user?: AccessAwareUser) {
+  return getUserScopeType(user) === 'fleet_group'
+}
+
+function isScopePolicyAllowed(user: AccessAwareUser, policy: AccessPolicyKey) {
+  if (isTemporaryAccessExpired(user)) {
+    return TEMPORARY_EXPIRED_ALLOWED_POLICIES.has(policy)
+  }
+
+  if (isTemporaryScopeUser(user)) {
+    return TEMPORARY_SCOPE_ALLOWED_POLICIES.has(policy)
+  }
+
+  if (isSiteScopedUser(user)) {
+    return SITE_SCOPE_ALLOWED_POLICIES.has(policy)
+  }
+
+  if (isProviderScopedUser(user)) {
+    return PROVIDER_SCOPE_ALLOWED_POLICIES.has(policy)
+  }
+
+  if (isFleetScopedUser(user)) {
+    return FLEET_SCOPE_ALLOWED_POLICIES.has(policy)
+  }
+
+  return true
+}
+
 export function canAccessRole(role: string | undefined | null, allowedRoles: readonly CPORole[]) {
   return !!role && isCPORole(role) && allowedRoles.includes(role)
 }
 
 export function canAccessPolicy(user: AccessAwareUser, policy: AccessPolicyKey) {
   const permissions = ACCESS_PERMISSION_MAP[policy]
+  const hasPermissionAccess = Boolean(user?.accessProfile && permissions && permissions.length > 0)
+  const hasBaseAccess = hasPermissionAccess
+    ? matchesPermission(user, permissions ?? [])
+    : canAccessRole(getResolvedUserRole(user), ACCESS_POLICY[policy])
 
-  if (user?.accessProfile && permissions && permissions.length > 0) {
-    return matchesPermission(user, permissions)
+  if (!hasBaseAccess) {
+    return false
   }
 
-  return canAccessRole(getResolvedUserRole(user), ACCESS_POLICY[policy])
+  return isScopePolicyAllowed(user, policy)
 }
 
 export function getUserRoleLabel(user?: AccessAwareUser) {
@@ -314,7 +539,39 @@ function getHomePathFromUser(user: AccessAwareUser) {
   const scopeType = user?.accessProfile?.scope.type
 
   if (scopeType === 'site' || resolvedRole === 'SITE_HOST') {
-    return PATHS.SITE_DASHBOARD
+    if (canAccessPolicy(user, 'siteDashboard')) {
+      return PATHS.SITE_DASHBOARD
+    }
+    if (canAccessPolicy(user, 'notificationsRead')) {
+      return PATHS.NOTIFICATIONS
+    }
+    return PATHS.LOGIN
+  }
+
+  if (scopeType === 'provider') {
+    if (canAccessPolicy(user, 'roamingRead')) {
+      return PATHS.OCPI_PARTNERS
+    }
+    if (canAccessPolicy(user, 'notificationsRead')) {
+      return PATHS.NOTIFICATIONS
+    }
+    return PATHS.LOGIN
+  }
+
+  if (scopeType === 'fleet_group') {
+    if (canAccessPolicy(user, 'sessionsRead')) {
+      return PATHS.SESSIONS
+    }
+    if (canAccessPolicy(user, 'swapSessionsRead')) {
+      return PATHS.SWAP_SESSIONS
+    }
+    if (canAccessPolicy(user, 'alertsRead')) {
+      return PATHS.ALERTS
+    }
+    if (canAccessPolicy(user, 'notificationsRead')) {
+      return PATHS.NOTIFICATIONS
+    }
+    return PATHS.LOGIN
   }
 
   if (permissions.includes('platform.tenants.read')) {
@@ -325,7 +582,7 @@ function getHomePathFromUser(user: AccessAwareUser) {
     return ROLE_HOME.CPO_ADMIN
   }
 
-  if (permissions.includes('ocpi.partners.read') && !permissions.includes('stations.read')) {
+  if (permissions.includes('ocpi.partners.read') || permissions.includes('ocpi.sessions.read')) {
     return PATHS.OCPI_PARTNERS
   }
 
