@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { getTemporaryAccessState, getTemporaryAccessWindowLabel, getUserRoleLabel, getUserScopeType, isTemporaryScopeUser } from '@/core/auth/access'
 import { useAuthStore } from '@/core/auth/authStore'
+import { useReferenceCities, useReferenceStates } from '@/core/hooks/useGeography'
 import { useTenant } from '@/core/hooks/useTenant'
 import { BellRing, Building2, Globe2, LayoutGrid, Lock, Save, ShieldCheck, SlidersHorizontal, Sparkles, UserCog } from 'lucide-react'
 
@@ -18,6 +19,9 @@ interface SettingsDraft {
   recentAccessAlerts: boolean
   screenDensity: ScreenDensity
   sessionTimeout: SessionTimeout
+  tenantCity: string
+  tenantCountryCode: string
+  tenantStateCode: string
   weeklyOpsReport: boolean
 }
 
@@ -27,6 +31,9 @@ function buildInitialDraft(
   mfaEnabled: boolean,
   language: string,
   currency: string,
+  tenantCountryCode: string,
+  tenantStateCode: string,
+  tenantCity: string,
 ): SettingsDraft {
   return {
     currency,
@@ -38,6 +45,9 @@ function buildInitialDraft(
     recentAccessAlerts: true,
     screenDensity: 'Comfortable',
     sessionTimeout: '30 minutes',
+    tenantCity,
+    tenantCountryCode,
+    tenantStateCode,
     weeklyOpsReport: true,
   }
 }
@@ -82,6 +92,7 @@ export function SettingsPage() {
   const {
     activeStationContext,
     activeTenant,
+    availableCountries,
     availableCurrencies,
     availableLanguages,
     availableStationContexts,
@@ -91,6 +102,10 @@ export function SettingsPage() {
   const userName = user?.name ?? ''
   const userEmail = user?.email ?? ''
   const mfaEnabled = user?.mfaEnabled ?? false
+  const countryOptions = useMemo(
+    () => (availableCountries ?? []).slice().sort((left, right) => left.name.localeCompare(right.name)),
+    [availableCountries],
+  )
   const languageOptions = useMemo(() => availableLanguages?.length ? availableLanguages : ['English'], [availableLanguages])
   const currencyOptions = useMemo(() => {
     const defaults = availableCurrencies?.length ? [...availableCurrencies] : []
@@ -110,8 +125,48 @@ export function SettingsPage() {
     () => activeTenant?.currency?.trim() || currencyOptions[0] || 'USD',
     [activeTenant?.currency, currencyOptions],
   )
-  const [draft, setDraft] = useState<SettingsDraft>(() => buildInitialDraft(userName, userEmail, mfaEnabled, initialLanguage, initialCurrency))
-  const [baseline, setBaseline] = useState<SettingsDraft>(() => buildInitialDraft(userName, userEmail, mfaEnabled, initialLanguage, initialCurrency))
+  const initialTenantCountryCode = useMemo(() => {
+    const regionToken = activeTenant?.region?.trim().toLowerCase()
+    if (!regionToken) {
+      return countryOptions[0]?.code2 ?? ''
+    }
+
+    const matchedCountry = countryOptions.find((country) =>
+      country.name.toLowerCase() === regionToken
+      || country.code2.toLowerCase() === regionToken
+      || country.code3?.toLowerCase() === regionToken,
+    )
+
+    return matchedCountry?.code2 ?? countryOptions[0]?.code2 ?? ''
+  }, [activeTenant?.region, countryOptions])
+  const [draft, setDraft] = useState<SettingsDraft>(() => buildInitialDraft(
+    userName,
+    userEmail,
+    mfaEnabled,
+    initialLanguage,
+    initialCurrency,
+    initialTenantCountryCode,
+    '',
+    '',
+  ))
+  const [baseline, setBaseline] = useState<SettingsDraft>(() => buildInitialDraft(
+    userName,
+    userEmail,
+    mfaEnabled,
+    initialLanguage,
+    initialCurrency,
+    initialTenantCountryCode,
+    '',
+    '',
+  ))
+  const {
+    data: tenantStates = [],
+    isLoading: isTenantStatesLoading,
+  } = useReferenceStates(draft.tenantCountryCode)
+  const {
+    data: tenantCities = [],
+    isLoading: isTenantCitiesLoading,
+  } = useReferenceCities(draft.tenantCountryCode, draft.tenantStateCode)
   const [isSaving, setIsSaving] = useState(false)
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
 
@@ -128,6 +183,22 @@ export function SettingsPage() {
   const temporaryAccessState = getTemporaryAccessState(user)
   const temporaryAccessWindowLabel = getTemporaryAccessWindowLabel(user)
   const hasTemporaryScope = isTemporaryScopeUser(user)
+  const selectedTenantCountryName = useMemo(
+    () => {
+      const countryName = countryOptions.find((country) => country.code2 === draft.tenantCountryCode)?.name
+      const fallbackCountry = draft.tenantCountryCode || '-'
+      return countryName ?? fallbackCountry
+    },
+    [countryOptions, draft.tenantCountryCode],
+  )
+  const selectedTenantStateName = useMemo(
+    () => {
+      const stateName = tenantStates.find((state) => state.code === draft.tenantStateCode)?.name
+      const fallbackState = draft.tenantStateCode || '-'
+      return stateName ?? fallbackState
+    },
+    [draft.tenantStateCode, tenantStates],
+  )
 
   const hasUnsavedChanges = JSON.stringify(draft) !== JSON.stringify(baseline)
 
@@ -139,8 +210,31 @@ export function SettingsPage() {
     const normalizeDraft = (current: SettingsDraft): SettingsDraft => {
       const normalizedLanguage = languageOptions.includes(current.language) ? current.language : initialLanguage
       const normalizedCurrency = currencyOptions.includes(current.currency) ? current.currency : initialCurrency
+      const normalizedTenantCountryCode = countryOptions.some((country) => country.code2 === current.tenantCountryCode)
+        ? current.tenantCountryCode
+        : initialTenantCountryCode
 
-      if (normalizedLanguage === current.language && normalizedCurrency === current.currency) {
+      const normalizedTenantStateCode =
+        tenantStates.length > 0 && current.tenantStateCode && !tenantStates.some((state) => state.code === current.tenantStateCode)
+          ? ''
+          : normalizedTenantCountryCode !== current.tenantCountryCode
+            ? ''
+            : current.tenantStateCode
+
+      const normalizedTenantCity =
+        tenantCities.length > 0 && current.tenantCity && !tenantCities.some((city) => city.name === current.tenantCity)
+          ? ''
+          : (normalizedTenantCountryCode !== current.tenantCountryCode || normalizedTenantStateCode !== current.tenantStateCode)
+            ? ''
+            : current.tenantCity
+
+      if (
+        normalizedLanguage === current.language
+        && normalizedCurrency === current.currency
+        && normalizedTenantCountryCode === current.tenantCountryCode
+        && normalizedTenantStateCode === current.tenantStateCode
+        && normalizedTenantCity === current.tenantCity
+      ) {
         return current
       }
 
@@ -148,12 +242,28 @@ export function SettingsPage() {
         ...current,
         language: normalizedLanguage,
         currency: normalizedCurrency,
+        tenantCountryCode: normalizedTenantCountryCode,
+        tenantStateCode: normalizedTenantStateCode,
+        tenantCity: normalizedTenantCity,
       }
     }
 
-    setDraft((current) => normalizeDraft(current))
-    setBaseline((current) => normalizeDraft(current))
-  }, [currencyOptions, hasUnsavedChanges, initialCurrency, initialLanguage, isSaving, languageOptions])
+    queueMicrotask(() => {
+      setDraft((current) => normalizeDraft(current))
+      setBaseline((current) => normalizeDraft(current))
+    })
+  }, [
+    countryOptions,
+    currencyOptions,
+    hasUnsavedChanges,
+    initialCurrency,
+    initialLanguage,
+    initialTenantCountryCode,
+    isSaving,
+    languageOptions,
+    tenantCities,
+    tenantStates,
+  ])
 
   const handleSaveChanges = () => {
     if (!hasUnsavedChanges || isSaving) {
@@ -360,6 +470,102 @@ export function SettingsPage() {
                 </div>
               </div>
             </div>
+
+            <div className="card">
+              <div className="section-title"><Building2 size={16} className="text-accent" />Tenant Provisioning</div>
+              <div className="grid gap-3 md:grid-cols-3">
+                <div>
+                  <label htmlFor="settings-tenant-country" className="form-label">Country</label>
+                  <select
+                    id="settings-tenant-country"
+                    className="input"
+                    value={draft.tenantCountryCode}
+                    onChange={(event) => {
+                      const nextCountryCode = event.target.value
+                      setDraft((current) => ({
+                        ...current,
+                        tenantCountryCode: nextCountryCode,
+                        tenantStateCode: '',
+                        tenantCity: '',
+                      }))
+                    }}
+                  >
+                    <option value="">Select country</option>
+                    {countryOptions.map((country) => (
+                      <option key={country.code2} value={country.code2}>{country.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="settings-tenant-state" className="form-label">State / Province</label>
+                  {tenantStates.length > 0 ? (
+                    <select
+                      id="settings-tenant-state"
+                      className="input"
+                      value={draft.tenantStateCode}
+                      onChange={(event) => {
+                        const nextStateCode = event.target.value
+                        setDraft((current) => ({
+                          ...current,
+                          tenantStateCode: nextStateCode,
+                          tenantCity: '',
+                        }))
+                      }}
+                      disabled={!draft.tenantCountryCode || isTenantStatesLoading}
+                    >
+                      <option value="">{isTenantStatesLoading ? 'Loading states...' : 'Select state'}</option>
+                      {tenantStates.map((state) => (
+                        <option key={state.code} value={state.code}>{state.name}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      id="settings-tenant-state"
+                      className="input"
+                      value={draft.tenantStateCode}
+                      onChange={(event) => setDraft((current) => ({ ...current, tenantStateCode: event.target.value }))}
+                      placeholder={draft.tenantCountryCode ? 'Type state/province' : 'Select country first'}
+                      disabled={!draft.tenantCountryCode}
+                    />
+                  )}
+                </div>
+                <div>
+                  <label htmlFor="settings-tenant-city" className="form-label">City</label>
+                  {tenantCities.length > 0 ? (
+                    <select
+                      id="settings-tenant-city"
+                      className="input"
+                      value={draft.tenantCity}
+                      onChange={(event) => setDraft((current) => ({ ...current, tenantCity: event.target.value }))}
+                      disabled={!draft.tenantCountryCode || Boolean(tenantStates.length > 0 && !draft.tenantStateCode) || isTenantCitiesLoading}
+                    >
+                      <option value="">
+                        {isTenantCitiesLoading
+                          ? 'Loading cities...'
+                          : tenantStates.length > 0 && !draft.tenantStateCode
+                            ? 'Select state first'
+                            : 'Select city'}
+                      </option>
+                      {tenantCities.map((city) => (
+                        <option key={city.name} value={city.name}>{city.name}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      id="settings-tenant-city"
+                      className="input"
+                      value={draft.tenantCity}
+                      onChange={(event) => setDraft((current) => ({ ...current, tenantCity: event.target.value }))}
+                      placeholder={draft.tenantCountryCode ? 'Type city' : 'Select country first'}
+                      disabled={!draft.tenantCountryCode}
+                    />
+                  )}
+                </div>
+              </div>
+              <div className="text-xs text-subtle mt-3">
+                Country, state, and city options are loaded from geography reference APIs.
+              </div>
+            </div>
           </div>
 
           <div className="space-y-6">
@@ -370,6 +576,9 @@ export function SettingsPage() {
                 <div><div className="form-label">Scope</div><div>{activeTenant?.scopeLabel ?? '-'}</div></div>
                 <div><div className="form-label">Active Station</div><div>{activeStationContext?.stationName ?? activeStationContext?.stationId ?? 'All assigned stations'}</div></div>
                 <div><div className="form-label">Region</div><div>{activeTenant?.region ?? '-'}</div></div>
+                <div><div className="form-label">Provisioning Country</div><div>{selectedTenantCountryName}</div></div>
+                <div><div className="form-label">Provisioning State</div><div>{selectedTenantStateName}</div></div>
+                <div><div className="form-label">Provisioning City</div><div>{draft.tenantCity || '-'}</div></div>
                 <div><div className="form-label">Coverage</div><div>{dataScopeLabel}</div></div>
                 {hasTemporaryScope && <div><div className="form-label">Temporary Access</div><div>{temporaryAccessState}</div></div>}
                 {hasTemporaryScope && <div><div className="form-label">Access Window</div><div>{temporaryAccessWindowLabel}</div></div>}

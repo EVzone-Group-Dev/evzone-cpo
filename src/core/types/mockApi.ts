@@ -36,6 +36,18 @@ export interface GeographyCountryReference {
   languages: string[]
 }
 
+export interface GeographyStateReference {
+  countryCode: string
+  code: string
+  name: string
+}
+
+export interface GeographyCityReference {
+  countryCode: string
+  stateCode: string
+  name: string
+}
+
 export interface TenantSummary {
   chargePointCount: number
   code: string

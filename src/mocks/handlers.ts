@@ -181,6 +181,97 @@ const REFERENCE_COUNTRIES = [
   },
 ]
 
+const REFERENCE_STATES: Record<string, Array<{ countryCode: string; code: string; name: string }>> = {
+  DE: [
+    { countryCode: 'DE', code: 'BE', name: 'Berlin' },
+    { countryCode: 'DE', code: 'BW', name: 'Baden-Wurttemberg' },
+    { countryCode: 'DE', code: 'BY', name: 'Bavaria' },
+  ],
+  KE: [
+    { countryCode: 'KE', code: 'NA', name: 'Nairobi County' },
+    { countryCode: 'KE', code: 'MU', name: 'Mombasa County' },
+    { countryCode: 'KE', code: 'KI', name: 'Kiambu County' },
+  ],
+  NL: [
+    { countryCode: 'NL', code: 'NH', name: 'North Holland' },
+    { countryCode: 'NL', code: 'ZH', name: 'South Holland' },
+  ],
+  UG: [
+    { countryCode: 'UG', code: 'C', name: 'Central Region' },
+    { countryCode: 'UG', code: 'E', name: 'Eastern Region' },
+    { countryCode: 'UG', code: 'N', name: 'Northern Region' },
+    { countryCode: 'UG', code: 'W', name: 'Western Region' },
+  ],
+  US: [
+    { countryCode: 'US', code: 'CA', name: 'California' },
+    { countryCode: 'US', code: 'NY', name: 'New York' },
+    { countryCode: 'US', code: 'TX', name: 'Texas' },
+  ],
+}
+
+const REFERENCE_CITIES: Record<string, Array<{ countryCode: string; stateCode: string; name: string }>> = {
+  'DE:BE': [
+    { countryCode: 'DE', stateCode: 'BE', name: 'Berlin' },
+  ],
+  'DE:BW': [
+    { countryCode: 'DE', stateCode: 'BW', name: 'Stuttgart' },
+    { countryCode: 'DE', stateCode: 'BW', name: 'Mannheim' },
+  ],
+  'DE:BY': [
+    { countryCode: 'DE', stateCode: 'BY', name: 'Munich' },
+    { countryCode: 'DE', stateCode: 'BY', name: 'Nuremberg' },
+  ],
+  'KE:NA': [
+    { countryCode: 'KE', stateCode: 'NA', name: 'Nairobi' },
+    { countryCode: 'KE', stateCode: 'NA', name: 'Westlands' },
+  ],
+  'KE:MU': [
+    { countryCode: 'KE', stateCode: 'MU', name: 'Mombasa' },
+  ],
+  'KE:KI': [
+    { countryCode: 'KE', stateCode: 'KI', name: 'Kiambu' },
+    { countryCode: 'KE', stateCode: 'KI', name: 'Thika' },
+  ],
+  'NL:NH': [
+    { countryCode: 'NL', stateCode: 'NH', name: 'Amsterdam' },
+    { countryCode: 'NL', stateCode: 'NH', name: 'Haarlem' },
+  ],
+  'NL:ZH': [
+    { countryCode: 'NL', stateCode: 'ZH', name: 'Rotterdam' },
+    { countryCode: 'NL', stateCode: 'ZH', name: 'The Hague' },
+  ],
+  'UG:C': [
+    { countryCode: 'UG', stateCode: 'C', name: 'Kampala' },
+    { countryCode: 'UG', stateCode: 'C', name: 'Entebbe' },
+  ],
+  'UG:E': [
+    { countryCode: 'UG', stateCode: 'E', name: 'Jinja' },
+    { countryCode: 'UG', stateCode: 'E', name: 'Mbale' },
+  ],
+  'UG:N': [
+    { countryCode: 'UG', stateCode: 'N', name: 'Gulu' },
+  ],
+  'UG:W': [
+    { countryCode: 'UG', stateCode: 'W', name: 'Mbarara' },
+  ],
+  'US:CA': [
+    { countryCode: 'US', stateCode: 'CA', name: 'San Francisco' },
+    { countryCode: 'US', stateCode: 'CA', name: 'Los Angeles' },
+  ],
+  'US:NY': [
+    { countryCode: 'US', stateCode: 'NY', name: 'New York' },
+    { countryCode: 'US', stateCode: 'NY', name: 'Buffalo' },
+  ],
+  'US:TX': [
+    { countryCode: 'US', stateCode: 'TX', name: 'Austin' },
+    { countryCode: 'US', stateCode: 'TX', name: 'Houston' },
+  ],
+}
+
+function normalizeGeographyToken(value: unknown) {
+  return typeof value === 'string' ? value.trim().toUpperCase() : ''
+}
+
 export const handlers = [
   http.get('/api/v1/auth/demo-users', () => HttpResponse.json(getDemoUserHints())),
   http.get('/api/auth/demo-users', () => HttpResponse.json(getDemoUserHints())),
@@ -260,6 +351,15 @@ export const handlers = [
   }),
 
   http.get('/api/v1/geography/reference/countries', () => HttpResponse.json(REFERENCE_COUNTRIES)),
+  http.get('/api/v1/geography/reference/countries/:countryCode/states', ({ params }) => {
+    const countryCode = normalizeGeographyToken(params.countryCode)
+    return HttpResponse.json(REFERENCE_STATES[countryCode] ?? [])
+  }),
+  http.get('/api/v1/geography/reference/countries/:countryCode/states/:stateCode/cities', ({ params }) => {
+    const countryCode = normalizeGeographyToken(params.countryCode)
+    const stateCode = normalizeGeographyToken(params.stateCode)
+    return HttpResponse.json(REFERENCE_CITIES[`${countryCode}:${stateCode}`] ?? [])
+  }),
 
   http.get('/api/tenancy/context', ({ request }) => {
     const result = authorize(request, 'tenancyContext')
