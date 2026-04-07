@@ -49,6 +49,7 @@ import {
   refreshDemoUserSession,
   resetDemoAuthSessions,
   resolveDemoAccess,
+  stopSessionById,
   transitionSwapPack,
   resolveTenantContext,
   switchDemoTenant,
@@ -272,6 +273,14 @@ function normalizeGeographyToken(value: unknown) {
   return typeof value === 'string' ? value.trim().toUpperCase() : ''
 }
 
+async function readJsonBody<T>(request: Request): Promise<T> {
+  try {
+    return await request.json() as T
+  } catch {
+    return {} as T
+  }
+}
+
 export const handlers = [
   http.get('/api/v1/auth/demo-users', () => HttpResponse.json(getDemoUserHints())),
   http.get('/api/auth/demo-users', () => HttpResponse.json(getDemoUserHints())),
@@ -428,7 +437,7 @@ export const handlers = [
     const result = authorize(request, 'chargePointsWrite')
     if (!result.ok) return result.response
 
-    const payload = await request.json() as Parameters<typeof createChargePoint>[0]
+    const payload = await readJsonBody<Parameters<typeof createChargePoint>[0]>(request)
     const chargePoint = createChargePoint(payload, result.access.tenantId)
 
     if (!chargePoint) {
@@ -436,6 +445,87 @@ export const handlers = [
     }
 
     return HttpResponse.json(chargePoint, { status: 201 })
+  }),
+
+  http.post('/api/v1/charge-points/:id/commands/remote-start', async ({ params, request }) => {
+    const result = authorize(request, 'remoteCommandStart')
+    if (!result.ok) return result.response
+
+    const chargePoint = getChargePointById(String(params.id), result.access.tenantId)
+    if (!chargePoint) {
+      return HttpResponse.json({ message: 'Charge point not found.' }, { status: 404 })
+    }
+
+    const body = await readJsonBody<{ idTag?: string; connectorId?: number; evseId?: number }>(request)
+    const idTag = typeof body.idTag === 'string' && body.idTag.trim().length > 0 ? body.idTag.trim() : 'EVZONE_REMOTE'
+    return HttpResponse.json({
+      message: `Remote start command queued for ${chargePoint.ocppId} with ${idTag}.`,
+      status: 'Queued',
+    })
+  }),
+
+  http.post('/api/v1/charge-points/:id/commands/soft-reset', async ({ params, request }) => {
+    const result = authorize(request, 'chargePointCommands')
+    if (!result.ok) return result.response
+
+    const chargePoint = getChargePointById(String(params.id), result.access.tenantId)
+    if (!chargePoint) {
+      return HttpResponse.json({ message: 'Charge point not found.' }, { status: 404 })
+    }
+
+    return HttpResponse.json({
+      message: `Soft reset command queued for ${chargePoint.ocppId}.`,
+      status: 'Queued',
+    })
+  }),
+
+  http.post('/api/v1/charge-points/:id/reboot', async ({ params, request }) => {
+    const result = authorize(request, 'chargePointCommands')
+    if (!result.ok) return result.response
+
+    const chargePoint = getChargePointById(String(params.id), result.access.tenantId)
+    if (!chargePoint) {
+      return HttpResponse.json({ message: 'Charge point not found.' }, { status: 404 })
+    }
+
+    return HttpResponse.json({
+      message: `Hard reboot command queued for ${chargePoint.ocppId}.`,
+      status: 'Queued',
+    })
+  }),
+
+  http.post('/api/v1/charge-points/:id/commands/unlock', async ({ params, request }) => {
+    const result = authorize(request, 'chargePointCommands')
+    if (!result.ok) return result.response
+
+    const chargePoint = getChargePointById(String(params.id), result.access.tenantId)
+    if (!chargePoint) {
+      return HttpResponse.json({ message: 'Charge point not found.' }, { status: 404 })
+    }
+
+    const body = await readJsonBody<{ connectorId?: number; evseId?: number }>(request)
+    const connectorId = typeof body.connectorId === 'number' ? body.connectorId : 1
+    return HttpResponse.json({
+      message: `Unlock connector command queued for ${chargePoint.ocppId} on connector ${connectorId}.`,
+      status: 'Queued',
+    })
+  }),
+
+  http.post('/api/v1/charge-points/:id/commands/update-firmware', async ({ params, request }) => {
+    const result = authorize(request, 'chargePointCommands')
+    if (!result.ok) return result.response
+
+    const chargePoint = getChargePointById(String(params.id), result.access.tenantId)
+    if (!chargePoint) {
+      return HttpResponse.json({ message: 'Charge point not found.' }, { status: 404 })
+    }
+
+    const body = await readJsonBody<{ location?: string }>(request)
+    const location = typeof body.location === 'string' && body.location.trim().length > 0 ? body.location.trim() : 'firmware.bin'
+    return HttpResponse.json({
+      message: `Firmware update command queued for ${chargePoint.ocppId} using ${location}.`,
+      status: 'Queued',
+    })
   }),
 
   http.post('/api/charge-points/:id/commands', async ({ params, request }) => {
@@ -450,6 +540,27 @@ export const handlers = [
     return HttpResponse.json({
       message: `${command} command accepted for ${chargePoint.ocppId} in ${result.access.context.activeTenant.name}.`,
       status: 'Accepted',
+    })
+  }),
+
+  http.post('/api/v1/sessions/:id/stop', async ({ params, request }) => {
+    const result = authorize(request, 'remoteCommandStart')
+    if (!result.ok) return result.response
+
+    const stoppedSession = stopSessionById(String(params.id), result.access.tenantId)
+    if (!stoppedSession) {
+      return HttpResponse.json({ message: 'Session not found.' }, { status: 404 })
+    }
+
+    const body = await readJsonBody<{ reason?: string }>(request)
+    const reason = typeof body.reason === 'string' && body.reason.trim().length > 0 ? body.reason.trim() : null
+
+    return HttpResponse.json({
+      message: reason
+        ? `Remote stop request accepted for session ${stoppedSession.id} with reason: ${reason}.`
+        : `Remote stop request accepted for session ${stoppedSession.id}.`,
+      status: 'Completed',
+      session: stoppedSession,
     })
   }),
 

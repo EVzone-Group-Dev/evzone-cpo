@@ -554,7 +554,7 @@ const chargePoints: Array<TenantScoped<ChargePointDetail>> = [
     lastHeartbeatLabel: '12s ago',
     stale: false,
     roamingPublished: true,
-    remoteCommands: ['Remote Start Session', 'Soft Reset', 'Hard Reboot'],
+    remoteCommands: ['Remote Start Session', 'Remote Stop Session', 'Soft Reset', 'Hard Reboot', 'Unlock Connector', 'Update Firmware'],
     unitHealth: { ocppConnection: 'Connected', lastHeartbeat: '12s ago', errorCode: 'NoError' },
     tenantIds: ['tenant-global', 'tenant-evzone-ke', 'tenant-westlands-mall'],
   },
@@ -576,7 +576,7 @@ const chargePoints: Array<TenantScoped<ChargePointDetail>> = [
     lastHeartbeatLabel: '18s ago',
     stale: false,
     roamingPublished: true,
-    remoteCommands: ['Remote Start Session', 'Soft Reset', 'Hard Reboot'],
+    remoteCommands: ['Remote Start Session', 'Remote Stop Session', 'Soft Reset', 'Hard Reboot', 'Unlock Connector', 'Update Firmware'],
     unitHealth: { ocppConnection: 'Connected', lastHeartbeat: '18s ago', errorCode: 'NoError' },
     tenantIds: ['tenant-global', 'tenant-evzone-ke', 'tenant-westlands-mall'],
   },
@@ -598,7 +598,7 @@ const chargePoints: Array<TenantScoped<ChargePointDetail>> = [
     lastHeartbeatLabel: '7m ago',
     stale: true,
     roamingPublished: false,
-    remoteCommands: ['Soft Reset', 'Hard Reboot'],
+    remoteCommands: ['Remote Start Session', 'Remote Stop Session', 'Soft Reset', 'Hard Reboot', 'Unlock Connector', 'Update Firmware'],
     unitHealth: { ocppConnection: 'Intermittent', lastHeartbeat: '7m ago', errorCode: 'ConnectorLockFailure' },
     tenantIds: ['tenant-global', 'tenant-evzone-ke'],
   },
@@ -620,7 +620,7 @@ const chargePoints: Array<TenantScoped<ChargePointDetail>> = [
     lastHeartbeatLabel: '1h ago',
     stale: true,
     roamingPublished: false,
-    remoteCommands: ['Hard Reboot'],
+    remoteCommands: ['Remote Start Session', 'Remote Stop Session', 'Soft Reset', 'Hard Reboot', 'Unlock Connector', 'Update Firmware'],
     unitHealth: { ocppConnection: 'Disconnected', lastHeartbeat: '1h ago', errorCode: 'PowerLoss' },
     tenantIds: ['tenant-global'],
   },
@@ -2716,7 +2716,7 @@ export function createChargePoint(payload: CreateChargePointRequest, tenantId: T
     lastHeartbeatLabel: 'just now',
     stale: false,
     roamingPublished: false,
-    remoteCommands: ['Remote Start Session', 'Soft Reset', 'Hard Reboot'],
+    remoteCommands: ['Remote Start Session', 'Remote Stop Session', 'Soft Reset', 'Hard Reboot', 'Unlock Connector', 'Update Firmware'],
     unitHealth: { ocppConnection: 'Connected', lastHeartbeat: 'just now', errorCode: 'NoError' },
     tenantIds: [tenantId],
   }
@@ -2730,6 +2730,19 @@ export function createChargePoint(payload: CreateChargePointRequest, tenantId: T
   })
 
   return stripTenantIds(createdRecord)
+}
+export function stopSessionById(sessionId: string, tenantId: TenantId) {
+  const session = sessions.find((record) => record.id === sessionId && record.tenantIds.includes(tenantId))
+  if (!session) {
+    return null
+  }
+
+  if (session.status === 'Active') {
+    session.status = 'Completed'
+    session.ended = session.ended ?? new Date().toISOString()
+  }
+
+  return stripTenantIds(session)
 }
 export function listSessions(tenantId: TenantId) { return listTenantScoped(sessions, tenantId) }
 export function listSwapStations(tenantId: TenantId) { return swapStations.filter((record) => record.tenantIds.includes(tenantId)).map((record) => toSwapStationSummary(stripTenantIds(record))) }

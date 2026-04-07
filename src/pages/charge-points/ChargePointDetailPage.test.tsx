@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ChargePointDetailPage } from '@/pages/charge-points/ChargePointDetailPage'
 import { useChargePoint, useSessions } from '@/core/hooks/usePlatformData'
 
@@ -24,12 +25,22 @@ describe('ChargePointDetailPage', () => {
   const mockedUseSessions = vi.mocked(useSessions)
 
   function renderPage() {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    })
+
     render(
-      <MemoryRouter initialEntries={['/charge-points/cp-1']}>
-        <Routes>
-          <Route path="/charge-points/:id" element={<ChargePointDetailPage />} />
-        </Routes>
-      </MemoryRouter>,
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={['/charge-points/cp-1']}>
+          <Routes>
+            <Route path="/charge-points/:id" element={<ChargePointDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
     )
   }
 
@@ -120,9 +131,10 @@ describe('ChargePointDetailPage', () => {
     } as unknown as ReturnType<typeof useSessions>)
 
     renderPage()
+    const recentSessionsTable = screen.getByRole('table')
 
     expect(screen.getByText('SES-FALLBACK')).toBeInTheDocument()
-    expect(screen.getByText('SES-101')).toBeInTheDocument()
+    expect(within(recentSessionsTable).getByText('SES-101')).toBeInTheDocument()
     expect(screen.getByText('SES-102')).toBeInTheDocument()
     expect(screen.getByText('SES-103')).toBeInTheDocument()
     expect(screen.getByText('SES-104')).toBeInTheDocument()
@@ -132,6 +144,6 @@ describe('ChargePointDetailPage', () => {
 
     expect(screen.getByText('SES-FALLBACK')).toBeInTheDocument()
     expect(screen.getByText('SES-102')).toBeInTheDocument()
-    expect(screen.queryByText('SES-101')).not.toBeInTheDocument()
+    expect(within(recentSessionsTable).queryByText('SES-101')).not.toBeInTheDocument()
   })
 })

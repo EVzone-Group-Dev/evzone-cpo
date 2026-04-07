@@ -84,9 +84,11 @@ function formatAmount(value: unknown, currencyCode: string): string {
 
 const DEFAULT_REMOTE_COMMANDS: ChargePointDetail['remoteCommands'] = [
   'Remote Start Session',
+  'Remote Stop Session',
   'Soft Reset',
   'Hard Reboot',
   'Unlock Connector',
+  'Update Firmware',
 ]
 
 function normalizeChargePointStatus(value: unknown): ChargePointSummary['status'] {
