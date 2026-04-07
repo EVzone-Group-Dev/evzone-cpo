@@ -57,6 +57,11 @@ describe('CreateChargePointPage', () => {
           status: 'Online',
           serviceMode: 'Charging',
           chargePoints: [],
+          networkLatency: {
+            averageLabel: 'just now',
+            modeLabel: 'Derived from charge point heartbeats',
+            points: [100, 100, 95, 90, 85, 80],
+          },
         },
         {
           id: 'st-102',
@@ -70,6 +75,11 @@ describe('CreateChargePointPage', () => {
           status: 'Degraded',
           serviceMode: 'Charging',
           chargePoints: [],
+          networkLatency: {
+            averageLabel: '30s ago',
+            modeLabel: 'Derived from charge point heartbeats',
+            points: [75, 70, 65, 60, 55, 50],
+          },
         },
       ],
       isLoading: false,
@@ -96,11 +106,11 @@ describe('CreateChargePointPage', () => {
     const selects = screen.getAllByRole('combobox')
     expect(selects[0]).toHaveValue('st-101')
 
-    fireEvent.change(screen.getByPlaceholderText('e.g. ABB Terra 184'), { target: { value: 'ABB Terra 184' } })
-    fireEvent.change(screen.getByPlaceholderText('e.g. ABB'), { target: { value: 'ABB' } })
-    fireEvent.change(screen.getByPlaceholderText('e.g. EVZ-WL-101'), { target: { value: 'EVZ-CMR-003' } })
-    fireEvent.change(screen.getByPlaceholderText('e.g. 1.4.2'), { target: { value: '1.4.2' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Create Charge Point' }))
+    fireEvent.change(screen.getByPlaceholderText('e.g. ABB Terra 184, Wallbox Pulsar'), { target: { value: 'ABB Terra 184' } })
+    fireEvent.change(screen.getByPlaceholderText('e.g. ABB, Wallbox, Siemens'), { target: { value: 'ABB' } })
+    fireEvent.change(screen.getByPlaceholderText('e.g. EVZ-CP-001, STATION-01-01'), { target: { value: 'EVZ-CMR-003' } })
+    fireEvent.change(screen.getByPlaceholderText('e.g. 1.4.2, 2.1.0'), { target: { value: '1.4.2' } })
+    fireEvent.click(screen.getByRole('button', { name: /Create Charge Point/i }))
 
     await waitFor(() => {
       expect(mockMutateAsync).toHaveBeenCalledWith({
