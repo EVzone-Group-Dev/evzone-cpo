@@ -395,10 +395,13 @@ export interface BatteryInventoryResponse {
 }
 
 export interface ChargePointSummary {
+  bootNotificationAt?: string | null
+  bootNotificationPayload?: Record<string, unknown> | null
   connectorType: string
   connectorTypes?: string[]
   firmwareVersion: string
   id: string
+  identityConfirmedAt?: string | null
   lastHeartbeatLabel: string
   manufacturer: string
   maxCapacityKw: number
@@ -415,6 +418,16 @@ export interface ChargePointSummary {
 }
 
 export interface ChargePointDetail extends ChargePointSummary {
+  ocppCredentials?: {
+    authProfile?: 'basic' | 'mtls_bootstrap' | 'mtls'
+    bootstrapExpiresAt?: string
+    mtlsInstructions?: string
+    password?: string
+    requiresClientCertificate?: boolean
+    subprotocol?: string
+    username?: string
+    wsUrl?: string
+  }
   remoteCommands: string[]
   unitHealth: {
     errorCode: string
@@ -422,6 +435,18 @@ export interface ChargePointDetail extends ChargePointSummary {
     ocppConnection: string
   }
   smartChargingEnabled?: boolean
+}
+
+export interface ConfirmChargePointIdentityRequest {
+  firmwareVersion: string
+  manufacturer: string
+  model: string
+}
+
+export interface ChargePointPublicationResponse {
+  chargePointId: string
+  published: boolean
+  updatedAt: string | null
 }
 
 export interface SessionRecord {

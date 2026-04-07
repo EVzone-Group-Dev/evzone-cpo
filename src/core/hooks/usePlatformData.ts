@@ -5,8 +5,10 @@ import type {
   AlertRecord,
   AuditLogRecord,
   BillingResponse,
+  ChargePointPublicationResponse,
   ChargePointDetail,
   ChargePointSummary,
+  ConfirmChargePointIdentityRequest,
   CreateChargePointRequest,
   DashboardOverviewResponse,
   DemoUserHint,
@@ -62,6 +64,13 @@ function asArray<T>(value: unknown): T[] {
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' ? (value as Record<string, unknown>) : {}
+}
+
+function asNullableRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null
+  }
+  return value as Record<string, unknown>
 }
 
 function asString(value: unknown, fallback = ''): string {
@@ -147,6 +156,9 @@ function normalizeChargePointSummary(value: unknown, fallbackIndex = 0): ChargeP
     status,
     ocppStatus: asString(record.ocppStatus, status),
     roamingPublished: Boolean(record.roamingPublished),
+    bootNotificationAt: asString(record.bootNotificationAt, '') || null,
+    identityConfirmedAt: asString(record.identityConfirmedAt, '') || null,
+    bootNotificationPayload: asNullableRecord(record.bootNotificationPayload),
     lastHeartbeatLabel: formatHeartbeatLabel(lastHeartbeat),
     stale: typeof record.stale === 'boolean' ? record.stale : !asString(record.lastHeartbeat),
   }
@@ -156,12 +168,35 @@ function normalizeChargePointDetail(value: unknown): ChargePointDetail {
   const record = asRecord(value)
   const base = normalizeChargePointSummary(record)
   const unitHealth = asRecord(record.unitHealth)
+  const ocppCredentialsRecord = asRecord(record.ocppCredentials)
   const remoteCommands = asArray<unknown>(record.remoteCommands)
     .map((entry) => asString(entry))
     .filter((entry) => entry.length > 0)
 
   return {
     ...base,
+    ocppCredentials:
+      Object.keys(ocppCredentialsRecord).length > 0
+        ? {
+            username: asString(ocppCredentialsRecord.username, ''),
+            password: asString(ocppCredentialsRecord.password, ''),
+            wsUrl: asString(ocppCredentialsRecord.wsUrl, ''),
+            subprotocol: asString(ocppCredentialsRecord.subprotocol, ''),
+            authProfile: asString(ocppCredentialsRecord.authProfile, '') as
+              | 'basic'
+              | 'mtls_bootstrap'
+              | 'mtls'
+              | undefined,
+            bootstrapExpiresAt: asString(
+              ocppCredentialsRecord.bootstrapExpiresAt,
+              '',
+            ),
+            requiresClientCertificate: Boolean(
+              ocppCredentialsRecord.requiresClientCertificate,
+            ),
+            mtlsInstructions: asString(ocppCredentialsRecord.mtlsInstructions, ''),
+          }
+        : undefined,
     remoteCommands: remoteCommands.length > 0 ? remoteCommands : DEFAULT_REMOTE_COMMANDS,
     unitHealth: {
       ocppConnection: asString(
@@ -783,6 +818,56 @@ export function useCreateChargePoint() {
       }).then((value) => normalizeChargePointDetail(value)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['charge-points', scopeKey] })
+      queryClient.invalidateQueries({ queryKey: ['stations', scopeKey] })
+    },
+  })
+}
+
+export function useConfirmChargePointIdentity(id?: string) {
+  const { scopeKey } = useTenantQueryContext(!!id)
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (payload: ConfirmChargePointIdentityRequest) =>
+      fetchJson<unknown>(`/api/v1/charge-points/${id}/identity/confirm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }).then((value) => normalizeChargePointDetail(value)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['charge-points', scopeKey] })
+      queryClient.invalidateQueries({ queryKey: ['charge-points', scopeKey, id] })
+      queryClient.invalidateQueries({ queryKey: ['stations', scopeKey] })
+    },
+  })
+}
+
+export function useChargePointPublication(id?: string) {
+  const { enabled, scopeKey } = useTenantQueryContext(!!id)
+
+  return useQuery<ChargePointPublicationResponse>({
+    queryKey: ['charge-points', scopeKey, id, 'publication'],
+    queryFn: async () =>
+      fetchJson<ChargePointPublicationResponse>(`/api/v1/charge-points/${id}/publication`),
+    enabled,
+  })
+}
+
+export function useSetChargePointPublication(id?: string) {
+  const { scopeKey } = useTenantQueryContext(!!id)
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (published: boolean) =>
+      fetchJson<ChargePointPublicationResponse>(`/api/v1/charge-points/${id}/publication`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ published }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['charge-points', scopeKey] })
+      queryClient.invalidateQueries({ queryKey: ['charge-points', scopeKey, id] })
+      queryClient.invalidateQueries({ queryKey: ['charge-points', scopeKey, id, 'publication'] })
       queryClient.invalidateQueries({ queryKey: ['stations', scopeKey] })
     },
   })

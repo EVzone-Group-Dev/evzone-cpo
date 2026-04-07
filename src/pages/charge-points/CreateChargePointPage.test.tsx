@@ -41,7 +41,14 @@ describe('CreateChargePointPage', () => {
   beforeEach(() => {
     mockNavigate.mockReset()
     mockMutateAsync.mockReset()
-    mockMutateAsync.mockResolvedValue({})
+    mockMutateAsync.mockResolvedValue({
+      id: 'cp-303',
+      ocppCredentials: {
+        username: 'EVZ-CMR-003',
+        password: 'one-time-secret',
+        wsUrl: 'wss://ocpp.example.com/ocpp/1.6/EVZ-CMR-003',
+      },
+    })
 
     mockedUseStations.mockReturnValue({
       data: [
@@ -63,24 +70,6 @@ describe('CreateChargePointPage', () => {
             points: [100, 100, 95, 90, 85, 80],
           },
         },
-        {
-          id: 'st-102',
-          name: 'Tech Park A',
-          address: 'Block 4',
-          city: 'Kampala',
-          country: 'Uganda',
-          lat: 0.063,
-          lng: 32.4631,
-          capacity: 100,
-          status: 'Degraded',
-          serviceMode: 'Charging',
-          chargePoints: [],
-          networkLatency: {
-            averageLabel: '30s ago',
-            modeLabel: 'Derived from charge point heartbeats',
-            points: [75, 70, 65, 60, 55, 50],
-          },
-        },
       ],
       isLoading: false,
       error: null,
@@ -100,24 +89,18 @@ describe('CreateChargePointPage', () => {
     )
   }
 
-  it('prefills the station from the route and submits the backend-aligned charge point payload', async () => {
+  it('submits provisioning payload and redirects to setup detail with one-time credentials', async () => {
     renderPage()
 
     const selects = screen.getAllByRole('combobox')
     expect(selects[0]).toHaveValue('st-101')
 
-    fireEvent.change(screen.getByPlaceholderText('e.g. ABB Terra 184, Wallbox Pulsar'), { target: { value: 'ABB Terra 184' } })
-    fireEvent.change(screen.getByPlaceholderText('e.g. ABB, Wallbox, Siemens'), { target: { value: 'ABB' } })
     fireEvent.change(screen.getByPlaceholderText('e.g. EVZ-CP-001, STATION-01-01'), { target: { value: 'EVZ-CMR-003' } })
-    fireEvent.change(screen.getByPlaceholderText('e.g. 1.4.2, 2.1.0'), { target: { value: '1.4.2' } })
-    fireEvent.click(screen.getByRole('button', { name: /Create Charge Point/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Provision Charge Point/i }))
 
     await waitFor(() => {
       expect(mockMutateAsync).toHaveBeenCalledWith({
         stationId: 'st-101',
-        model: 'ABB Terra 184',
-        manufacturer: 'ABB',
-        firmwareVersion: '1.4.2',
         ocppId: 'EVZ-CMR-003',
         ocppVersion: '1.6',
         power: 50,
@@ -126,7 +109,16 @@ describe('CreateChargePointPage', () => {
     })
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/stations/st-101')
+      expect(mockNavigate).toHaveBeenCalledWith('/charge-points/cp-303', {
+        state: expect.objectContaining({
+          returnTo: '/stations/st-101',
+          setupCredentials: expect.objectContaining({
+            username: 'EVZ-CMR-003',
+            password: 'one-time-secret',
+          }),
+          setupStartedAt: expect.any(String),
+        }),
+      })
     })
   })
 })
