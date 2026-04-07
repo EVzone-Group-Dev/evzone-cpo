@@ -923,9 +923,9 @@ const swapDispatchRecords: Array<TenantScoped<SwapDispatchRecord>> = [
 let swapDispatchCounter = 1
 
 const sessions: Array<TenantScoped<SessionRecord>> = [
-  { id: 'SES-001', station: 'Westlands Hub', chargePointId: 'cp-1', connectorType: 'CCS 2', cp: 'EVZ-WL-001', started: '2026-03-28 08:14', ended: '2026-03-28 09:02', energy: '22.4 kWh', amount: 'KES 1,344', status: 'Completed', method: 'App', emsp: 'EVzone eMSP', tenantIds: ['tenant-global', 'tenant-evzone-ke', 'tenant-westlands-mall'] },
-  { id: 'SES-002', station: 'CBD Charging Station', chargePointId: 'cp-3', connectorType: 'Type 2', cp: 'EVZ-CBD-001', started: '2026-03-28 07:50', ended: null, energy: '31.0 kWh', amount: 'KES 1,860', status: 'Active', method: 'RFID', emsp: '-', tenantIds: ['tenant-global', 'tenant-evzone-ke'] },
-  { id: 'SES-003', station: 'Garden City Mall', chargePointId: 'cp-4', connectorType: 'CCS 2', cp: 'EVZ-GC-001', started: '2026-03-28 10:00', ended: '2026-03-28 10:05', energy: '0.0 kWh', amount: 'KES 0', status: 'Failed', method: 'RFID', emsp: '-', tenantIds: ['tenant-global'] },
+  { id: 'SES-001', stationId: 'st-1', station: 'Westlands Hub', chargePointId: 'cp-1', connectorType: 'CCS 2', cp: 'EVZ-WL-001', started: '2026-03-28 08:14', ended: '2026-03-28 09:02', energy: '22.4 kWh', amount: 'KES 1,344', status: 'Completed', method: 'App', emsp: 'EVzone eMSP', tenantIds: ['tenant-global', 'tenant-evzone-ke', 'tenant-westlands-mall'] },
+  { id: 'SES-002', stationId: 'st-2', station: 'CBD Charging Station', chargePointId: 'cp-3', connectorType: 'Type 2', cp: 'EVZ-CBD-001', started: '2026-03-28 07:50', ended: null, energy: '31.0 kWh', amount: 'KES 1,860', status: 'Active', method: 'RFID', emsp: '-', tenantIds: ['tenant-global', 'tenant-evzone-ke'] },
+  { id: 'SES-003', stationId: 'st-4', station: 'Garden City Mall', chargePointId: 'cp-4', connectorType: 'CCS 2', cp: 'EVZ-GC-001', started: '2026-03-28 10:00', ended: '2026-03-28 10:05', energy: '0.0 kWh', amount: 'KES 0', status: 'Failed', method: 'RFID', emsp: '-', tenantIds: ['tenant-global'] },
 ]
 
 const incidentRecords: Array<TenantScoped<IncidentCommandResponse['incidents'][number]>> = [
@@ -2702,17 +2702,17 @@ export function createChargePoint(payload: CreateChargePointRequest, tenantId: T
     id: chargePointId,
     stationId: payload.stationId,
     stationName: stationRecord.name,
-    connectorType: payload.connectorType.trim(),
-    connectorTypes: [payload.connectorType.trim()],
-    model: payload.model.trim(),
-    manufacturer: payload.manufacturer.trim(),
-    serialNumber: payload.serialNumber.trim(),
-    firmwareVersion: '1.0.0',
+    connectorType: payload.type.trim(),
+    connectorTypes: [payload.type.trim()],
+    model: payload.model?.trim() || payload.ocppId.trim(),
+    manufacturer: payload.manufacturer?.trim() || 'Unknown Manufacturer',
+    serialNumber: payload.ocppId.trim(),
+    firmwareVersion: payload.firmwareVersion?.trim() || '1.0.0',
     ocppId: payload.ocppId.trim(),
     ocppVersion: payload.ocppVersion.trim(),
     status: 'Online',
     ocppStatus: 'Available',
-    maxCapacityKw: payload.maxCapacityKw,
+    maxCapacityKw: payload.power,
     lastHeartbeatLabel: 'just now',
     stale: false,
     roamingPublished: false,

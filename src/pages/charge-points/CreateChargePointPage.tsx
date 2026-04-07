@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
@@ -10,20 +10,23 @@ import { PATHS } from '@/router/paths'
 
 const chargePointSchema = z.object({
   stationId: z.string().min(1, 'Station is required'),
-  model: z.string().min(2, 'Model is required'),
-  manufacturer: z.string().min(2, 'Manufacturer is required'),
-  serialNumber: z.string().min(2, 'Serial number is required'),
+  model: z.string().trim().optional(),
+  manufacturer: z.string().trim().optional(),
+  firmwareVersion: z.string().trim().optional(),
   ocppId: z.string().min(3, 'OCPP ID is required'),
-  ocppVersion: z.string().min(3, 'OCPP version is required'),
-  maxCapacityKw: z.number().min(1, 'Capacity must be at least 1 kW'),
-  connectorType: z.string().min(2, 'Connector type is required'),
+  ocppVersion: z.enum(['1.6', '2.0.1', '2.1']),
+  power: z.number().min(1, 'Power must be at least 1 kW'),
+  type: z.string().min(2, 'Connector type is required'),
 })
 
 type ChargePointFormValues = z.infer<typeof chargePointSchema>
 
 export function CreateChargePointPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const presetStationId = searchParams.get('stationId') ?? ''
+  const returnTo = searchParams.get('returnTo')
   const { data: stations, isLoading: isStationsLoading, error: stationsError } = useStations()
   const createChargePoint = useCreateChargePoint()
 
@@ -34,9 +37,13 @@ export function CreateChargePointPage() {
   } = useForm<ChargePointFormValues>({
     resolver: zodResolver(chargePointSchema),
     defaultValues: {
-      connectorType: 'Type 2',
-      ocppVersion: '1.6J',
-      maxCapacityKw: 22,
+      stationId: presetStationId,
+      type: 'CCS2',
+      ocppVersion: '1.6',
+      power: 50,
+      model: '',
+      manufacturer: '',
+      firmwareVersion: '',
     },
   })
 
@@ -44,7 +51,22 @@ export function CreateChargePointPage() {
     setSubmitError(null)
 
     try {
-      await createChargePoint.mutateAsync(values)
+      await createChargePoint.mutateAsync({
+        stationId: values.stationId,
+        model: values.model?.trim() || undefined,
+        manufacturer: values.manufacturer?.trim() || undefined,
+        firmwareVersion: values.firmwareVersion?.trim() || undefined,
+        ocppId: values.ocppId.trim(),
+        ocppVersion: values.ocppVersion,
+        power: values.power,
+        type: values.type.trim(),
+      })
+
+      if (returnTo === 'station-detail') {
+        navigate(PATHS.STATION_DETAIL(values.stationId))
+        return
+      }
+
       navigate(PATHS.CHARGE_POINTS)
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : 'Failed to create charge point.')
@@ -86,12 +108,6 @@ export function CreateChargePointPage() {
             </div>
 
             <div>
-              <label className="form-label">Serial Number</label>
-              <input {...register('serialNumber')} className={`input ${errors.serialNumber ? 'border-danger' : ''}`} placeholder="e.g. SN-9001" />
-              {errors.serialNumber && <p className="text-[10px] text-danger mt-1">{errors.serialNumber.message}</p>}
-            </div>
-
-            <div>
               <label className="form-label">OCPP ID</label>
               <input {...register('ocppId')} className={`input ${errors.ocppId ? 'border-danger' : ''}`} placeholder="e.g. EVZ-WL-101" />
               {errors.ocppId && <p className="text-[10px] text-danger mt-1">{errors.ocppId.message}</p>}
@@ -99,31 +115,45 @@ export function CreateChargePointPage() {
 
             <div>
               <label className="form-label">OCPP Version</label>
-              <input {...register('ocppVersion')} className={`input ${errors.ocppVersion ? 'border-danger' : ''}`} placeholder="e.g. 1.6J" />
+              <select {...register('ocppVersion')} className={`input ${errors.ocppVersion ? 'border-danger' : ''}`}>
+                <option value="1.6">1.6</option>
+                <option value="2.0.1">2.0.1</option>
+                <option value="2.1">2.1</option>
+              </select>
               {errors.ocppVersion && <p className="text-[10px] text-danger mt-1">{errors.ocppVersion.message}</p>}
             </div>
 
             <div>
-              <label className="form-label">Max Capacity (kW)</label>
+              <label className="form-label">Power (kW)</label>
               <input
                 type="number"
-                {...register('maxCapacityKw', { valueAsNumber: true })}
-                className={`input ${errors.maxCapacityKw ? 'border-danger' : ''}`}
+                {...register('power', { valueAsNumber: true })}
+                className={`input ${errors.power ? 'border-danger' : ''}`}
               />
-              {errors.maxCapacityKw && <p className="text-[10px] text-danger mt-1">{errors.maxCapacityKw.message}</p>}
+              {errors.power && <p className="text-[10px] text-danger mt-1">{errors.power.message}</p>}
             </div>
 
-            <div className="md:col-span-2">
+            <div>
               <label className="form-label">Connector Type</label>
-              <select {...register('connectorType')} className={`input ${errors.connectorType ? 'border-danger' : ''}`}>
+              <select {...register('type')} className={`input ${errors.type ? 'border-danger' : ''}`}>
+                <option value="CCS2">CCS2</option>
                 <option value="Type 2">Type 2</option>
-                <option value="CCS 2">CCS 2</option>
-                <option value="CCS 1">CCS 1</option>
+                <option value="CCS1">CCS1</option>
                 <option value="CHAdeMO">CHAdeMO</option>
                 <option value="NACS">NACS</option>
                 <option value="GB/T">GB/T</option>
               </select>
-              {errors.connectorType && <p className="text-[10px] text-danger mt-1">{errors.connectorType.message}</p>}
+              {errors.type && <p className="text-[10px] text-danger mt-1">{errors.type.message}</p>}
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="form-label">Initial Firmware Version</label>
+              <input
+                {...register('firmwareVersion')}
+                className={`input ${errors.firmwareVersion ? 'border-danger' : ''}`}
+                placeholder="e.g. 1.4.2"
+              />
+              {errors.firmwareVersion && <p className="text-[10px] text-danger mt-1">{errors.firmwareVersion.message}</p>}
             </div>
           </div>
 
@@ -131,7 +161,11 @@ export function CreateChargePointPage() {
           {stationsError && <div className="alert danger text-xs">Unable to load stations.</div>}
 
           <div className="flex justify-end gap-3 pt-2">
-            <button type="button" className="btn secondary" onClick={() => navigate(PATHS.CHARGE_POINTS)}>
+            <button
+              type="button"
+              className="btn secondary"
+              onClick={() => navigate(returnTo === 'station-detail' && presetStationId ? PATHS.STATION_DETAIL(presetStationId) : PATHS.CHARGE_POINTS)}
+            >
               Cancel
             </button>
             <button type="submit" className="btn primary" disabled={createChargePoint.isPending || isStationsLoading || !!stationsError}>

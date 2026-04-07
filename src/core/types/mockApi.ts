@@ -149,8 +149,15 @@ export interface SiteOwnerDashboardResponse {
 }
 
 export interface StationChargePointSummary {
+  firmwareVersion?: string
   id: string
+  lastHeartbeatAt?: string
   lastHeartbeatLabel?: string
+  manufacturer?: string
+  maxPowerKw?: number
+  model?: string
+  ocppId?: string
+  ocppVersion?: string
   status: 'Available' | 'Charging' | 'Faulted' | 'Unavailable'
   type: string
 }
@@ -423,19 +430,20 @@ export interface SessionRecord {
   id: string
   method: string
   started: string
+  stationId: string
   station: string
   status: 'Active' | 'Completed' | 'Failed'
 }
 
 export interface CreateChargePointRequest {
-  connectorType: string
-  manufacturer: string
-  maxCapacityKw: number
-  model: string
+  firmwareVersion?: string
+  manufacturer?: string
+  model?: string
   ocppId: string
-  ocppVersion: string
-  serialNumber: string
+  ocppVersion: '1.6' | '2.0.1' | '2.1'
+  power: number
   stationId: string
+  type: string
 }
 
 export interface IncidentStat {

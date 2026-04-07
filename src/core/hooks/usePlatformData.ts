@@ -307,6 +307,7 @@ function normalizeSiteOwnerDashboard(value: unknown): SiteOwnerDashboardResponse
 function normalizeSessionRecords(value: unknown, defaultCurrencyCode: string): SessionRecord[] {
   return asArray<Record<string, unknown>>(value).map((session) => ({
     id: asString(session.id, 'N/A'),
+    stationId: asString(session.stationId, ''),
     station: asString((session.station as Record<string, unknown>)?.name ?? session.stationId, 'Unknown Station'),
     cp: asString(session.ocppId, asString(session.chargePointId, 'N/A')),
     chargePointId: asString(session.chargePointId, ''),
@@ -782,6 +783,7 @@ export function useCreateChargePoint() {
       }).then((value) => normalizeChargePointDetail(value)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['charge-points', scopeKey] })
+      queryClient.invalidateQueries({ queryKey: ['stations', scopeKey] })
     },
   })
 }

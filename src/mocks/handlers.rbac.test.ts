@@ -352,11 +352,10 @@ describe('MSW RBAC authorization boundaries', () => {
         stationId: 'st-1',
         model: 'ABB Terra 124',
         manufacturer: 'ABB',
-        serialNumber: 'SN-9000',
         ocppId: 'EVZ-WL-900',
         ocppVersion: '2.0.1',
-        maxCapacityKw: 62,
-        connectorType: 'DC Fast',
+        power: 62,
+        type: 'DC Fast',
       }),
     })
 
@@ -390,11 +389,10 @@ describe('MSW RBAC authorization boundaries', () => {
         stationId: 'st-1',
         model: 'Wallbox Pulsar',
         manufacturer: 'Wallbox',
-        serialNumber: 'SN-3333',
         ocppId: 'EVZ-WL-333',
-        ocppVersion: '1.6J',
-        maxCapacityKw: 22,
-        connectorType: 'AC Type 2',
+        ocppVersion: '1.6',
+        power: 22,
+        type: 'AC Type 2',
       }),
     })
 

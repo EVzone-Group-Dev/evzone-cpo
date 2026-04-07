@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { PATHS } from '@/router/paths'
 import { Search, Cpu, Wifi, WifiOff, Plus } from 'lucide-react'
@@ -10,18 +10,33 @@ type StatusFilter = 'All' | 'Online' | 'Offline' | 'Degraded'
 type RoamingFilter = 'All' | 'Published' | 'Unpublished'
 
 export function ChargePointsPage() {
+  const [searchParams] = useSearchParams()
+  const initialStationFilter = searchParams.get('stationId')?.trim() || 'All'
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('All')
-  const [stationFilter, setStationFilter] = useState<string>('All')
+  const [stationFilter, setStationFilter] = useState<string>(initialStationFilter)
   const [roamingFilter, setRoamingFilter] = useState<RoamingFilter>('All')
   const { data: chargePoints, isLoading, error } = useChargePoints()
   const user = useAuthStore((state) => state.user)
   const canCreateChargePoints = canManageStations(user)
 
   const stationOptions = useMemo(
-    () => ['All', ...Array.from(new Set((chargePoints || []).map((cp) => cp.stationName || 'Unassigned Station'))).sort((a, b) => a.localeCompare(b))],
+    () => [
+      { id: 'All', label: 'All Stations' },
+      ...Array.from(
+        new Map(
+          (chargePoints || []).map((cp) => [
+            cp.stationId || 'unassigned-station',
+            cp.stationName || 'Unassigned Station',
+          ]),
+        ),
+      )
+        .map(([id, label]) => ({ id, label }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    ],
     [chargePoints],
   )
+  const effectiveStationFilter = stationOptions.some((option) => option.id === stationFilter) ? stationFilter : 'All'
 
   const filtered = (chargePoints || []).filter((cp) => {
     const searchTerm = search.trim().toLowerCase()
@@ -30,7 +45,7 @@ export function ChargePointsPage() {
       || cp.ocppId.toLowerCase().includes(searchTerm)
       || (cp.stationName || 'Unassigned Station').toLowerCase().includes(searchTerm)
     const matchesStatus = statusFilter === 'All' || cp.status === statusFilter
-    const matchesStation = stationFilter === 'All' || (cp.stationName || 'Unassigned Station') === stationFilter
+    const matchesStation = effectiveStationFilter === 'All' || cp.stationId === effectiveStationFilter
     const matchesRoaming = roamingFilter === 'All'
       || (roamingFilter === 'Published' && cp.roamingPublished)
       || (roamingFilter === 'Unpublished' && !cp.roamingPublished)
@@ -59,10 +74,10 @@ export function ChargePointsPage() {
           <option value="Offline">Offline</option>
           <option value="Degraded">Degraded</option>
         </select>
-        <select className="input md:w-[210px]" value={stationFilter} onChange={(event) => setStationFilter(event.target.value)}>
-          {stationOptions.map((stationName) => (
-            <option key={stationName} value={stationName}>
-              {stationName === 'All' ? 'All Stations' : stationName}
+        <select className="input md:w-[210px]" value={effectiveStationFilter} onChange={(event) => setStationFilter(event.target.value)}>
+          {stationOptions.map((stationOption) => (
+            <option key={stationOption.id} value={stationOption.id}>
+              {stationOption.label}
             </option>
           ))}
         </select>
