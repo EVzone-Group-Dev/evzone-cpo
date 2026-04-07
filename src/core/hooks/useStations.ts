@@ -174,6 +174,22 @@ function normalizeStationBase(value: BackendStation, fallbackIndex = 0): Station
   const lat = asNumber(value.latitude ?? value.location?.lat ?? value.site?.latitude, 0)
   const lng = asNumber(value.longitude ?? value.location?.lng ?? value.site?.longitude, 0)
 
+  const latestHeartbeat =
+    [...chargePoints]
+      .map((chargePoint) => chargePoint.lastHeartbeatAt)
+      .filter((timestamp): timestamp is string => Boolean(timestamp))
+      .sort((left, right) => new Date(right).getTime() - new Date(left).getTime())[0]
+    ?? null
+
+  const connectivityPoints = chargePoints.length > 0
+    ? chargePoints.map((chargePoint) => {
+      const timestamp = chargePoint.lastHeartbeatAt
+      if (!timestamp) return 8
+      const ageSeconds = Math.max(0, (Date.now() - new Date(timestamp).getTime()) / 1000)
+      return Math.max(8, Math.round(100 - Math.min(ageSeconds, 300) / 3))
+    })
+    : [8, 8, 8, 8, 8, 8]
+
   return {
     id: asString(value.id, `station-${fallbackIndex + 1}`),
     name: asString(value.name, `Station ${fallbackIndex + 1}`),
@@ -186,17 +202,16 @@ function normalizeStationBase(value: BackendStation, fallbackIndex = 0): Station
     status: normalizeStationStatus(value.operationalStatus ?? value.status),
     serviceMode: normalizeServiceMode(value.type),
     chargePoints,
+    networkLatency: {
+      averageLabel: latestHeartbeat ? toRelativeTimeLabel(latestHeartbeat) : 'No telemetry',
+      modeLabel: latestHeartbeat ? 'Derived from charge point heartbeats' : 'Unavailable',
+      points: connectivityPoints,
+    },
   }
 }
 
 function normalizeStationDetail(value: BackendStation): StationDetail {
   const base = normalizeStationBase(value)
-  const latestHeartbeat =
-    [...base.chargePoints]
-      .map((chargePoint) => chargePoint.lastHeartbeatAt)
-      .filter((timestamp): timestamp is string => Boolean(timestamp))
-      .sort((left, right) => new Date(right).getTime() - new Date(left).getTime())[0]
-    ?? null
   const firmwareVersions = Array.from(
     new Set(
       base.chargePoints
@@ -219,16 +234,6 @@ function normalizeStationDetail(value: BackendStation): StationDetail {
       base.lat !== 0 || base.lng !== 0
         ? `${base.lat.toFixed(4)}, ${base.lng.toFixed(4)}`
         : 'Coordinates unavailable',
-    networkLatency: {
-      averageLabel: latestHeartbeat ? toRelativeTimeLabel(latestHeartbeat) : 'No telemetry',
-      modeLabel: latestHeartbeat ? 'Derived from charge point heartbeats' : 'Unavailable',
-      points: base.chargePoints.map((chargePoint) => {
-        const timestamp = chargePoint.lastHeartbeatAt
-        if (!timestamp) return 8
-        const ageSeconds = Math.max(0, (Date.now() - new Date(timestamp).getTime()) / 1000)
-        return Math.max(8, Math.round(100 - Math.min(ageSeconds, 300) / 3))
-      }),
-    },
     recentEvents: [],
     systemIntegrity: {
       firmwareVersion: firmwareVersions.length > 0 ? firmwareVersions.join(', ') : 'Unavailable at station level',

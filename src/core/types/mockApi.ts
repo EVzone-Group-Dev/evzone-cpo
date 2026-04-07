@@ -178,6 +178,11 @@ export interface StationSummary {
   lat: number
   lng: number
   name: string
+  networkLatency: {
+    averageLabel: string
+    modeLabel: string
+    points: number[]
+  }
   serviceMode: ServiceMode
   status: 'Online' | 'Offline' | 'Degraded' | 'Faulted'
   swapSummary?: StationSwapSummary
