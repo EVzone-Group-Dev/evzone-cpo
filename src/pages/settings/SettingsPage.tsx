@@ -78,10 +78,10 @@ function SettingToggle({
         aria-checked={checked}
         aria-label={label}
         onClick={() => onChange(!checked)}
-        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${checked ? 'bg-accent' : 'bg-bg-muted border border-border'}`}
+        className={`relative inline-flex h-6 w-11 shrink-0 items-center justify-start rounded-full border p-0.5 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-card)] ${checked ? 'border-[var(--accent)] bg-[var(--accent)]' : 'border-[var(--border)] bg-[var(--bg-card)]'}`}
       >
         <span
-          className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${checked ? 'translate-x-5' : 'translate-x-0.5'}`}
+          className={`inline-flex h-5 w-5 items-center justify-center rounded-full border transition-transform duration-200 ${checked ? 'translate-x-5 border-[var(--accent)] bg-[var(--bg-card)] shadow-sm' : 'translate-x-0 border-[var(--border)] bg-[var(--bg-card)] shadow-[0_1px_2px_rgba(15,23,42,0.12)]'}`}
         />
       </button>
     </div>
