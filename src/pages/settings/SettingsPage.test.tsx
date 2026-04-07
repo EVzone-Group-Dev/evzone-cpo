@@ -5,6 +5,8 @@ import { SettingsPage } from '@/pages/settings/SettingsPage'
 import { useAuthStore } from '@/core/auth/authStore'
 import { useReferenceCities, useReferenceStates } from '@/core/hooks/useGeography'
 import { useTenant } from '@/core/hooks/useTenant'
+import { useTheme } from '@/core/theme/themeContext'
+import { theme } from '@/core/theme/theme'
 
 vi.mock('@/components/layout/DashboardLayout', () => ({
   DashboardLayout: ({ children, pageTitle }: { children: ReactNode; pageTitle?: string }) => (
@@ -28,11 +30,16 @@ vi.mock('@/core/hooks/useGeography', () => ({
   useReferenceCities: vi.fn(),
 }))
 
+vi.mock('@/core/theme/themeContext', () => ({
+  useTheme: vi.fn(),
+}))
+
 describe('SettingsPage', () => {
   const mockedUseAuthStore = vi.mocked(useAuthStore)
   const mockedUseReferenceCities = vi.mocked(useReferenceCities)
   const mockedUseReferenceStates = vi.mocked(useReferenceStates)
   const mockedUseTenant = vi.mocked(useTenant)
+  const mockedUseTheme = vi.mocked(useTheme)
 
   beforeEach(() => {
     vi.useFakeTimers()
@@ -133,6 +140,16 @@ describe('SettingsPage', () => {
       data: [],
       isLoading: false,
     } as unknown as ReturnType<typeof useReferenceCities>)
+
+    mockedUseTheme.mockReturnValue({
+      theme,
+      themeMode: 'system',
+      resolvedTheme: 'dark',
+      isDark: true,
+      isLight: false,
+      setThemeMode: vi.fn(),
+      toggleTheme: vi.fn(),
+    } as unknown as ReturnType<typeof useTheme>)
   })
 
   afterEach(() => {
@@ -147,6 +164,7 @@ describe('SettingsPage', () => {
     expect(screen.getByText('Profile & Identity')).toBeInTheDocument()
     expect(screen.getByText('Security & Access')).toBeInTheDocument()
     expect(screen.getByText('Notification Controls')).toBeInTheDocument()
+    expect(screen.getByLabelText('Theme')).toBeInTheDocument()
     expect(screen.getByText('Tenant Scope')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'All changes saved' })).toBeDisabled()
 

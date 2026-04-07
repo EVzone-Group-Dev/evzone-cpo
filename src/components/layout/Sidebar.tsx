@@ -167,7 +167,7 @@ export function Sidebar() {
               className={`w-full flex items-center gap-2 rounded-lg border border-transparent hover:border-[var(--border)] transition-colors ${collapsed ? 'justify-center px-0 py-1' : 'px-2 py-1.5'}`}
               aria-label="Open sidebar profile menu"
             >
-              <div className="w-7 h-7 rounded-full bg-[var(--accent-dim)] flex items-center justify-center text-[#0d1117] font-bold text-xs flex-shrink-0">
+              <div className="w-7 h-7 rounded-full bg-[var(--accent-dim)] flex items-center justify-center text-[var(--accent-ink)] font-bold text-xs flex-shrink-0">
                 {user.name.charAt(0).toUpperCase()}
               </div>
               {!collapsed && (
@@ -207,4 +207,3 @@ export function Sidebar() {
     </aside>
   )
 }
-

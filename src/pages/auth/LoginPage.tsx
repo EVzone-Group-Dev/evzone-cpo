@@ -56,7 +56,7 @@ export function LoginPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4" style={{ background: 'var(--accent)' }}>
-            <Zap size={28} color="#0d1117" />
+            <Zap size={28} color="var(--accent-ink)" />
           </div>
           <h1 className="text-2xl font-extrabold" style={{ color: 'var(--text)' }}>EVzone CPO Central</h1>
           <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Charge Point Operator Platform</p>

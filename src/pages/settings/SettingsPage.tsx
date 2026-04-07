@@ -4,6 +4,7 @@ import { getTemporaryAccessState, getTemporaryAccessWindowLabel, getUserRoleLabe
 import { useAuthStore } from '@/core/auth/authStore'
 import { useReferenceCities, useReferenceStates } from '@/core/hooks/useGeography'
 import { useTenant } from '@/core/hooks/useTenant'
+import { useTheme } from '@/core/theme/themeContext'
 import { BellRing, Building2, Globe2, LayoutGrid, Lock, Save, ShieldCheck, SlidersHorizontal, Sparkles, UserCog } from 'lucide-react'
 
 type ScreenDensity = 'Comfortable' | 'Compact'
@@ -89,6 +90,7 @@ function SettingToggle({
 
 export function SettingsPage() {
   const { user } = useAuthStore()
+  const { resolvedTheme, setThemeMode, themeMode } = useTheme()
   const {
     activeStationContext,
     activeTenant,
@@ -429,7 +431,23 @@ export function SettingsPage() {
 
             <div className="card">
               <div className="section-title"><LayoutGrid size={16} className="text-accent" />Interface Preferences</div>
-              <div className="grid gap-3 md:grid-cols-3">
+              <div className="grid gap-3 md:grid-cols-4">
+                <div>
+                  <label htmlFor="settings-theme" className="form-label">Theme</label>
+                  <select
+                    id="settings-theme"
+                    className="input"
+                    value={themeMode}
+                    onChange={(event) => setThemeMode(event.target.value as 'system' | 'light' | 'dark')}
+                  >
+                    <option value="system">System default</option>
+                    <option value="light">Light</option>
+                    <option value="dark">Dark</option>
+                  </select>
+                  <div className="text-[11px] text-subtle mt-1">
+                    Following {themeMode === 'system' ? 'your OS preference' : `the ${resolvedTheme} palette`} right now.
+                  </div>
+                </div>
                 <div>
                   <label htmlFor="settings-density" className="form-label">Screen Density</label>
                   <select

@@ -47,7 +47,7 @@ const NotificationsPage = lazy(() => import('@/pages/notifications/Notifications
 function PageLoader() {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
-      <div style={{ width: 32, height: 32, border: '3px solid #30363d', borderTopColor: '#3fb950', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+      <div style={{ width: 32, height: 32, border: '3px solid var(--border)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
     </div>
   )
 }

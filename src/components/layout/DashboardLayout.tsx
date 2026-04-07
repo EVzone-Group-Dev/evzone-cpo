@@ -137,7 +137,7 @@ export function DashboardLayout({ children, pageTitle, actions }: Props) {
               <div className="relative ml-1" ref={profileMenuRef}>
                 <button
                   onClick={() => setIsProfileMenuOpen((current) => !current)}
-                  className="w-7 h-7 rounded-full bg-[var(--accent-dim)] flex items-center justify-center text-[#0d1117] font-bold text-xs border border-transparent hover:border-[var(--accent)] transition-colors"
+                  className="w-7 h-7 rounded-full bg-[var(--accent-dim)] flex items-center justify-center text-[var(--accent-ink)] font-bold text-xs border border-transparent hover:border-[var(--accent)] transition-colors"
                   aria-label="Open profile menu"
                 >
                   {user.name.charAt(0).toUpperCase()}

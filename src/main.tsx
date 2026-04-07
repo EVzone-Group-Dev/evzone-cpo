@@ -2,6 +2,9 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
+import { initializeTheme } from '@/core/theme/themeUtils'
+
+initializeTheme()
 
 function isMswEnabled() {
   const configured = String(import.meta.env.VITE_ENABLE_MSW ?? 'false').trim().toLowerCase()
