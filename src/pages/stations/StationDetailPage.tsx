@@ -13,6 +13,18 @@ const STATION_CP_STATUS_CLASS = {
   Unavailable: 'offline',
 } as const
 
+const DEFAULT_SYSTEM_INTEGRITY = {
+  firmwareVersion: 'Unknown firmware',
+  ocppVersion: 'N/A',
+  slaCompliance: 'N/A',
+}
+
+const DEFAULT_NETWORK_LATENCY = {
+  averageLabel: 'No telemetry',
+  modeLabel: 'Unavailable',
+  points: [] as number[],
+}
+
 export function StationDetailPage() {
   const { id } = useParams<{ id: string }>()
   const user = useAuthStore((state) => state.user)
@@ -34,13 +46,38 @@ export function StationDetailPage() {
     )
   }
 
+  const chargePoints = Array.isArray(station.chargePoints) ? station.chargePoints : []
+  const swapSummary = station.swapSummary ?? null
+  const stationStatus = station.status ?? 'Offline'
+  const serviceMode = station.serviceMode ?? 'Charging'
+  const stationName = station.name ?? 'Station Detail'
+  const stationAddress = station.address ?? 'Unknown address'
+  const stationCity = station.city ?? 'Unknown city'
+  const stationCapacity = Number.isFinite(station.capacity) ? station.capacity : 0
+  const stationLatitude = Number.isFinite(station.lat) ? station.lat : 0
+  const stationLongitude = Number.isFinite(station.lng) ? station.lng : 0
+  const uptimePercent30d = station.uptimePercent30d ?? 'N/A'
+  const dailyAverageKwh = station.dailyAverageKwh ?? 'N/A'
+  const geofenceStatus = station.geofenceStatus ?? 'Telemetry unavailable'
+  const systemIntegrity = {
+    firmwareVersion: station.systemIntegrity?.firmwareVersion ?? DEFAULT_SYSTEM_INTEGRITY.firmwareVersion,
+    ocppVersion: station.systemIntegrity?.ocppVersion ?? DEFAULT_SYSTEM_INTEGRITY.ocppVersion,
+    slaCompliance: station.systemIntegrity?.slaCompliance ?? DEFAULT_SYSTEM_INTEGRITY.slaCompliance,
+  }
+  const networkLatency = {
+    averageLabel: station.networkLatency?.averageLabel ?? DEFAULT_NETWORK_LATENCY.averageLabel,
+    modeLabel: station.networkLatency?.modeLabel ?? DEFAULT_NETWORK_LATENCY.modeLabel,
+    points: Array.isArray(station.networkLatency?.points) ? station.networkLatency.points : DEFAULT_NETWORK_LATENCY.points,
+  }
+  const recentEvents = Array.isArray(station.recentEvents) ? station.recentEvents : []
+
   return (
-    <DashboardLayout pageTitle={station.name}>
+    <DashboardLayout pageTitle={stationName}>
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div className="flex items-center gap-3 text-sm" style={{ color: 'var(--text-muted)' }}>
-          <div className="flex items-center gap-1"><MapPin size={14} className="text-accent" /> {station.address}, {station.city}</div>
-          <span className={`pill ${station.status.toLowerCase()}`}>{station.status}</span>
-          <span className="pill pending">{station.serviceMode}</span>
+          <div className="flex items-center gap-1"><MapPin size={14} className="text-accent" /> {stationAddress}, {stationCity}</div>
+          <span className={`pill ${stationStatus.toLowerCase()}`}>{stationStatus}</span>
+          <span className="pill pending">{serviceMode}</span>
         </div>
         {canConfigureAssets && (
           <div className="flex gap-2">
@@ -52,58 +89,58 @@ export function StationDetailPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <div className={station.swapSummary ? 'grid grid-cols-2 md:grid-cols-5 gap-4' : 'grid grid-cols-2 md:grid-cols-4 gap-4'}>
+          <div className={swapSummary ? 'grid grid-cols-2 md:grid-cols-5 gap-4' : 'grid grid-cols-2 md:grid-cols-4 gap-4'}>
             <div className="kpi-card group hover:border-accent transition-all cursor-default">
               <div className="label">Nominal Power</div>
-              <div className="value flex items-center gap-2">{station.capacity} kW <Zap size={14} className="text-ok" /></div>
+              <div className="value flex items-center gap-2">{stationCapacity} kW <Zap size={14} className="text-ok" /></div>
             </div>
             <div className="kpi-card">
               <div className="label">Charging Assets</div>
-              <div className="value">{station.chargePoints.length}</div>
+              <div className="value">{chargePoints.length}</div>
             </div>
-            {station.swapSummary && (
+            {swapSummary && (
               <div className="kpi-card">
                 <div className="label">Swap Cabinets</div>
-                <div className="value">{station.swapSummary.cabinetCount}</div>
+                <div className="value">{swapSummary.cabinetCount}</div>
               </div>
             )}
             <div className="kpi-card">
               <div className="label">Uptime (30d)</div>
-              <div className="value">{station.uptimePercent30d}</div>
+              <div className="value">{uptimePercent30d}</div>
             </div>
             <div className="kpi-card">
               <div className="label">Daily Throughput</div>
-              <div className="value text-accent">{station.dailyAverageKwh}</div>
+              <div className="value text-accent">{dailyAverageKwh}</div>
             </div>
           </div>
 
           <div className="card p-0 h-[400px] overflow-hidden relative border-accent/10 shadow-xl group">
             <MapComponent
-              center={{ lat: station.lat, lng: station.lng }}
+              center={{ lat: stationLatitude, lng: stationLongitude }}
               zoom={15}
               markers={[{
                 id: station.id,
-                lat: station.lat,
-                lng: station.lng,
-                title: station.name,
-                status: station.status,
+                lat: stationLatitude,
+                lng: stationLongitude,
+                title: stationName,
+                status: stationStatus,
               }]}
             />
             <div className="absolute top-4 right-4 bg-bg/80 backdrop-blur-md border border-border p-2 rounded-lg text-[10px] uppercase tracking-tighter text-subtle pointer-events-none">
-              {station.geofenceStatus}
+              {geofenceStatus}
             </div>
           </div>
 
-          <div className="card">
-            <div className="section-title"><Cpu size={16} className="text-accent" />Charge Points & Connectors</div>
-            {station.chargePoints.length > 0 ? (
+            <div className="card">
+              <div className="section-title"><Cpu size={16} className="text-accent" />Charge Points & Connectors</div>
+            {chargePoints.length > 0 ? (
               <div className="table-wrap mt-4">
                 <table className="table">
                   <thead>
                     <tr><th>ID</th><th>Type</th><th>Status</th><th>Last Heartbeat</th><th>Action</th></tr>
                   </thead>
                   <tbody>
-                    {station.chargePoints.map((cp) => (
+                    {chargePoints.map((cp) => (
                       <tr key={cp.id}>
                         <td className="font-mono text-xs">{cp.id}</td>
                         <td className="text-xs">{cp.type}</td>
@@ -117,26 +154,26 @@ export function StationDetailPage() {
               </div>
             ) : (
               <div className="mt-4 rounded-lg border border-border bg-bg-muted/40 px-4 py-5 text-sm text-subtle">
-                No charging assets are configured for this site. This location is operating in {station.serviceMode.toLowerCase()} mode.
+                No charging assets are configured for this site. This location is operating in {serviceMode.toLowerCase()} mode.
               </div>
             )}
           </div>
 
-          {station.swapSummary && (
+          {swapSummary && (
             <div className="card">
               <div className="section-title"><RefreshCw size={16} className="text-accent" />Battery Swapping</div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                 <div className="rounded-lg border px-4 py-4" style={{ borderColor: 'var(--border)', background: 'var(--bg-muted)' }}>
                   <div className="text-[11px] uppercase tracking-wide text-subtle">Cabinets</div>
-                  <div className="text-2xl font-bold">{station.swapSummary.cabinetCount}</div>
+                  <div className="text-2xl font-bold">{swapSummary.cabinetCount}</div>
                 </div>
                 <div className="rounded-lg border px-4 py-4" style={{ borderColor: 'var(--border)', background: 'var(--bg-muted)' }}>
                   <div className="text-[11px] uppercase tracking-wide text-subtle">Ready Packs</div>
-                  <div className="text-2xl font-bold text-ok">{station.swapSummary.availableChargedPacks}</div>
+                  <div className="text-2xl font-bold text-ok">{swapSummary.availableChargedPacks}</div>
                 </div>
                 <div className="rounded-lg border px-4 py-4" style={{ borderColor: 'var(--border)', background: 'var(--bg-muted)' }}>
                   <div className="text-[11px] uppercase tracking-wide text-subtle">Charging Packs</div>
-                  <div className="text-2xl font-bold text-warning">{station.swapSummary.chargingPacks}</div>
+                  <div className="text-2xl font-bold text-warning">{swapSummary.chargingPacks}</div>
                 </div>
               </div>
               <div className="mt-4 text-xs text-subtle">
@@ -154,36 +191,36 @@ export function StationDetailPage() {
             <div className="mt-4 space-y-3">
               <div className="flex justify-between items-center text-xs">
                 <span className="text-subtle">Firmware Version</span>
-                <span className="font-mono bg-bg-muted px-2 py-0.5 rounded">{station.systemIntegrity.firmwareVersion}</span>
+                <span className="font-mono bg-bg-muted px-2 py-0.5 rounded">{systemIntegrity.firmwareVersion}</span>
               </div>
               <div className="flex justify-between items-center text-xs">
                 <span className="text-subtle">OCPP Version</span>
-                <span className="font-mono px-2 py-0.5 rounded border border-border">{station.systemIntegrity.ocppVersion}</span>
+                <span className="font-mono px-2 py-0.5 rounded border border-border">{systemIntegrity.ocppVersion}</span>
               </div>
               <div className="flex justify-between items-center text-xs">
                 <span className="text-subtle">SLA Compliance</span>
-                <span className="text-ok font-bold">{station.systemIntegrity.slaCompliance}</span>
+                <span className="text-ok font-bold">{systemIntegrity.slaCompliance}</span>
               </div>
             </div>
           </div>
 
           <div className="card">
-            <div className="section-title"><Activity size={16} className="text-accent" />Network Latency</div>
-            <div className="mt-4 h-24 flex items-end gap-1 px-2">
-              {station.networkLatency.points.map((height, index) => (
+              <div className="section-title"><Activity size={16} className="text-accent" />Network Latency</div>
+              <div className="mt-4 h-24 flex items-end gap-1 px-2">
+              {networkLatency.points.map((height, index) => (
                 <div key={index} className="flex-1 bg-accent/20 rounded-t-sm hover:bg-accent transition-all cursor-help" style={{ height: `${height}%` }} />
               ))}
             </div>
             <div className="flex justify-between mt-2 text-[10px] text-subtle uppercase">
-              <span>{station.networkLatency.averageLabel}</span>
-              <span>{station.networkLatency.modeLabel}</span>
+              <span>{networkLatency.averageLabel}</span>
+              <span>{networkLatency.modeLabel}</span>
             </div>
           </div>
 
           <div className="card border-l-4 border-l-accent/50">
             <div className="section-title"><Clock size={16} className="text-accent" />Recent Events</div>
             <div className="mt-4 space-y-4">
-              {station.recentEvents.map((event) => (
+              {recentEvents.map((event) => (
                 <div key={`${event.description}-${event.time}`} className="flex justify-between items-start gap-4">
                   <div className="text-[11px] leading-tight">{event.description}</div>
                   <div className="text-[9px] text-subtle whitespace-nowrap">{event.time}</div>
