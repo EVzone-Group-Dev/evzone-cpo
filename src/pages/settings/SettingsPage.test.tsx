@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { fetchJson } from '@/core/api/fetchJson'
 import { SettingsPage } from '@/pages/settings/SettingsPage'
 import { useAuthStore } from '@/core/auth/authStore'
 import { useReferenceCities, useReferenceStates } from '@/core/hooks/useGeography'
@@ -8,6 +9,7 @@ import { useTenant } from '@/core/hooks/useTenant'
 import { clearSettingsDraft, loadSettingsDraft } from '@/core/settings/settingsPreferences'
 import { useTheme } from '@/core/theme/themeContext'
 import { theme } from '@/core/theme/theme'
+import type { AuthenticatedApiUser } from '@/core/types/mockApi'
 
 vi.mock('@/components/layout/DashboardLayout', () => ({
   DashboardLayout: ({ children, pageTitle }: { children: ReactNode; pageTitle?: string }) => (
@@ -16,6 +18,10 @@ vi.mock('@/components/layout/DashboardLayout', () => ({
       {children}
     </div>
   ),
+}))
+
+vi.mock('@/core/api/fetchJson', () => ({
+  fetchJson: vi.fn(),
 }))
 
 vi.mock('@/core/auth/authStore', () => ({
@@ -37,14 +43,17 @@ vi.mock('@/core/theme/themeContext', () => ({
 
 describe('SettingsPage', () => {
   const mockedUseAuthStore = vi.mocked(useAuthStore)
+  const mockedFetchJson = vi.mocked(fetchJson)
   const mockedUseReferenceCities = vi.mocked(useReferenceCities)
   const mockedUseReferenceStates = vi.mocked(useReferenceStates)
   const mockedUseTenant = vi.mocked(useTenant)
   const mockedUseTheme = vi.mocked(useTheme)
+  let replaceUser: ReturnType<typeof vi.fn>
 
   beforeEach(() => {
-    vi.useFakeTimers()
+    vi.clearAllMocks()
     clearSettingsDraft('usr-1')
+    replaceUser = vi.fn()
 
     mockedUseAuthStore.mockReturnValue({
         user: {
@@ -58,7 +67,19 @@ describe('SettingsPage', () => {
           createdAt: '2026-01-01 09:00',
           mfaEnabled: true,
         },
+        replaceUser,
       } as unknown as ReturnType<typeof useAuthStore>)
+
+    mockedFetchJson.mockResolvedValue({
+      id: 'usr-1',
+      name: 'Olimi Brave',
+      email: 'stationmanager@evzone.io',
+      role: 'STATION_MANAGER',
+      status: 'Active',
+      tenantId: 'org-evzone-ke',
+      country: 'Kenya',
+      mfaEnabled: true,
+    } as AuthenticatedApiUser)
 
     mockedUseTenant.mockReturnValue({
       activeTenant: {
@@ -154,11 +175,7 @@ describe('SettingsPage', () => {
     } as unknown as ReturnType<typeof useTheme>)
   })
 
-  afterEach(() => {
-    vi.useRealTimers()
-  })
-
-  it('renders premium settings sections and save flow', () => {
+  it('renders premium settings sections and save flow', async () => {
     render(<SettingsPage />)
 
     expect(screen.getByRole('heading', { name: 'Settings' })).toBeInTheDocument()
@@ -176,18 +193,27 @@ describe('SettingsPage', () => {
     expect(saveButton).toBeEnabled()
 
     fireEvent.click(saveButton)
-    expect(screen.getByRole('button', { name: 'Saving changes...' })).toBeDisabled()
-
-    act(() => {
-      vi.advanceTimersByTime(900)
-    })
-
-    expect(screen.getByRole('button', { name: 'All changes saved' })).toBeDisabled()
+    await waitFor(() => expect(replaceUser).toHaveBeenCalled())
+    expect(mockedFetchJson).toHaveBeenCalledWith(
+      '/api/v1/auth/me',
+      expect.objectContaining({
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: 'Ops Controller',
+          country: 'Kenya',
+        }),
+      }),
+    )
+    expect(replaceUser).toHaveBeenCalledWith(expect.objectContaining({
+      name: 'Olimi Brave',
+    }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'All changes saved' })).toBeDisabled())
   })
 
   it('loads tenant provisioning states and cities from geography references', async () => {
-    vi.useRealTimers()
-
     mockedUseReferenceStates.mockImplementation((countryCode?: string | null) => ({
       data:
         countryCode === 'KE'
@@ -250,9 +276,7 @@ describe('SettingsPage', () => {
     fireEvent.change(screen.getByLabelText('Country'), { target: { value: 'UG' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
 
-    act(() => {
-      vi.advanceTimersByTime(900)
-    })
+    await waitFor(() => expect(replaceUser).toHaveBeenCalled())
 
     const storedDraft = loadSettingsDraft('usr-1')
     expect(storedDraft?.language).toBe('Swahili')

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { fetchJson } from '@/core/api/fetchJson'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { getTemporaryAccessState, getTemporaryAccessWindowLabel, getUserRoleLabel, getUserScopeType, isTemporaryScopeUser } from '@/core/auth/access'
 import { useAuthStore } from '@/core/auth/authStore'
@@ -6,6 +7,7 @@ import { useReferenceCities, useReferenceStates } from '@/core/hooks/useGeograph
 import { useTenant } from '@/core/hooks/useTenant'
 import { applySavedSettings, loadSettingsDraft, saveSettingsDraft, type ScreenDensity, type SessionTimeout, type SettingsDraft } from '@/core/settings/settingsPreferences'
 import { useTheme } from '@/core/theme/themeContext'
+import type { AuthenticatedApiUser } from '@/core/types/mockApi'
 import { BellRing, Building2, Globe2, LayoutGrid, Lock, Save, ShieldCheck, SlidersHorizontal, Sparkles, UserCog } from 'lucide-react'
 
 function buildInitialDraft(
@@ -71,7 +73,7 @@ function SettingToggle({
 }
 
 export function SettingsPage() {
-  const { user } = useAuthStore()
+  const { user, replaceUser } = useAuthStore()
   const { resolvedTheme, setThemeMode, themeMode } = useTheme()
   const {
     activeStationContext,
@@ -86,6 +88,10 @@ export function SettingsPage() {
   const userName = user?.name ?? ''
   const userEmail = user?.email ?? ''
   const mfaEnabled = user?.mfaEnabled ?? false
+  const currentUserCountry = useMemo(() => {
+    const country = (user as unknown as Record<string, unknown> | null)?.country
+    return typeof country === 'string' ? country.trim() : ''
+  }, [user])
   const availableCountryCount = availableCountries?.length ?? 0
   const countryOptions = useMemo(
     () => (availableCountries ?? []).slice().sort((left, right) => left.name.localeCompare(right.name)),
@@ -154,6 +160,7 @@ export function SettingsPage() {
   } = useReferenceCities(draft.tenantCountryCode, draft.tenantStateCode)
   const [isSaving, setIsSaving] = useState(false)
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const initials = useMemo(
     () => userName.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'EV',
@@ -251,18 +258,54 @@ export function SettingsPage() {
     tenantStates,
   ])
 
-  const handleSaveChanges = () => {
+  const handleSaveChanges = async () => {
     if (!hasUnsavedChanges || isSaving) {
       return
     }
 
     setIsSaving(true)
-    window.setTimeout(() => {
-      saveSettingsDraft(user?.id ?? null, draft)
-      setBaseline(draft)
+    setSaveError(null)
+
+    try {
+      const normalizedName = draft.name.trim() || userName
+      const selectedCountry = countryOptions.find((country) => country.code2 === draft.tenantCountryCode)?.name?.trim() ?? ''
+      const profilePatch: Record<string, string> = {}
+
+      if (normalizedName !== userName) {
+        profilePatch.name = normalizedName
+      }
+
+      if (selectedCountry && selectedCountry !== currentUserCountry) {
+        profilePatch.country = selectedCountry
+      }
+
+      const nextDraft: SettingsDraft = {
+        ...draft,
+        name: normalizedName,
+      }
+
+      if (Object.keys(profilePatch).length > 0) {
+        const updatedUser = await fetchJson<AuthenticatedApiUser>('/api/v1/auth/me', {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(profilePatch),
+        })
+
+        replaceUser(updatedUser)
+        nextDraft.name = updatedUser.name?.trim() || normalizedName
+      }
+
+      saveSettingsDraft(user?.id ?? null, nextDraft)
+      setDraft(nextDraft)
+      setBaseline(nextDraft)
       setLastSavedAt(new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }))
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Unable to sync changes right now.')
+    } finally {
       setIsSaving(false)
-    }, 900)
+    }
   }
 
   return (
@@ -299,6 +342,11 @@ export function SettingsPage() {
               <div className="text-xs text-subtle">
                 {lastSavedAt ? `Last saved at ${lastSavedAt}` : 'No saved updates in this session'}
               </div>
+              {saveError && (
+                <div className="text-xs text-danger max-w-sm text-left lg:text-right">
+                  {saveError}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -613,8 +661,8 @@ export function SettingsPage() {
             <div className="card border-accent/20 bg-accent/5">
               <div className="section-title"><Lock size={16} className="text-accent" />Policy Notes</div>
               <p className="text-xs text-subtle leading-relaxed">
-                Tenant governance, role restrictions, and scope isolation remain policy-driven. UI changes here update local user preferences and
-                are intended for operator workflow optimization.
+                Tenant governance, role restrictions, and scope isolation remain policy-driven. Profile changes sync through the PATCH endpoint,
+                while workspace preferences stay local to this browser.
               </p>
             </div>
           </div>

@@ -92,6 +92,36 @@ describe('MSW RBAC authorization boundaries', () => {
     })
   })
 
+  it('patches the current user profile and keeps users/me in sync', async () => {
+    const patchResponse = await fetch('/api/v1/auth/me', {
+      method: 'PATCH',
+      headers: {
+        ...authHeaders('demo-token-u5', 'tenant-global'),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: 'Olimi Brave',
+        country: 'Uganda',
+      }),
+    })
+
+    expect(patchResponse.status).toBe(200)
+    expect(await patchResponse.json()).toMatchObject({
+      name: 'Olimi Brave',
+      country: 'Uganda',
+    })
+
+    const currentUserResponse = await fetch('/api/v1/users/me', {
+      headers: authHeaders('demo-token-u5', 'tenant-global'),
+    })
+
+    expect(currentUserResponse.status).toBe(200)
+    expect(await currentUserResponse.json()).toMatchObject({
+      name: 'Olimi Brave',
+      country: 'Uganda',
+    })
+  })
+
   it('switches station context and reflects it in users/me', async () => {
     const switchResponse = await fetch('/api/v1/users/me/station-context', {
       method: 'POST',

@@ -328,6 +328,11 @@ interface DemoSessionState {
   userId: string
 }
 
+interface DemoUserProfilePatch {
+  country?: string
+  name?: string
+}
+
 const demoUsers: DemoUserRecord[] = [
   {
     id: 'u1',
@@ -2555,7 +2560,7 @@ function buildDemoLoginResponse(
   }
 }
 
-interface ResolvedDemoAccess {
+export interface ResolvedDemoAccess {
   accessToken: string
   context: TenantContextResponse
   demoUser: DemoUserRecord
@@ -2679,6 +2684,29 @@ export function switchDemoStationContext(authorizationHeader: string | null, ass
     stationContexts: updatedUser.stationContexts ?? [],
     activeStationContext: updatedUser.activeStationContext ?? null,
   }
+}
+
+export function updateDemoUserProfile(access: ResolvedDemoAccess | null, patch: DemoUserProfilePatch) {
+  if (!access) {
+    return null
+  }
+
+  const trimmedName = patch.name?.trim()
+  if (trimmedName) {
+    access.demoUser.name = trimmedName
+    access.demoUser.user.name = trimmedName
+  }
+
+  const trimmedCountry = patch.country?.trim()
+  if (trimmedCountry) {
+    ;(access.demoUser.user as CPOUser & { country?: string }).country = trimmedCountry
+  }
+
+  return buildDemoUserSession(
+    access.demoUser,
+    access.tenantId,
+    access.user.activeStationContext?.assignmentId ?? null,
+  )
 }
 
 export function listDemoTenants(authorizationHeader?: string | null) {

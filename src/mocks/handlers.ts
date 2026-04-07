@@ -50,38 +50,24 @@ import {
   resetDemoAuthSessions,
   resolveDemoAccess,
   stopSessionById,
+  updateDemoUserProfile,
   transitionSwapPack,
-  resolveTenantContext,
   switchDemoTenant,
   switchDemoStationContext,
+  type ResolvedDemoAccess,
 } from './data'
 
-type TenantId = Parameters<typeof getDashboardOverview>[0]
-type ResolvedTenantContext = NonNullable<ReturnType<typeof resolveTenantContext>>
-
-interface RequestAccess {
-  context: ResolvedTenantContext
-  tenantId: TenantId
-  user: AuthenticatedApiUser
-}
+type RequestAccess = ResolvedDemoAccess
 
 type AccessResult =
   | { ok: true; access: RequestAccess }
   | { ok: false; response: Response }
 
 function getRequestAccess(request: Request): RequestAccess | null {
-  const resolved = resolveDemoAccess(
+  return resolveDemoAccess(
     request.headers.get('authorization'),
     request.headers.get('x-tenant-id'),
   )
-
-  return resolved
-    ? {
-      context: resolved.context,
-      tenantId: resolved.tenantId,
-      user: resolved.user,
-    }
-    : null
 }
 
 function unauthorized() {
@@ -297,6 +283,37 @@ export const handlers = [
     }
 
     return HttpResponse.json(auth)
+  }),
+
+  http.patch('/api/v1/auth/me', async ({ request }) => {
+    const access = getRequestAccess(request)
+    if (!access) {
+      return unauthorized()
+    }
+
+    const body = await readJsonBody<{ country?: string; name?: string }>(request)
+    const updatedUser = updateDemoUserProfile(access, body)
+
+    if (!updatedUser) {
+      return unauthorized()
+    }
+
+    return HttpResponse.json(updatedUser)
+  }),
+  http.patch('/api/auth/me', async ({ request }) => {
+    const access = getRequestAccess(request)
+    if (!access) {
+      return unauthorized()
+    }
+
+    const body = await readJsonBody<{ country?: string; name?: string }>(request)
+    const updatedUser = updateDemoUserProfile(access, body)
+
+    if (!updatedUser) {
+      return unauthorized()
+    }
+
+    return HttpResponse.json(updatedUser)
   }),
 
   http.get('/api/v1/users/me', ({ request }) => {
