@@ -4,27 +4,9 @@ import { getTemporaryAccessState, getTemporaryAccessWindowLabel, getUserRoleLabe
 import { useAuthStore } from '@/core/auth/authStore'
 import { useReferenceCities, useReferenceStates } from '@/core/hooks/useGeography'
 import { useTenant } from '@/core/hooks/useTenant'
+import { applySavedSettings, loadSettingsDraft, saveSettingsDraft, type ScreenDensity, type SessionTimeout, type SettingsDraft } from '@/core/settings/settingsPreferences'
 import { useTheme } from '@/core/theme/themeContext'
 import { BellRing, Building2, Globe2, LayoutGrid, Lock, Save, ShieldCheck, SlidersHorizontal, Sparkles, UserCog } from 'lucide-react'
-
-type ScreenDensity = 'Comfortable' | 'Compact'
-type SessionTimeout = '15 minutes' | '30 minutes' | '1 hour'
-
-interface SettingsDraft {
-  currency: string
-  dailyDigest: boolean
-  email: string
-  language: string
-  mfaEnabled: boolean
-  name: string
-  recentAccessAlerts: boolean
-  screenDensity: ScreenDensity
-  sessionTimeout: SessionTimeout
-  tenantCity: string
-  tenantCountryCode: string
-  tenantStateCode: string
-  weeklyOpsReport: boolean
-}
 
 function buildInitialDraft(
   userName: string,
@@ -104,6 +86,7 @@ export function SettingsPage() {
   const userName = user?.name ?? ''
   const userEmail = user?.email ?? ''
   const mfaEnabled = user?.mfaEnabled ?? false
+  const availableCountryCount = availableCountries?.length ?? 0
   const countryOptions = useMemo(
     () => (availableCountries ?? []).slice().sort((left, right) => left.name.localeCompare(right.name)),
     [availableCountries],
@@ -141,7 +124,7 @@ export function SettingsPage() {
 
     return matchedCountry?.code2 ?? countryOptions[0]?.code2 ?? ''
   }, [activeTenant?.region, countryOptions])
-  const [draft, setDraft] = useState<SettingsDraft>(() => buildInitialDraft(
+  const baseDraft = useMemo(() => buildInitialDraft(
     userName,
     userEmail,
     mfaEnabled,
@@ -150,17 +133,17 @@ export function SettingsPage() {
     initialTenantCountryCode,
     '',
     '',
-  ))
-  const [baseline, setBaseline] = useState<SettingsDraft>(() => buildInitialDraft(
-    userName,
-    userEmail,
-    mfaEnabled,
-    initialLanguage,
+  ), [
     initialCurrency,
+    initialLanguage,
     initialTenantCountryCode,
-    '',
-    '',
-  ))
+    mfaEnabled,
+    userEmail,
+    userName,
+  ])
+  const savedDraft = useMemo(() => loadSettingsDraft(user?.id ?? null), [user?.id])
+  const [draft, setDraft] = useState<SettingsDraft>(() => applySavedSettings(baseDraft, savedDraft))
+  const [baseline, setBaseline] = useState<SettingsDraft>(() => applySavedSettings(baseDraft, savedDraft))
   const {
     data: tenantStates = [],
     isLoading: isTenantStatesLoading,
@@ -205,7 +188,7 @@ export function SettingsPage() {
   const hasUnsavedChanges = JSON.stringify(draft) !== JSON.stringify(baseline)
 
   useEffect(() => {
-    if (hasUnsavedChanges || isSaving) {
+    if (hasUnsavedChanges || isSaving || availableCountryCount === 0) {
       return
     }
 
@@ -257,6 +240,7 @@ export function SettingsPage() {
   }, [
     countryOptions,
     currencyOptions,
+    availableCountryCount,
     hasUnsavedChanges,
     initialCurrency,
     initialLanguage,
@@ -274,6 +258,7 @@ export function SettingsPage() {
 
     setIsSaving(true)
     window.setTimeout(() => {
+      saveSettingsDraft(user?.id ?? null, draft)
       setBaseline(draft)
       setLastSavedAt(new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }))
       setIsSaving(false)

@@ -5,6 +5,7 @@ import { SettingsPage } from '@/pages/settings/SettingsPage'
 import { useAuthStore } from '@/core/auth/authStore'
 import { useReferenceCities, useReferenceStates } from '@/core/hooks/useGeography'
 import { useTenant } from '@/core/hooks/useTenant'
+import { clearSettingsDraft, loadSettingsDraft } from '@/core/settings/settingsPreferences'
 import { useTheme } from '@/core/theme/themeContext'
 import { theme } from '@/core/theme/theme'
 
@@ -43,6 +44,7 @@ describe('SettingsPage', () => {
 
   beforeEach(() => {
     vi.useFakeTimers()
+    clearSettingsDraft('usr-1')
 
     mockedUseAuthStore.mockReturnValue({
         user: {
@@ -238,5 +240,30 @@ describe('SettingsPage', () => {
       expect(lastCityCall?.[0]).toBe('KE')
       expect(lastCityCall?.[1]).toBe('NA')
     })
+  })
+
+  it('restores saved language, country, and currency selections after reload', async () => {
+    const { unmount } = render(<SettingsPage />)
+
+    fireEvent.change(screen.getByLabelText('Language'), { target: { value: 'Swahili' } })
+    fireEvent.change(screen.getByLabelText('Currency'), { target: { value: 'UGX' } })
+    fireEvent.change(screen.getByLabelText('Country'), { target: { value: 'UG' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
+
+    act(() => {
+      vi.advanceTimersByTime(900)
+    })
+
+    const storedDraft = loadSettingsDraft('usr-1')
+    expect(storedDraft?.language).toBe('Swahili')
+    expect(storedDraft?.currency).toBe('UGX')
+    expect(storedDraft?.tenantCountryCode).toBe('UG')
+
+    unmount()
+    render(<SettingsPage />)
+
+    expect(screen.getByLabelText('Language')).toHaveValue('Swahili')
+    expect(screen.getByLabelText('Currency')).toHaveValue('UGX')
+    expect(screen.getByLabelText('Country')).toHaveValue('UG')
   })
 })
