@@ -48,6 +48,12 @@ export const OPERATIONS_ROLES = [
   "OPERATOR",
   "TECHNICIAN",
 ] as const satisfies readonly CPORole[];
+export const FLEET_OPS_ROLES = [
+  "SUPER_ADMIN",
+  "CPO_ADMIN",
+  "STATION_MANAGER",
+  "OPERATOR",
+] as const satisfies readonly CPORole[];
 export const ENERGY_ROLES = [
   "SUPER_ADMIN",
   "CPO_ADMIN",
@@ -143,6 +149,8 @@ export const ACCESS_POLICY = {
   chargePointsWrite: ASSET_MANAGER_ROLES,
   swapStationsRead: INFRASTRUCTURE_ROLES,
   sessionsRead: OPERATIONS_ROLES,
+  reservationsRead: OPERATIONS_ROLES,
+  fleetRead: FLEET_OPS_ROLES,
   swapSessionsRead: OPERATIONS_ROLES,
   swapLifecycleWrite: OPERATIONS_ROLES,
   swapDispatchWrite: OPERATIONS_ROLES,
@@ -226,6 +234,8 @@ const ACCESS_PERMISSION_MAP: Record<
   chargePointsWrite: ["charge_points.write"],
   swapStationsRead: ["stations.read", "battery_inventory.read"],
   sessionsRead: ["sessions.read"],
+  reservationsRead: ["sessions.read", "commands.read"],
+  fleetRead: ["tenant.users.read", "sessions.read", "fleet.vehicles.read"],
   swapSessionsRead: ["sessions.read"],
   swapLifecycleWrite: undefined,
   swapDispatchWrite: undefined,
@@ -349,6 +359,8 @@ const FLEET_SCOPE_ALLOWED_POLICIES = new Set<AccessPolicyKey>([
   "tenancyContext",
   "dashboardHome",
   "sessionsRead",
+  "reservationsRead",
+  "fleetRead",
   "swapSessionsRead",
   "alertsRead",
   "settingsRead",

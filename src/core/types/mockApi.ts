@@ -487,6 +487,75 @@ export interface SessionRecord {
   status: 'Active' | 'Completed' | 'Failed'
 }
 
+export interface ReservationRecord {
+  id: string
+  reservationId: number | null
+  customer: string
+  customerRef: string
+  stationName: string
+  chargePointId: string
+  startAt: string
+  endAt: string
+  status: 'Pending' | 'Confirmed' | 'Cancelled' | 'No Show' | 'Expired'
+  commandStatus: string
+  source: string
+}
+
+export interface ReservationsResponse {
+  metrics: Array<{
+    id: 'pending' | 'confirmed' | 'cancelled' | 'exceptions'
+    label: string
+    tone: 'default' | 'ok' | 'warning' | 'danger'
+    value: string
+  }>
+  records: ReservationRecord[]
+  note: string
+}
+
+export interface FleetAccountRecord {
+  id: string
+  name: string
+  status: string
+  currency: string
+  driverGroups: number
+  drivers: number
+}
+
+export interface FleetDriverGroupRecord {
+  id: string
+  accountName: string
+  name: string
+  status: string
+  tariffs: string[]
+  locations: string[]
+  drivers: number
+  monthlySpendLimit: string
+}
+
+export interface FleetDriverRecord {
+  id: string
+  accountName: string
+  groupName: string
+  displayName: string
+  contact: string
+  status: string
+  tokenSummary: string
+  monthlySpendLimit: string
+}
+
+export interface FleetOverviewResponse {
+  metrics: Array<{
+    id: 'accounts' | 'groups' | 'drivers' | 'active-tokens'
+    label: string
+    tone: 'default' | 'ok' | 'warning'
+    value: string
+  }>
+  accounts: FleetAccountRecord[]
+  groups: FleetDriverGroupRecord[]
+  drivers: FleetDriverRecord[]
+  note: string
+}
+
 export interface CreateChargePointRequest {
   firmwareVersion?: string
   manufacturer?: string

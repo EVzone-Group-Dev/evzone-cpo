@@ -20,6 +20,8 @@ const ChargePointDetailPage = lazy(() => import('@/pages/charge-points/ChargePoi
 const SwapStationsPage = lazy(() => import('@/pages/swapping/SwapStationsPage').then(m => ({ default: m.SwapStationsPage })))
 const SwapStationDetailPage = lazy(() => import('@/pages/swapping/SwapStationDetailPage').then(m => ({ default: m.SwapStationDetailPage })))
 const SessionsPage      = lazy(() => import('@/pages/sessions/SessionsPage').then(m => ({ default: m.SessionsPage })))
+const ReservationsPage  = lazy(() => import('@/pages/operations/ReservationsPage').then(m => ({ default: m.ReservationsPage })))
+const FleetPage         = lazy(() => import('@/pages/fleet/FleetPage').then(m => ({ default: m.FleetPage })))
 const SwapSessionsPage = lazy(() => import('@/pages/swapping/SwapSessionsPage').then(m => ({ default: m.SwapSessionsPage })))
 const IncidentsPage     = lazy(() => import('@/pages/incidents/IncidentsPage').then(m => ({ default: m.IncidentsPage })))
 const AlertsPage        = lazy(() => import('@/pages/alerts/AlertsPage').then(m => ({ default: m.AlertsPage })))
@@ -85,6 +87,8 @@ export function AppRoutes() {
 
         {/* Operations */}
         <Route path={PATHS.SESSIONS}   element={<RequireAuth policy="sessionsRead"><SessionsPage /></RequireAuth>} />
+        <Route path={PATHS.RESERVATIONS} element={<RequireAuth policy="reservationsRead"><ReservationsPage /></RequireAuth>} />
+        <Route path={PATHS.FLEET} element={<RequireAuth policy="fleetRead"><FleetPage /></RequireAuth>} />
         <Route path={PATHS.SWAP_SESSIONS} element={<RequireAuth policy="swapSessionsRead"><SwapSessionsPage /></RequireAuth>} />
         <Route path={PATHS.INCIDENTS}  element={<RequireAuth policy="incidentsRead"><IncidentsPage /></RequireAuth>} />
         <Route path={PATHS.ALERTS}     element={<RequireAuth policy="alertsRead"><AlertsPage /></RequireAuth>} />

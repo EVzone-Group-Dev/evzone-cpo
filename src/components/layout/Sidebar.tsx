@@ -46,6 +46,8 @@ const NAV: NavGroup[] = [
     label: 'Operations',
     items: [
       { label: 'Sessions', icon: <Activity size={16} />, path: PATHS.SESSIONS, policy: 'sessionsRead' },
+      { label: 'Reservations', icon: <BookOpen size={16} />, path: PATHS.RESERVATIONS, policy: 'reservationsRead' },
+      { label: 'Fleet', icon: <Users size={16} />, path: PATHS.FLEET, policy: 'fleetRead' },
       { label: 'Swap Sessions', icon: <RefreshCw size={16} />, path: PATHS.SWAP_SESSIONS, policy: 'swapSessionsRead' },
       { label: 'Incidents', icon: <AlertTriangle size={16} />, path: PATHS.INCIDENTS, policy: 'incidentsRead' },
       { label: 'Alerts', icon: <Bell size={16} />, path: PATHS.ALERTS, policy: 'alertsRead' },

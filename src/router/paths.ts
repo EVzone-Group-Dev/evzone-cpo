@@ -21,6 +21,8 @@ export const PATHS = {
 
   // Operations
   SESSIONS: '/sessions',
+  RESERVATIONS: '/reservations',
+  FLEET: '/fleet',
   SWAP_SESSIONS: '/swap-sessions',
   INCIDENTS: '/incidents',
   ALERTS: '/alerts',

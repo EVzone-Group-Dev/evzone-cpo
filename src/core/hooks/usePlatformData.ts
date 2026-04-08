@@ -12,6 +12,7 @@ import type {
   CreateChargePointRequest,
   DashboardOverviewResponse,
   DemoUserHint,
+  FleetOverviewResponse,
   IncidentCommandResponse,
   IntegrationModuleResponse,
   LoadPolicyRecord,
@@ -25,6 +26,7 @@ import type {
   PlatformFeatureFlags,
   ProtocolEngineResponse,
   ReportsResponse,
+  ReservationsResponse,
   RoamingPartnerRecord,
   RoamingSessionsResponse,
   SessionRecord,
@@ -381,6 +383,128 @@ function normalizeSessionRecords(value: unknown, defaultCurrencyCode: string): S
     method: asString(session.authMethod, 'App'),
     connectorType: asString(session.connectorType, 'CCS2'),
   }))
+}
+
+function normalizeReservationStatus(value: unknown): ReservationsResponse['records'][number]['status'] {
+  const normalized = asString(value, 'PENDING').toUpperCase()
+  if (normalized === 'CONFIRMED') return 'Confirmed'
+  if (normalized === 'CANCELLED') return 'Cancelled'
+  if (normalized === 'NO_SHOW') return 'No Show'
+  if (normalized === 'EXPIRED') return 'Expired'
+  return 'Pending'
+}
+
+function normalizeReservations(value: unknown): ReservationsResponse {
+  const records = asArray<Record<string, unknown>>(value).map((booking) => {
+    const station = asRecord(booking.station)
+    const commandStatusRaw = asString(booking.reservationCommandStatus, '')
+
+    return {
+      id: asString(booking.id, 'N/A'),
+      reservationId: Number.isFinite(Number(booking.reservationId))
+        ? Number(booking.reservationId)
+        : null,
+      customer: asString(
+        booking.customerNameSnapshot ?? asRecord(booking.user).name,
+        'Unknown Customer',
+      ),
+      customerRef: asString(booking.customerRefSnapshot, asString(booking.userId, 'N/A')),
+      stationName: asString(station.name, asString(booking.stationId, 'Unknown Station')),
+      chargePointId: asString(booking.chargePointId, 'N/A'),
+      startAt: asString(booking.startTime, 'N/A'),
+      endAt: asString(booking.endTime, 'N/A'),
+      status: normalizeReservationStatus(booking.status),
+      commandStatus: commandStatusRaw || 'Unassigned',
+      source: asString(booking.reservationSource, 'LOCAL'),
+    }
+  })
+
+  const pending = records.filter((record) => record.status === 'Pending').length
+  const confirmed = records.filter((record) => record.status === 'Confirmed').length
+  const cancelled = records.filter((record) => record.status === 'Cancelled').length
+  const exceptions = records.filter(
+    (record) =>
+      record.commandStatus === 'Rejected' ||
+      record.commandStatus === 'Failed' ||
+      record.commandStatus === 'Timeout' ||
+      record.commandStatus === 'DispatchFailed',
+  ).length
+
+  return {
+    metrics: [
+      { id: 'pending', label: 'Pending', value: pending.toString(), tone: 'default' },
+      { id: 'confirmed', label: 'Confirmed', value: confirmed.toString(), tone: 'ok' },
+      { id: 'cancelled', label: 'Cancelled', value: cancelled.toString(), tone: 'warning' },
+      { id: 'exceptions', label: 'Exceptions', value: exceptions.toString(), tone: exceptions > 0 ? 'danger' : 'default' },
+    ],
+    records,
+    note: 'Reservation lifecycle is synchronized with command dispatch and callback states.',
+  }
+}
+
+function normalizeFleetOverview(value: unknown, currencyCode: string): FleetOverviewResponse {
+  const record = asRecord(value)
+  const stats = asRecord(record.stats)
+  const accountsRaw = asArray<Record<string, unknown>>(record.accounts)
+  const groupsRaw = asArray<Record<string, unknown>>(record.groups)
+  const driversRaw = asArray<Record<string, unknown>>(record.drivers)
+
+  const accounts = accountsRaw.map((account) => {
+    const count = asRecord(account._count)
+    return {
+      id: asString(account.id, 'N/A'),
+      name: asString(account.name, 'Unnamed Account'),
+      status: asString(account.status, 'ACTIVE'),
+      currency: normalizeCurrencyCode(account.currency, currencyCode),
+      driverGroups: asNumber(count.driverGroups, 0),
+      drivers: asNumber(count.drivers, 0),
+    }
+  })
+
+  const groups = groupsRaw.map((group) => {
+    const count = asRecord(group._count)
+    const fleetAccount = asRecord(group.fleetAccount)
+    return {
+      id: asString(group.id, 'N/A'),
+      accountName: asString(fleetAccount.name, 'Unknown Account'),
+      name: asString(group.name, 'Unnamed Group'),
+      status: asString(group.status, 'ACTIVE'),
+      tariffs: asArray<string>(group.tariffIds).map((item) => asString(item)).filter(Boolean),
+      locations: asArray<string>(group.locationIds).map((item) => asString(item)).filter(Boolean),
+      drivers: asNumber(count.drivers, 0),
+      monthlySpendLimit: formatAmount(group.monthlySpendLimit, normalizeCurrencyCode(fleetAccount.currency, currencyCode)),
+    }
+  })
+
+  const drivers = driversRaw.map((driver) => {
+    const fleetAccount = asRecord(driver.fleetAccount)
+    const group = asRecord(driver.group)
+    const tokens = asArray<Record<string, unknown>>(driver.tokens)
+    const activeTokenCount = tokens.filter((token) => asString(token.status).toUpperCase() === 'ACTIVE').length
+    return {
+      id: asString(driver.id, 'N/A'),
+      accountName: asString(fleetAccount.name, 'Unknown Account'),
+      groupName: asString(group.name, 'Unassigned'),
+      displayName: asString(driver.displayName, 'Unknown Driver'),
+      contact: asString(driver.email, asString(driver.phone, 'N/A')),
+      status: asString(driver.status, 'ACTIVE'),
+      tokenSummary: `${activeTokenCount}/${tokens.length} active`,
+      monthlySpendLimit: formatAmount(driver.monthlySpendLimit, normalizeCurrencyCode(fleetAccount.currency, currencyCode)),
+    }
+  })
+
+  return {
+    metrics: [
+      { id: 'accounts', label: 'Accounts', value: asNumber(stats.accountCount, accounts.length).toString(), tone: 'default' },
+      { id: 'groups', label: 'Driver Groups', value: asNumber(stats.driverGroupCount, groups.length).toString(), tone: 'default' },
+      { id: 'drivers', label: 'Drivers', value: asNumber(stats.driverCount, drivers.length).toString(), tone: 'ok' },
+      { id: 'active-tokens', label: 'Active Tokens', value: asNumber(stats.activeTokenCount, 0).toString(), tone: 'warning' },
+    ],
+    accounts,
+    groups,
+    drivers,
+    note: 'Fleet policies can be linked to tariff calendars and location scopes per driver group.',
+  }
 }
 
 function normalizeIncidentCommand(value: unknown): IncidentCommandResponse {
@@ -934,6 +1058,90 @@ export function useSessions() {
     queryKey: ['sessions', scopeKey],
     queryFn: async () => normalizeSessionRecords(await fetchJson<unknown>('/api/v1/sessions/history/all'), currencyCode),
     enabled,
+  })
+}
+
+export function useReservations() {
+  const { enabled, scopeKey } = useTenantQueryContext()
+  const { data: flags } = usePlatformFeatureFlags()
+  const fleetEnabled = flags?.fleet_v1 ?? true
+
+  return useQuery<ReservationsResponse>({
+    queryKey: ['operations', 'reservations', scopeKey, fleetEnabled],
+    queryFn: async () => {
+      if (!fleetEnabled) {
+        return {
+          metrics: [
+            { id: 'pending', label: 'Pending', value: '0', tone: 'default' },
+            { id: 'confirmed', label: 'Confirmed', value: '0', tone: 'ok' },
+            { id: 'cancelled', label: 'Cancelled', value: '0', tone: 'warning' },
+            { id: 'exceptions', label: 'Exceptions', value: '0', tone: 'default' },
+          ],
+          records: [],
+          note: 'Fleet phase flag is disabled for this tenant.',
+        }
+      }
+      return normalizeReservations(await fetchJson<unknown>('/api/v1/bookings'))
+    },
+    enabled,
+    refetchInterval: 15_000,
+  })
+}
+
+export function useFleetOverview() {
+  const { currencyCode, enabled, scopeKey } = useTenantQueryContext()
+  const { data: flags } = usePlatformFeatureFlags()
+  const fleetEnabled = flags?.fleet_v1 ?? true
+
+  return useQuery<FleetOverviewResponse>({
+    queryKey: ['operations', 'fleet', scopeKey, fleetEnabled],
+    queryFn: async () => {
+      if (!fleetEnabled) {
+        return {
+          metrics: [
+            { id: 'accounts', label: 'Accounts', value: '0', tone: 'default' },
+            { id: 'groups', label: 'Driver Groups', value: '0', tone: 'default' },
+            { id: 'drivers', label: 'Drivers', value: '0', tone: 'ok' },
+            { id: 'active-tokens', label: 'Active Tokens', value: '0', tone: 'warning' },
+          ],
+          accounts: [],
+          groups: [],
+          drivers: [],
+          note: 'Fleet phase flag is disabled for this tenant.',
+        }
+      }
+      return normalizeFleetOverview(await fetchJson<unknown>('/api/v1/fleet/overview'), currencyCode)
+    },
+    enabled,
+    refetchInterval: 15_000,
+  })
+}
+
+export function useReservationAction() {
+  const { scopeKey } = useTenantQueryContext()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (input: {
+      reservationId: string
+      action: 'checkin' | 'cancel' | 'no-show' | 'expire' | 'dispatch-reserve' | 'dispatch-cancel'
+      reason?: string
+    }) =>
+      fetchJson<unknown>(
+        `/api/v1/bookings/${input.reservationId}/${input.action}`,
+        {
+          method:
+            input.action === 'cancel'
+              ? 'PATCH'
+              : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(input.reason ? { reason: input.reason } : {}),
+        },
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['operations', 'reservations', scopeKey] })
+      queryClient.invalidateQueries({ queryKey: ['operations', 'fleet', scopeKey] })
+    },
   })
 }
 
