@@ -72,6 +72,28 @@ export interface TenantContextResponse {
   dataScopeLabel: string
 }
 
+export type PlatformFeatureFlagKey =
+  | 'commerce_v1'
+  | 'fleet_v1'
+  | 'pnc_v1'
+  | 'enterprise_sso_v1'
+  | string
+
+export interface PlatformFeatureFlagRecord {
+  id?: string
+  key: PlatformFeatureFlagKey
+  isEnabled: boolean
+  description?: string | null
+}
+
+export interface PlatformFeatureFlags {
+  commerce_v1: boolean
+  fleet_v1: boolean
+  pnc_v1: boolean
+  enterprise_sso_v1: boolean
+  [key: string]: boolean
+}
+
 export interface DashboardKpi {
   id: string
   label: string

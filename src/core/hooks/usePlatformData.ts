@@ -21,6 +21,8 @@ import type {
   RoamingPartnerObservabilityDetail,
   RoamingPartnerObservabilityResponse,
   PayoutRecord,
+  PlatformFeatureFlagRecord,
+  PlatformFeatureFlags,
   ProtocolEngineResponse,
   ReportsResponse,
   RoamingPartnerRecord,
@@ -89,6 +91,26 @@ function normalizeCurrencyCode(value: unknown, fallback = 'USD'): string {
 
 function formatAmount(value: unknown, currencyCode: string): string {
   return `${currencyCode} ${asNumber(value, 0).toFixed(0)}`
+}
+
+const DEFAULT_PLATFORM_FLAGS: PlatformFeatureFlags = {
+  commerce_v1: false,
+  fleet_v1: false,
+  pnc_v1: false,
+  enterprise_sso_v1: false,
+}
+
+function normalizeFeatureFlags(value: unknown): PlatformFeatureFlags {
+  const records = asArray<PlatformFeatureFlagRecord>(value)
+  const flags: PlatformFeatureFlags = { ...DEFAULT_PLATFORM_FLAGS }
+
+  for (const record of records) {
+    const key = asString(record.key, '')
+    if (!key) continue
+    flags[key] = Boolean(record.isEnabled)
+  }
+
+  return flags
 }
 
 const DEFAULT_REMOTE_COMMANDS: ChargePointDetail['remoteCommands'] = [
@@ -464,31 +486,52 @@ function normalizeAuditLogs(value: unknown): AuditLogRecord[] {
 }
 
 function normalizeBilling(value: unknown, defaultCurrencyCode: string): BillingResponse {
-  const record = asRecord(value)
-  const invoices = Array.isArray(record.invoices)
-    ? asArray<BillingResponse['invoices'][number]>(record.invoices)
-    : asArray<Record<string, unknown>>(value).map((invoice) => ({
+  const rows = asArray<Record<string, unknown>>(value)
+  const invoices = rows.map((invoice) => {
+    const normalizedStatus = asString(invoice.status, 'ISSUED').toUpperCase()
+    const status: BillingResponse['invoices'][number]['status'] =
+      normalizedStatus === 'PAID'
+        ? 'Paid'
+        : normalizedStatus === 'OVERDUE'
+          ? 'Overdue'
+          : normalizedStatus === 'DRAFT'
+            ? 'Draft'
+            : 'Issued'
+
+    return {
       id: asString(invoice.id, 'N/A'),
       customer: asString(invoice.customerName ?? invoice.customer, 'N/A'),
-      scope: asString(invoice.scope, 'General'),
+      scope: asString(invoice.scope ?? invoice.settlementStatus, 'General'),
       amount: formatAmount(invoice.amount, normalizeCurrencyCode(invoice.currency, defaultCurrencyCode)),
-      dueDate: asString(invoice.dueDate ?? invoice.createdAt, 'N/A'),
-      status: 'Issued' as const,
-    }))
+      dueDate: asString(invoice.dueDate ?? invoice.issuedAt ?? invoice.createdAt, 'N/A'),
+      status,
+    }
+  })
+
+  const totalAmount = invoices.reduce((sum, invoice) => {
+    const parsed = Number((invoice.amount.split(' ').at(-1) || '0').replace(/,/g, ''))
+    return sum + (Number.isFinite(parsed) ? parsed : 0)
+  }, 0)
+  const issuedCount = invoices.filter((invoice) => invoice.status === 'Issued').length
+  const paidCount = invoices.filter((invoice) => invoice.status === 'Paid').length
+  const overdueCount = invoices.filter((invoice) => invoice.status === 'Overdue').length
+  const collectionRate = invoices.length > 0 ? Math.round((paidCount / invoices.length) * 100) : 0
 
   return {
-    metrics: Array.isArray(record.metrics)
-      ? asArray<BillingResponse['metrics'][number]>(record.metrics)
-      : [
-        { id: 'revenue', label: 'Revenue', value: 'N/A', tone: 'default' },
-        { id: 'collection-rate', label: 'Collection Rate', value: 'N/A', tone: 'ok' },
-        { id: 'outstanding', label: 'Outstanding', value: 'N/A', tone: 'warning' },
-        { id: 'tax', label: 'Tax', value: 'N/A', tone: 'default' },
-      ],
+    metrics: [
+      { id: 'revenue', label: 'Revenue', value: `${defaultCurrencyCode} ${Math.round(totalAmount).toLocaleString()}`, tone: 'default' },
+      { id: 'collection-rate', label: 'Collection Rate', value: `${collectionRate}%`, tone: 'ok' },
+      { id: 'outstanding', label: 'Outstanding', value: `${issuedCount + overdueCount}`, tone: overdueCount > 0 ? 'warning' : 'default' },
+      { id: 'tax', label: 'Tax', value: `${defaultCurrencyCode} 0`, tone: 'default' },
+    ],
     invoices,
-    aging: Array.isArray(record.aging) ? asArray<BillingResponse['aging'][number]>(record.aging) : [],
-    note: asString(record.note, 'Billing data sourced from backend invoice feed.'),
-    totalRevenueThisMonth: asString(record.totalRevenueThisMonth, 'N/A'),
+    aging: [
+      { label: 'Current', value: `${paidCount}` },
+      { label: 'Issued', value: `${issuedCount}` },
+      { label: 'Overdue', value: `${overdueCount}` },
+    ],
+    note: 'Billing data sourced from live backend invoices.',
+    totalRevenueThisMonth: `${defaultCurrencyCode} ${Math.round(totalAmount).toLocaleString()}`,
   }
 }
 
@@ -499,35 +542,46 @@ function normalizePayouts(value: unknown, defaultCurrencyCode: string): PayoutRe
     sessions: asNumber(payout.sessions, 0),
     amount: formatAmount(payout.amount, normalizeCurrencyCode(payout.currency, defaultCurrencyCode)),
     fee: formatAmount(payout.fee, normalizeCurrencyCode(payout.currency, defaultCurrencyCode)),
-    net: formatAmount(payout.netAmount ?? payout.amount, normalizeCurrencyCode(payout.currency, defaultCurrencyCode)),
+    net: formatAmount(payout.netAmount ?? payout.net ?? payout.amount, normalizeCurrencyCode(payout.currency, defaultCurrencyCode)),
     status: asString(payout.status).toLowerCase() === 'completed' ? 'Completed' : 'Processing',
   }))
 }
 
 function normalizeSettlement(value: unknown, defaultCurrencyCode: string): SettlementResponse {
-  const record = asRecord(value)
-  const records = Array.isArray(record.records)
-    ? asArray<SettlementResponse['records'][number]>(record.records)
-    : asArray<Record<string, unknown>>(value).map((entry) => ({
+  const rows = asArray<Record<string, unknown>>(value)
+  const records = rows.map((entry) => {
+    const normalizedStatus = asString(entry.status, 'reconciling').toLowerCase()
+    const status: SettlementResponse['records'][number]['status'] =
+      normalizedStatus === 'completed' || normalizedStatus === 'settled'
+        ? 'Settled'
+        : normalizedStatus === 'ready'
+          ? 'Ready'
+          : 'Reconciling'
+
+    return {
       id: asString(entry.id, 'N/A'),
-      partner: asString(entry.org ?? entry.region, 'N/A'),
-      period: asString(entry.startedAt, 'N/A'),
+      partner: asString(entry.org ?? entry.partner ?? entry.region, 'N/A'),
+      period: asString(entry.startedAt ?? entry.period, 'N/A'),
       netAmount: formatAmount(entry.amount, normalizeCurrencyCode(entry.currency, defaultCurrencyCode)),
-      status: (asString(entry.status).toLowerCase() === 'completed' ? 'Settled' : 'Reconciling') as SettlementResponse['records'][number]['status'],
-    }))
+      status,
+    }
+  })
+
+  const readyCount = records.filter((record) => record.status === 'Ready').length
+  const reconcilingCount = records.filter((record) => record.status === 'Reconciling').length
+  const settledCount = records.filter((record) => record.status === 'Settled').length
+  const exceptionCount = rows.filter((entry) => asString(entry.status).toLowerCase() === 'disputed').length
 
   return {
-    metrics: Array.isArray(record.metrics)
-      ? asArray<SettlementResponse['metrics'][number]>(record.metrics)
-      : [
-        { id: 'ready', label: 'Ready', value: records.length.toString(), tone: 'default' },
-        { id: 'reconciling', label: 'Reconciling', value: '0', tone: 'warning' },
-        { id: 'settled', label: 'Settled', value: '0', tone: 'ok' },
-        { id: 'exceptions', label: 'Exceptions', value: '0', tone: 'danger' },
-      ],
+    metrics: [
+      { id: 'ready', label: 'Ready', value: readyCount.toString(), tone: 'default' },
+      { id: 'reconciling', label: 'Reconciling', value: reconcilingCount.toString(), tone: 'warning' },
+      { id: 'settled', label: 'Settled', value: settledCount.toString(), tone: 'ok' },
+      { id: 'exceptions', label: 'Exceptions', value: exceptionCount.toString(), tone: exceptionCount > 0 ? 'danger' : 'default' },
+    ],
     records,
-    exceptions: Array.isArray(record.exceptions) ? asArray<SettlementResponse['exceptions'][number]>(record.exceptions) : [],
-    note: asString(record.note, 'Settlement records sourced from backend settlements feed.'),
+    exceptions: [],
+    note: 'Settlement records sourced from live backend settlement feed.',
   }
 }
 
@@ -996,32 +1050,86 @@ export function useOCPICommands() {
   })
 }
 
+export function usePlatformFeatureFlags() {
+  const { enabled, scopeKey } = useTenantQueryContext()
+
+  return useQuery<PlatformFeatureFlags>({
+    queryKey: ['platform', 'feature-flags', scopeKey],
+    queryFn: async () =>
+      normalizeFeatureFlags(await fetchJson<unknown>('/api/v1/feature-flags').catch(() => [])),
+    enabled,
+  })
+}
+
 export function useBilling() {
   const { currencyCode, enabled, scopeKey } = useTenantQueryContext()
+  const { data: flags } = usePlatformFeatureFlags()
+  const commerceEnabled = flags?.commerce_v1 ?? true
 
   return useQuery<BillingResponse>({
-    queryKey: ['finance', 'billing', scopeKey],
-    queryFn: async () => normalizeBilling(await fetchJson<unknown>('/api/v1/billing/invoices'), currencyCode),
+    queryKey: ['finance', 'billing', scopeKey, commerceEnabled],
+    queryFn: async () => {
+      if (!commerceEnabled) {
+        return {
+          metrics: [
+            { id: 'revenue', label: 'Revenue', value: 'N/A', tone: 'default' },
+            { id: 'collection-rate', label: 'Collection Rate', value: 'N/A', tone: 'ok' },
+            { id: 'outstanding', label: 'Outstanding', value: '0', tone: 'default' },
+            { id: 'tax', label: 'Tax', value: 'N/A', tone: 'default' },
+          ],
+          invoices: [],
+          aging: [],
+          note: 'Commerce phase flag is disabled for this tenant.',
+          totalRevenueThisMonth: 'N/A',
+        }
+      }
+
+      return normalizeBilling(await fetchJson<unknown>('/api/v1/billing/invoices'), currencyCode)
+    },
     enabled,
   })
 }
 
 export function usePayouts() {
   const { currencyCode, enabled, scopeKey } = useTenantQueryContext()
+  const { data: flags } = usePlatformFeatureFlags()
+  const commerceEnabled = flags?.commerce_v1 ?? true
 
   return useQuery<PayoutRecord[]>({
-    queryKey: ['finance', 'payouts', scopeKey],
-    queryFn: async () => normalizePayouts(await fetchJson<unknown>('/api/v1/finance/payments'), currencyCode),
+    queryKey: ['finance', 'payouts', scopeKey, commerceEnabled],
+    queryFn: async () => {
+      if (!commerceEnabled) {
+        return []
+      }
+      return normalizePayouts(await fetchJson<unknown>('/api/v1/finance/payments'), currencyCode)
+    },
     enabled,
   })
 }
 
 export function useSettlement() {
   const { currencyCode, enabled, scopeKey } = useTenantQueryContext()
+  const { data: flags } = usePlatformFeatureFlags()
+  const commerceEnabled = flags?.commerce_v1 ?? true
 
   return useQuery<SettlementResponse>({
-    queryKey: ['finance', 'settlement', scopeKey],
-    queryFn: async () => normalizeSettlement(await fetchJson<unknown>('/api/v1/settlements'), currencyCode),
+    queryKey: ['finance', 'settlement', scopeKey, commerceEnabled],
+    queryFn: async () => {
+      if (!commerceEnabled) {
+        return {
+          metrics: [
+            { id: 'ready', label: 'Ready', value: '0', tone: 'default' },
+            { id: 'reconciling', label: 'Reconciling', value: '0', tone: 'warning' },
+            { id: 'settled', label: 'Settled', value: '0', tone: 'ok' },
+            { id: 'exceptions', label: 'Exceptions', value: '0', tone: 'default' },
+          ],
+          records: [],
+          exceptions: [],
+          note: 'Commerce phase flag is disabled for this tenant.',
+        }
+      }
+      return normalizeSettlement(await fetchJson<unknown>('/api/v1/settlements'), currencyCode)
+    },
     enabled,
   })
 }
