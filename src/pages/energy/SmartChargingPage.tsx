@@ -22,6 +22,15 @@ import {
   useSimulateEnergyMeterLoss,
   useUpdateEnergyGroup,
 } from "@/core/hooks/useEnergyManagement";
+import {
+  useApproveEnergyOptimizationPlan,
+  useApproveEnergySchedule,
+  useCreateEnergyOptimizationPlan,
+  useCreateEnergySchedule,
+  useEnergyOptimizationPlans,
+  useEnergyPlanRuns,
+  useEnergySchedules,
+} from "@/core/hooks/useEnergyPlanner";
 import type {
   EnergyAllocationMethod,
   EnergyControlMode,
@@ -146,6 +155,11 @@ function formatAge(value: number | null | undefined) {
     : value < 60
       ? `${value}s`
       : `${Math.round(value / 60)}m`;
+}
+function asDataRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
 }
 function toDatetimeLocal(date: Date) {
   return new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
@@ -1077,6 +1091,41 @@ export function SmartChargingPage() {
   const clearOverrideMutation = useClearEnergyOverride();
   const alertMutation = useAcknowledgeEnergyAlert();
   const meterLossMutation = useSimulateEnergyMeterLoss();
+  const plannerEnabled = mode === "edit" && Boolean(selectedGroup);
+  const optimizationPlansQuery = useEnergyOptimizationPlans(
+    plannerEnabled
+      ? {
+          stationId: selectedGroup?.stationId,
+          groupId: selectedGroup?.id,
+        }
+      : undefined,
+    { enabled: plannerEnabled },
+  );
+  const schedulesQuery = useEnergySchedules(
+    plannerEnabled
+      ? {
+          stationId: selectedGroup?.stationId,
+          groupId: selectedGroup?.id,
+        }
+      : undefined,
+    { enabled: plannerEnabled },
+  );
+  const planRunsQuery = useEnergyPlanRuns(
+    plannerEnabled
+      ? {
+          stationId: selectedGroup?.stationId,
+          groupId: selectedGroup?.id,
+        }
+      : undefined,
+    { enabled: plannerEnabled },
+  );
+  const createOptimizationPlanMutation = useCreateEnergyOptimizationPlan();
+  const approveOptimizationPlanMutation = useApproveEnergyOptimizationPlan();
+  const createScheduleMutation = useCreateEnergySchedule();
+  const approveScheduleMutation = useApproveEnergySchedule();
+  const optimizationPlans = optimizationPlansQuery.data ?? [];
+  const scheduleItems = schedulesQuery.data ?? [];
+  const planRuns = planRunsQuery.data ?? [];
 
   const saveGroup = async () => {
     if (!draft.name.trim() || (mode === "create" && !draft.stationId.trim())) {
@@ -1278,6 +1327,56 @@ export function SmartChargingPage() {
       groups.find((group) => group.id !== resolvedSelectedGroupId)?.id ?? null,
     );
     setStatusMessage("Group disabled via delete action.");
+  };
+
+  const generateTariffPlan = async () => {
+    if (!selectedGroup) return;
+    const result = await createOptimizationPlanMutation.mutateAsync({
+      stationId: selectedGroup.stationId,
+      groupId: selectedGroup.id,
+      windowStart: new Date().toISOString(),
+      windowEnd: new Date(Date.now() + 8 * 3600 * 1000).toISOString(),
+      targetEnergyKwh: 60,
+      dryRun: true,
+    });
+    setStatusMessage(
+      result.state === "FALLBACK_DLM"
+        ? `Planner fallback: ${result.fallbackReason ?? "DLM only"}`
+        : "Tariff-aware plan generated in dry-run mode.",
+    );
+  };
+
+  const approveTariffPlan = async (planId: string) => {
+    const approved = await approveOptimizationPlanMutation.mutateAsync(planId);
+    setStatusMessage(
+      approved.state === "APPROVED"
+        ? "Optimization plan approved."
+        : `Plan state updated to ${approved.state}.`,
+    );
+  };
+
+  const stageSchedule = async (planId: string) => {
+    const staged = await createScheduleMutation.mutateAsync({
+      planId,
+      notes: "Staged from EMS SmartChargingPage",
+    });
+    setStatusMessage(
+      staged.fallbackToDlm
+        ? "Schedule staged in fallback mode (DLM only)."
+        : "Schedule staged and awaiting approval.",
+    );
+  };
+
+  const approveStagedSchedule = async (scheduleId: string) => {
+    const approved = await approveScheduleMutation.mutateAsync({
+      id: scheduleId,
+      input: { notes: "Approved from EMS SmartChargingPage" },
+    });
+    setStatusMessage(
+      approved.status === "ACTIVE"
+        ? "Schedule approved and activated."
+        : "Schedule approved in fallback mode.",
+    );
   };
 
   const membershipCount =
@@ -1576,6 +1675,199 @@ export function SmartChargingPage() {
               ) : (
                 <div className="text-sm text-[var(--text-subtle)]">
                   No EMS group is selected yet.
+                </div>
+              )}
+            </Panel>
+
+            <Panel
+              title="Tariff-aware schedule"
+              subtitle="Phase 2 planner output staged above the EMS/DLM safety loop."
+              action={<Clock3 size={16} className="text-[var(--text-subtle)]" />}
+            >
+              {!selectedGroup ? (
+                <div className="text-sm text-[var(--text-subtle)]">
+                  Select an EMS group to generate optimization plans.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      className="btn secondary sm"
+                      type="button"
+                      onClick={generateTariffPlan}
+                      disabled={!canWrite || createOptimizationPlanMutation.isPending}
+                    >
+                      <TestTubes size={14} /> Generate dry-run plan
+                    </button>
+                    <span className="text-xs text-[var(--text-subtle)]">
+                      {optimizationPlansQuery.isFetching
+                        ? "Refreshing planner output..."
+                        : `${optimizationPlans.length} plan(s), ${scheduleItems.length} staged schedule(s)`}
+                    </span>
+                  </div>
+
+                  <div className="space-y-3">
+                    {optimizationPlans.slice(0, 3).map((plan) => {
+                      const summary = asDataRecord(plan.summary);
+                      const projectedEnergy =
+                        typeof summary.projectedEnergyKwh === "number"
+                          ? summary.projectedEnergyKwh
+                          : null;
+                      const projectedCost =
+                        typeof summary.projectedCost === "number"
+                          ? summary.projectedCost
+                          : null;
+
+                      return (
+                        <div
+                          key={plan.id}
+                          className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-4"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="text-sm font-semibold text-[var(--text)]">
+                              Plan {plan.id.slice(0, 8)}
+                            </div>
+                            <span
+                              className={`pill ${plan.state === "APPROVED" || plan.state === "SCHEDULED" ? "active" : plan.state === "FALLBACK_DLM" ? "offline" : "pending"}`}
+                            >
+                              {plan.state}
+                            </span>
+                          </div>
+                          <div className="mt-2 text-xs text-[var(--text-subtle)]">
+                            {new Date(plan.windowStart).toLocaleString()} -{" "}
+                            {new Date(plan.windowEnd).toLocaleString()}
+                          </div>
+                          <div className="mt-2 flex flex-wrap gap-3 text-xs text-[var(--text-subtle)]">
+                            <span>
+                              Energy:{" "}
+                              {projectedEnergy === null
+                                ? "N/A"
+                                : `${projectedEnergy.toFixed(1)} kWh`}
+                            </span>
+                            <span>
+                              Cost:{" "}
+                              {projectedCost === null
+                                ? "N/A"
+                                : `${projectedCost.toFixed(2)}`}
+                            </span>
+                            {plan.fallbackReason && (
+                              <span>Fallback: {plan.fallbackReason}</span>
+                            )}
+                          </div>
+                          {canWrite && (
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {plan.state !== "FALLBACK_DLM" &&
+                                plan.state !== "APPROVED" &&
+                                plan.state !== "SCHEDULED" && (
+                                  <button
+                                    type="button"
+                                    className="btn secondary sm"
+                                    onClick={() => approveTariffPlan(plan.id)}
+                                    disabled={approveOptimizationPlanMutation.isPending}
+                                  >
+                                    <CheckCircle2 size={14} /> Approve plan
+                                  </button>
+                                )}
+                              {plan.state !== "FALLBACK_DLM" && (
+                                <button
+                                  type="button"
+                                  className="btn ghost sm"
+                                  onClick={() => stageSchedule(plan.id)}
+                                  disabled={createScheduleMutation.isPending}
+                                >
+                                  <Plus size={14} /> Stage schedule
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {!optimizationPlans.length && (
+                      <div className="text-sm text-[var(--text-subtle)]">
+                        No optimization plans yet. Generate a dry-run plan to preview tariff-aware scheduling.
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-4">
+                      <div className="text-sm font-semibold text-[var(--text)]">
+                        Staged schedules
+                      </div>
+                      <div className="mt-2 space-y-2">
+                        {scheduleItems.slice(0, 4).map((schedule) => (
+                          <div
+                            key={schedule.id}
+                            className="rounded-xl border border-[var(--border)] bg-[var(--bg-muted)] px-3 py-2"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-xs font-semibold text-[var(--text)]">
+                                {schedule.id.slice(0, 8)}
+                              </span>
+                              <span
+                                className={`pill ${schedule.status === "ACTIVE" ? "active" : schedule.status === "FALLBACK_DLM" ? "offline" : "pending"}`}
+                              >
+                                {schedule.status}
+                              </span>
+                            </div>
+                            <div className="mt-1 text-[11px] text-[var(--text-subtle)]">
+                              {new Date(schedule.startsAt).toLocaleString()} -{" "}
+                              {new Date(schedule.endsAt).toLocaleString()}
+                            </div>
+                            {canWrite && schedule.status === "PENDING_APPROVAL" && (
+                              <button
+                                type="button"
+                                className="btn secondary sm mt-2"
+                                onClick={() => approveStagedSchedule(schedule.id)}
+                                disabled={approveScheduleMutation.isPending}
+                              >
+                                <Power size={14} /> Approve schedule
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                        {!scheduleItems.length && (
+                          <div className="text-xs text-[var(--text-subtle)]">
+                            No schedules staged from planner output.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-4">
+                      <div className="text-sm font-semibold text-[var(--text)]">
+                        Plan run history
+                      </div>
+                      <div className="mt-2 space-y-2">
+                        {planRuns.slice(0, 4).map((run) => (
+                          <div
+                            key={run.id}
+                            className="rounded-xl border border-[var(--border)] bg-[var(--bg-muted)] px-3 py-2"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-xs font-semibold text-[var(--text)]">
+                                {run.trigger}
+                              </span>
+                              <span
+                                className={`pill ${run.state === "APPLIED" ? "active" : run.state === "FALLBACK_DLM" || run.state === "FAILED" ? "offline" : "pending"}`}
+                              >
+                                {run.state}
+                              </span>
+                            </div>
+                            <div className="mt-1 text-[11px] text-[var(--text-subtle)]">
+                              {new Date(run.startedAt).toLocaleString()}
+                            </div>
+                          </div>
+                        ))}
+                        {!planRuns.length && (
+                          <div className="text-xs text-[var(--text-subtle)]">
+                            No plan runs recorded yet.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
             </Panel>
