@@ -1,53 +1,117 @@
-import type { AccessProfile, CPORole, CPOUser, CanonicalAccessRole } from '@/core/types/domain'
-import { PATHS } from '@/router/paths'
+import type {
+  AccessProfile,
+  CPORole,
+  CPOUser,
+  CanonicalAccessRole,
+} from "@/core/types/domain";
+import { PATHS } from "@/router/paths";
 
 export type DashboardVariant =
-  | 'super-admin'
-  | 'cpo-admin'
-  | 'station-manager'
-  | 'finance'
-  | 'operator'
-  | 'site-host'
-  | 'technician'
+  | "super-admin"
+  | "cpo-admin"
+  | "station-manager"
+  | "finance"
+  | "operator"
+  | "site-host"
+  | "technician";
 
 export const ACTIVE_ROLES = [
-  'SUPER_ADMIN',
-  'CPO_ADMIN',
-  'STATION_MANAGER',
-  'FINANCE',
-  'OPERATOR',
-  'SITE_HOST',
-  'TECHNICIAN',
-] as const satisfies readonly CPORole[]
+  "SUPER_ADMIN",
+  "CPO_ADMIN",
+  "STATION_MANAGER",
+  "FINANCE",
+  "OPERATOR",
+  "SITE_HOST",
+  "TECHNICIAN",
+] as const satisfies readonly CPORole[];
 
-export const ADMIN_ROLES = ['SUPER_ADMIN', 'CPO_ADMIN'] as const satisfies readonly CPORole[]
-export const ASSET_MANAGER_ROLES = ['SUPER_ADMIN', 'CPO_ADMIN', 'STATION_MANAGER'] as const satisfies readonly CPORole[]
-export const INFRASTRUCTURE_ROLES = ['SUPER_ADMIN', 'CPO_ADMIN', 'STATION_MANAGER', 'OPERATOR', 'TECHNICIAN'] as const satisfies readonly CPORole[]
-export const OPERATIONS_ROLES = ['SUPER_ADMIN', 'CPO_ADMIN', 'STATION_MANAGER', 'OPERATOR', 'TECHNICIAN'] as const satisfies readonly CPORole[]
-export const ENERGY_ROLES = ['SUPER_ADMIN', 'CPO_ADMIN', 'STATION_MANAGER', 'OPERATOR', 'TECHNICIAN'] as const satisfies readonly CPORole[]
-export const ROAMING_ROLES = ['SUPER_ADMIN', 'CPO_ADMIN', 'FINANCE', 'OPERATOR'] as const satisfies readonly CPORole[]
-export const FINANCE_ROLES = ['SUPER_ADMIN', 'CPO_ADMIN', 'FINANCE'] as const satisfies readonly CPORole[]
-export const REPORTING_ROLES = ['SUPER_ADMIN', 'CPO_ADMIN', 'FINANCE', 'STATION_MANAGER'] as const satisfies readonly CPORole[]
-export const TEAM_ROLES = ['SUPER_ADMIN', 'CPO_ADMIN'] as const satisfies readonly CPORole[]
-export const PLATFORM_ADMIN_ROLES = ['SUPER_ADMIN', 'CPO_ADMIN'] as const satisfies readonly CPORole[]
-export const SETTINGS_ROLES = ACTIVE_ROLES
-export const SUPER_ADMIN_ROLES = ['SUPER_ADMIN'] as const satisfies readonly CPORole[]
-export const CPO_ADMIN_ROLES = ['CPO_ADMIN'] as const satisfies readonly CPORole[]
-export const STATION_MANAGER_ROLES = ['STATION_MANAGER'] as const satisfies readonly CPORole[]
-export const FINANCE_DASHBOARD_ROLES = ['FINANCE'] as const satisfies readonly CPORole[]
-export const OPERATOR_ROLES = ['OPERATOR'] as const satisfies readonly CPORole[]
-export const SITE_HOST_ROLES = ['SITE_HOST'] as const satisfies readonly CPORole[]
-export const TECHNICIAN_ROLES = ['TECHNICIAN'] as const satisfies readonly CPORole[]
+export const ADMIN_ROLES = [
+  "SUPER_ADMIN",
+  "CPO_ADMIN",
+] as const satisfies readonly CPORole[];
+export const ASSET_MANAGER_ROLES = [
+  "SUPER_ADMIN",
+  "CPO_ADMIN",
+  "STATION_MANAGER",
+] as const satisfies readonly CPORole[];
+export const INFRASTRUCTURE_ROLES = [
+  "SUPER_ADMIN",
+  "CPO_ADMIN",
+  "STATION_MANAGER",
+  "OPERATOR",
+  "TECHNICIAN",
+] as const satisfies readonly CPORole[];
+export const OPERATIONS_ROLES = [
+  "SUPER_ADMIN",
+  "CPO_ADMIN",
+  "STATION_MANAGER",
+  "OPERATOR",
+  "TECHNICIAN",
+] as const satisfies readonly CPORole[];
+export const ENERGY_ROLES = [
+  "SUPER_ADMIN",
+  "CPO_ADMIN",
+  "STATION_MANAGER",
+  "OPERATOR",
+  "TECHNICIAN",
+] as const satisfies readonly CPORole[];
+export const ROAMING_ROLES = [
+  "SUPER_ADMIN",
+  "CPO_ADMIN",
+  "FINANCE",
+  "OPERATOR",
+] as const satisfies readonly CPORole[];
+export const FINANCE_ROLES = [
+  "SUPER_ADMIN",
+  "CPO_ADMIN",
+  "FINANCE",
+] as const satisfies readonly CPORole[];
+export const REPORTING_ROLES = [
+  "SUPER_ADMIN",
+  "CPO_ADMIN",
+  "FINANCE",
+  "STATION_MANAGER",
+] as const satisfies readonly CPORole[];
+export const TEAM_ROLES = [
+  "SUPER_ADMIN",
+  "CPO_ADMIN",
+] as const satisfies readonly CPORole[];
+export const PLATFORM_ADMIN_ROLES = [
+  "SUPER_ADMIN",
+  "CPO_ADMIN",
+] as const satisfies readonly CPORole[];
+export const SETTINGS_ROLES = ACTIVE_ROLES;
+export const SUPER_ADMIN_ROLES = [
+  "SUPER_ADMIN",
+] as const satisfies readonly CPORole[];
+export const CPO_ADMIN_ROLES = [
+  "CPO_ADMIN",
+] as const satisfies readonly CPORole[];
+export const STATION_MANAGER_ROLES = [
+  "STATION_MANAGER",
+] as const satisfies readonly CPORole[];
+export const FINANCE_DASHBOARD_ROLES = [
+  "FINANCE",
+] as const satisfies readonly CPORole[];
+export const OPERATOR_ROLES = [
+  "OPERATOR",
+] as const satisfies readonly CPORole[];
+export const SITE_HOST_ROLES = [
+  "SITE_HOST",
+] as const satisfies readonly CPORole[];
+export const TECHNICIAN_ROLES = [
+  "TECHNICIAN",
+] as const satisfies readonly CPORole[];
 
 export const ROLE_DASHBOARD_VARIANT = {
-  SUPER_ADMIN: 'super-admin',
-  CPO_ADMIN: 'cpo-admin',
-  STATION_MANAGER: 'station-manager',
-  FINANCE: 'finance',
-  OPERATOR: 'operator',
-  SITE_HOST: 'site-host',
-  TECHNICIAN: 'technician',
-} as const satisfies Record<CPORole, DashboardVariant>
+  SUPER_ADMIN: "super-admin",
+  CPO_ADMIN: "cpo-admin",
+  STATION_MANAGER: "station-manager",
+  FINANCE: "finance",
+  OPERATOR: "operator",
+  SITE_HOST: "site-host",
+  TECHNICIAN: "technician",
+} as const satisfies Record<CPORole, DashboardVariant>;
 
 export const ROLE_HOME = {
   SUPER_ADMIN: PATHS.DASHBOARD_SUPER_ADMIN,
@@ -57,7 +121,7 @@ export const ROLE_HOME = {
   OPERATOR: PATHS.DASHBOARD_OPERATOR,
   SITE_HOST: PATHS.SITE_DASHBOARD,
   TECHNICIAN: PATHS.DASHBOARD_TECHNICIAN,
-} as const satisfies Record<CPORole, string>
+} as const satisfies Record<CPORole, string>;
 
 export const ACCESS_POLICY = {
   tenancyContext: ACTIVE_ROLES,
@@ -68,7 +132,11 @@ export const ACCESS_POLICY = {
   dashboardFinance: FINANCE_DASHBOARD_ROLES,
   dashboardOperator: OPERATOR_ROLES,
   dashboardTechnician: TECHNICIAN_ROLES,
-  siteDashboard: [...SUPER_ADMIN_ROLES, ...CPO_ADMIN_ROLES, ...SITE_HOST_ROLES] as const satisfies readonly CPORole[],
+  siteDashboard: [
+    ...SUPER_ADMIN_ROLES,
+    ...CPO_ADMIN_ROLES,
+    ...SITE_HOST_ROLES,
+  ] as const satisfies readonly CPORole[],
   stationsRead: INFRASTRUCTURE_ROLES,
   stationsWrite: ASSET_MANAGER_ROLES,
   chargePointsRead: INFRASTRUCTURE_ROLES,
@@ -82,6 +150,8 @@ export const ACCESS_POLICY = {
   alertsRead: OPERATIONS_ROLES,
   smartChargingRead: ENERGY_ROLES,
   loadPoliciesRead: ENERGY_ROLES,
+  smartChargingWrite: ENERGY_ROLES,
+  loadPoliciesWrite: ENERGY_ROLES,
   batteryInventoryRead: ENERGY_ROLES,
   roamingRead: ROAMING_ROLES,
   tariffsRead: FINANCE_ROLES,
@@ -97,536 +167,656 @@ export const ACCESS_POLICY = {
   whiteLabelAdmin: ADMIN_ROLES,
   remoteCommandStart: OPERATIONS_ROLES,
   chargePointCommands: OPERATIONS_ROLES,
-} as const
+} as const;
 
-export type AccessPolicyKey = keyof typeof ACCESS_POLICY
+export type AccessPolicyKey = keyof typeof ACCESS_POLICY;
 
 type AccessAwareUser =
-  | Pick<CPOUser, 'role' | 'accessProfile' | 'legacyRole' | 'activeStationContext'>
+  | Pick<
+      CPOUser,
+      "role" | "accessProfile" | "legacyRole" | "activeStationContext"
+    >
   | {
-    role?: string | null
-    accessProfile?: AccessProfile | null
-    legacyRole?: string
-    activeStationContext?: {
-      stationId?: string | null
-      stationName?: string | null
-      shiftStart?: string | null
-      shiftEnd?: string | null
-    } | null
-  }
+      role?: string | null;
+      accessProfile?: AccessProfile | null;
+      legacyRole?: string;
+      activeStationContext?: {
+        stationId?: string | null;
+        stationName?: string | null;
+        shiftStart?: string | null;
+        shiftEnd?: string | null;
+      } | null;
+    }
   | null
-  | undefined
+  | undefined;
 
-export type TemporaryAccessState = 'none' | 'unbounded' | 'upcoming' | 'active' | 'expired'
+export type TemporaryAccessState =
+  | "none"
+  | "unbounded"
+  | "upcoming"
+  | "active"
+  | "expired";
 
-const CPO_ROLE_VALUES = ['SUPER_ADMIN', 'CPO_ADMIN', 'STATION_MANAGER', 'FINANCE', 'OPERATOR', 'SITE_HOST', 'TECHNICIAN'] as const
+const CPO_ROLE_VALUES = [
+  "SUPER_ADMIN",
+  "CPO_ADMIN",
+  "STATION_MANAGER",
+  "FINANCE",
+  "OPERATOR",
+  "SITE_HOST",
+  "TECHNICIAN",
+] as const;
 
-const ACCESS_PERMISSION_MAP: Record<AccessPolicyKey, readonly string[] | undefined> = {
+const ACCESS_PERMISSION_MAP: Record<
+  AccessPolicyKey,
+  readonly string[] | undefined
+> = {
   tenancyContext: undefined,
   dashboardHome: undefined,
-  dashboardSuperAdmin: ['platform.tenants.read'],
-  dashboardCpoAdmin: ['tenant.users.read', 'tenant.settings.read'],
-  dashboardStationManager: ['stations.write'],
-  dashboardFinance: ['finance.billing.read', 'platform.billing.read'],
-  dashboardOperator: ['sessions.read', 'commands.read'],
-  dashboardTechnician: ['maintenance.dispatch.read'],
-  siteDashboard: ['finance.revenue_reports.read'],
-  stationsRead: ['stations.read'],
-  stationsWrite: ['stations.write'],
-  chargePointsRead: ['charge_points.read'],
-  chargePointsWrite: ['charge_points.write'],
-  swapStationsRead: ['stations.read', 'battery_inventory.read'],
-  sessionsRead: ['sessions.read'],
-  swapSessionsRead: ['sessions.read'],
+  dashboardSuperAdmin: ["platform.tenants.read"],
+  dashboardCpoAdmin: ["tenant.users.read", "tenant.settings.read"],
+  dashboardStationManager: ["stations.write"],
+  dashboardFinance: ["finance.billing.read", "platform.billing.read"],
+  dashboardOperator: ["sessions.read", "commands.read"],
+  dashboardTechnician: ["maintenance.dispatch.read"],
+  siteDashboard: ["finance.revenue_reports.read"],
+  stationsRead: ["stations.read"],
+  stationsWrite: ["stations.write"],
+  chargePointsRead: ["charge_points.read"],
+  chargePointsWrite: ["charge_points.write"],
+  swapStationsRead: ["stations.read", "battery_inventory.read"],
+  sessionsRead: ["sessions.read"],
+  swapSessionsRead: ["sessions.read"],
   swapLifecycleWrite: undefined,
   swapDispatchWrite: undefined,
-  incidentsRead: ['incidents.read'],
-  alertsRead: ['alerts.read'],
-  smartChargingRead: ['smart_charging.read'],
-  loadPoliciesRead: ['load_profiles.read'],
-  batteryInventoryRead: ['battery_inventory.read'],
-  roamingRead: ['ocpi.partners.read', 'ocpi.sessions.read', 'ocpi.cdrs.read', 'ocpi.commands.read', 'ocpi.commands.write'],
-  tariffsRead: ['tenant.tariffs.read'],
-  billingRead: ['finance.billing.read', 'platform.billing.read'],
-  payoutsRead: ['finance.payouts.read'],
-  settlementRead: ['finance.settlement.read'],
-  teamRead: ['tenant.users.read'],
-  reportsRead: ['finance.revenue_reports.read'],
-  auditLogsRead: ['platform.audit.read'],
-  platformAdminRead: ['platform.integrations.read', 'platform.audit.read'],
-  settingsRead: ['tenant.settings.read', 'platform.tenants.read'],
+  incidentsRead: ["incidents.read"],
+  alertsRead: ["alerts.read"],
+  smartChargingRead: ["smart_charging.read", "load_profiles.read"],
+  loadPoliciesRead: ["smart_charging.read", "load_profiles.read"],
+  smartChargingWrite: ["smart_charging.write"],
+  loadPoliciesWrite: ["smart_charging.write"],
+  batteryInventoryRead: ["battery_inventory.read"],
+  roamingRead: [
+    "ocpi.partners.read",
+    "ocpi.sessions.read",
+    "ocpi.cdrs.read",
+    "ocpi.commands.read",
+    "ocpi.commands.write",
+  ],
+  tariffsRead: ["tenant.tariffs.read"],
+  billingRead: ["finance.billing.read", "platform.billing.read"],
+  payoutsRead: ["finance.payouts.read"],
+  settlementRead: ["finance.settlement.read"],
+  teamRead: ["tenant.users.read"],
+  reportsRead: ["finance.revenue_reports.read"],
+  auditLogsRead: ["platform.audit.read"],
+  platformAdminRead: ["platform.integrations.read", "platform.audit.read"],
+  settingsRead: ["tenant.settings.read", "platform.tenants.read"],
   notificationsRead: undefined,
-  whiteLabelAdmin: ['tenant.branding.write'],
-  remoteCommandStart: ['commands.write'],
-  chargePointCommands: ['charge_points.command'],
-}
+  whiteLabelAdmin: ["tenant.branding.write"],
+  remoteCommandStart: ["commands.write"],
+  chargePointCommands: ["charge_points.command"],
+};
 
-const CANONICAL_ROLE_TO_CPO_ROLE: Partial<Record<CanonicalAccessRole, CPORole>> = {
-  PLATFORM_SUPER_ADMIN: 'SUPER_ADMIN',
-  PLATFORM_BILLING_ADMIN: 'FINANCE',
-  PLATFORM_NOC_LEAD: 'OPERATOR',
-  TENANT_ADMIN: 'CPO_ADMIN',
-  SITE_HOST: 'SITE_HOST',
-  ROAMING_MANAGER: 'CPO_ADMIN',
-  STATION_MANAGER: 'STATION_MANAGER',
-  OPERATIONS_OPERATOR: 'OPERATOR',
-  FLEET_DISPATCHER: 'OPERATOR',
-  FLEET_DRIVER: 'OPERATOR',
-  INSTALLER_AGENT: 'TECHNICIAN',
-  SMART_CHARGING_ENGINEER: 'TECHNICIAN',
-  FIELD_TECHNICIAN: 'TECHNICIAN',
-  TENANT_FINANCE_ANALYST: 'FINANCE',
-  EXTERNAL_PROVIDER_OPERATOR: 'OPERATOR',
-}
+const CANONICAL_ROLE_TO_CPO_ROLE: Partial<
+  Record<CanonicalAccessRole, CPORole>
+> = {
+  PLATFORM_SUPER_ADMIN: "SUPER_ADMIN",
+  PLATFORM_BILLING_ADMIN: "FINANCE",
+  PLATFORM_NOC_LEAD: "OPERATOR",
+  TENANT_ADMIN: "CPO_ADMIN",
+  SITE_HOST: "SITE_HOST",
+  ROAMING_MANAGER: "CPO_ADMIN",
+  STATION_MANAGER: "STATION_MANAGER",
+  OPERATIONS_OPERATOR: "OPERATOR",
+  FLEET_DISPATCHER: "OPERATOR",
+  FLEET_DRIVER: "OPERATOR",
+  INSTALLER_AGENT: "TECHNICIAN",
+  SMART_CHARGING_ENGINEER: "TECHNICIAN",
+  FIELD_TECHNICIAN: "TECHNICIAN",
+  TENANT_FINANCE_ANALYST: "FINANCE",
+  EXTERNAL_PROVIDER_OPERATOR: "OPERATOR",
+};
 
 const ROLE_LABELS: Record<CPORole, string> = {
-  SUPER_ADMIN: 'Platform Super Admin',
-  CPO_ADMIN: 'Tenant Admin',
-  STATION_MANAGER: 'Station Manager',
-  FINANCE: 'Finance',
-  OPERATOR: 'Operations',
-  SITE_HOST: 'Site Host',
-  TECHNICIAN: 'Technician',
-}
+  SUPER_ADMIN: "Platform Super Admin",
+  CPO_ADMIN: "Tenant Admin",
+  STATION_MANAGER: "Station Manager",
+  FINANCE: "Finance",
+  OPERATOR: "Operations",
+  SITE_HOST: "Site Host",
+  TECHNICIAN: "Technician",
+};
 
 const CANONICAL_ROLE_LABELS: Partial<Record<CanonicalAccessRole, string>> = {
-  PLATFORM_SUPER_ADMIN: 'Platform Super Admin',
-  PLATFORM_BILLING_ADMIN: 'Platform Billing Admin',
-  PLATFORM_NOC_LEAD: 'NOC Lead',
-  TENANT_ADMIN: 'Tenant Admin',
-  SITE_HOST: 'Site Host',
-  ROAMING_MANAGER: 'Roaming Manager',
-  STATION_MANAGER: 'Station Manager',
-  OPERATIONS_OPERATOR: 'Operations Operator',
-  FLEET_DISPATCHER: 'Fleet Dispatcher',
-  FLEET_DRIVER: 'Fleet Driver',
-  INSTALLER_AGENT: 'Installer Agent',
-  SMART_CHARGING_ENGINEER: 'Smart Charging Engineer',
-  FIELD_TECHNICIAN: 'Field Technician',
-  TENANT_FINANCE_ANALYST: 'Tenant Finance Analyst',
-  EXTERNAL_PROVIDER_OPERATOR: 'External Provider Operator',
-  LEGACY_UNMAPPED: 'Legacy Access',
-}
+  PLATFORM_SUPER_ADMIN: "Platform Super Admin",
+  PLATFORM_BILLING_ADMIN: "Platform Billing Admin",
+  PLATFORM_NOC_LEAD: "NOC Lead",
+  TENANT_ADMIN: "Tenant Admin",
+  SITE_HOST: "Site Host",
+  ROAMING_MANAGER: "Roaming Manager",
+  STATION_MANAGER: "Station Manager",
+  OPERATIONS_OPERATOR: "Operations Operator",
+  FLEET_DISPATCHER: "Fleet Dispatcher",
+  FLEET_DRIVER: "Fleet Driver",
+  INSTALLER_AGENT: "Installer Agent",
+  SMART_CHARGING_ENGINEER: "Smart Charging Engineer",
+  FIELD_TECHNICIAN: "Field Technician",
+  TENANT_FINANCE_ANALYST: "Tenant Finance Analyst",
+  EXTERNAL_PROVIDER_OPERATOR: "External Provider Operator",
+  LEGACY_UNMAPPED: "Legacy Access",
+};
 
 const TEMPORARY_SCOPE_ALLOWED_POLICIES = new Set<AccessPolicyKey>([
-  'tenancyContext',
-  'dashboardHome',
-  'dashboardTechnician',
-  'stationsRead',
-  'chargePointsRead',
-  'sessionsRead',
-  'incidentsRead',
-  'alertsRead',
-  'settingsRead',
-  'notificationsRead',
-  'remoteCommandStart',
-  'chargePointCommands',
-])
+  "tenancyContext",
+  "dashboardHome",
+  "dashboardTechnician",
+  "stationsRead",
+  "chargePointsRead",
+  "sessionsRead",
+  "incidentsRead",
+  "alertsRead",
+  "settingsRead",
+  "notificationsRead",
+  "remoteCommandStart",
+  "chargePointCommands",
+]);
 
 const TEMPORARY_EXPIRED_ALLOWED_POLICIES = new Set<AccessPolicyKey>([
-  'tenancyContext',
-  'dashboardHome',
-  'settingsRead',
-  'notificationsRead',
-])
+  "tenancyContext",
+  "dashboardHome",
+  "settingsRead",
+  "notificationsRead",
+]);
 
 const SITE_SCOPE_ALLOWED_POLICIES = new Set<AccessPolicyKey>([
-  'tenancyContext',
-  'dashboardHome',
-  'siteDashboard',
-  'settingsRead',
-  'notificationsRead',
-])
+  "tenancyContext",
+  "dashboardHome",
+  "siteDashboard",
+  "settingsRead",
+  "notificationsRead",
+]);
 
 const PROVIDER_SCOPE_ALLOWED_POLICIES = new Set<AccessPolicyKey>([
-  'tenancyContext',
-  'dashboardHome',
-  'roamingRead',
-  'settingsRead',
-  'notificationsRead',
-])
+  "tenancyContext",
+  "dashboardHome",
+  "roamingRead",
+  "settingsRead",
+  "notificationsRead",
+]);
 
 const FLEET_SCOPE_ALLOWED_POLICIES = new Set<AccessPolicyKey>([
-  'tenancyContext',
-  'dashboardHome',
-  'sessionsRead',
-  'swapSessionsRead',
-  'alertsRead',
-  'settingsRead',
-  'notificationsRead',
-])
+  "tenancyContext",
+  "dashboardHome",
+  "sessionsRead",
+  "swapSessionsRead",
+  "alertsRead",
+  "settingsRead",
+  "notificationsRead",
+]);
 
 function isCPORole(role: string): role is CPORole {
-  return (CPO_ROLE_VALUES as readonly string[]).includes(role)
+  return (CPO_ROLE_VALUES as readonly string[]).includes(role);
 }
 
 function getPermissions(user: AccessAwareUser) {
-  return user?.accessProfile?.permissions ?? []
+  return user?.accessProfile?.permissions ?? [];
 }
 
-function matchesPermission(user: AccessAwareUser, permissions: readonly string[]) {
-  const grantedPermissions = getPermissions(user)
-  return permissions.some((permission) => grantedPermissions.includes(permission))
+function matchesPermission(
+  user: AccessAwareUser,
+  permissions: readonly string[],
+) {
+  const grantedPermissions = getPermissions(user);
+  return permissions.some((permission) =>
+    grantedPermissions.includes(permission),
+  );
 }
 
 function parseDateValue(value?: string | null) {
   if (!value) {
-    return null
+    return null;
   }
 
-  const parsed = Date.parse(value)
-  return Number.isFinite(parsed) ? parsed : null
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
-function deriveAssignedStationIds(user: { assignedStationIds?: string[]; stationContexts?: Array<{ stationId: string }>; activeStationContext?: { stationId: string } | null; accessProfile?: AccessProfile | null }) {
+function deriveAssignedStationIds(user: {
+  assignedStationIds?: string[];
+  stationContexts?: Array<{ stationId: string }>;
+  activeStationContext?: { stationId: string } | null;
+  accessProfile?: AccessProfile | null;
+}) {
   if (user.assignedStationIds && user.assignedStationIds.length > 0) {
-    return Array.from(new Set(user.assignedStationIds))
+    return Array.from(new Set(user.assignedStationIds));
   }
 
   if (user.activeStationContext?.stationId) {
-    return [user.activeStationContext.stationId]
+    return [user.activeStationContext.stationId];
   }
 
   if (user.stationContexts && user.stationContexts.length > 0) {
-    return Array.from(new Set(user.stationContexts.map((context) => context.stationId)))
+    return Array.from(
+      new Set(user.stationContexts.map((context) => context.stationId)),
+    );
   }
 
-  if (user.accessProfile?.scope.stationIds && user.accessProfile.scope.stationIds.length > 0) {
-    return Array.from(new Set(user.accessProfile.scope.stationIds))
+  if (
+    user.accessProfile?.scope.stationIds &&
+    user.accessProfile.scope.stationIds.length > 0
+  ) {
+    return Array.from(new Set(user.accessProfile.scope.stationIds));
   }
 
-  return undefined
+  return undefined;
 }
 
-export function normalizeUserRole(role?: string | null, accessProfile?: AccessProfile | null): CPORole | null {
-  const canonicalRole = accessProfile?.canonicalRole
+export function normalizeUserRole(
+  role?: string | null,
+  accessProfile?: AccessProfile | null,
+): CPORole | null {
+  const canonicalRole = accessProfile?.canonicalRole;
 
   if (canonicalRole && CANONICAL_ROLE_TO_CPO_ROLE[canonicalRole]) {
-    return CANONICAL_ROLE_TO_CPO_ROLE[canonicalRole]
+    return CANONICAL_ROLE_TO_CPO_ROLE[canonicalRole];
   }
 
   if (role && isCPORole(role)) {
-    return role
+    return role;
   }
 
-  const permissions = accessProfile?.permissions ?? []
+  const permissions = accessProfile?.permissions ?? [];
 
-  if (permissions.includes('platform.tenants.read')) return 'SUPER_ADMIN'
-  if (permissions.includes('tenant.users.read') || permissions.includes('tenant.settings.read')) return 'CPO_ADMIN'
+  if (permissions.includes("platform.tenants.read")) return "SUPER_ADMIN";
+  if (
+    permissions.includes("tenant.users.read") ||
+    permissions.includes("tenant.settings.read")
+  )
+    return "CPO_ADMIN";
 
   if (
-    permissions.includes('sites.read')
-    && permissions.includes('finance.revenue_reports.read')
-    && !permissions.includes('tenant.users.read')
-    && !permissions.includes('stations.write')
+    permissions.includes("sites.read") &&
+    permissions.includes("finance.revenue_reports.read") &&
+    !permissions.includes("tenant.users.read") &&
+    !permissions.includes("stations.write")
   ) {
-    return 'SITE_HOST'
-  }
-
-  if (
-    (permissions.includes('finance.billing.read') || permissions.includes('platform.billing.read'))
-    && !permissions.includes('tenant.users.read')
-    && !permissions.includes('stations.write')
-  ) {
-    return 'FINANCE'
-  }
-
-  if (permissions.includes('stations.write')) return 'STATION_MANAGER'
-
-  if (
-    permissions.includes('maintenance.dispatch.read')
-    && !permissions.includes('stations.write')
-    && !permissions.includes('tenant.users.read')
-  ) {
-    return 'TECHNICIAN'
+    return "SITE_HOST";
   }
 
   if (
-    permissions.includes('sessions.read')
-    || permissions.includes('commands.read')
-    || permissions.includes('ocpi.partners.read')
+    (permissions.includes("finance.billing.read") ||
+      permissions.includes("platform.billing.read")) &&
+    !permissions.includes("tenant.users.read") &&
+    !permissions.includes("stations.write")
   ) {
-    return 'OPERATOR'
+    return "FINANCE";
   }
 
-  return null
+  if (permissions.includes("stations.write")) return "STATION_MANAGER";
+
+  if (
+    permissions.includes("maintenance.dispatch.read") &&
+    !permissions.includes("stations.write") &&
+    !permissions.includes("tenant.users.read")
+  ) {
+    return "TECHNICIAN";
+  }
+
+  if (
+    permissions.includes("sessions.read") ||
+    permissions.includes("commands.read") ||
+    permissions.includes("ocpi.partners.read")
+  ) {
+    return "OPERATOR";
+  }
+
+  return null;
 }
 
-export function normalizeAuthenticatedUser<T extends Omit<CPOUser, 'role'> & { role: string; accessProfile?: AccessProfile | null; legacyRole?: string }>(user: T): CPOUser {
-  const normalizedRole = normalizeUserRole(user.role, user.accessProfile) ?? 'OPERATOR'
-  const legacyRole = user.legacyRole ?? (isCPORole(user.role) ? undefined : user.role)
-  const assignedStationIds = deriveAssignedStationIds(user)
+export function normalizeAuthenticatedUser<
+  T extends Omit<CPOUser, "role"> & {
+    role: string;
+    accessProfile?: AccessProfile | null;
+    legacyRole?: string;
+  },
+>(user: T): CPOUser {
+  const normalizedRole =
+    normalizeUserRole(user.role, user.accessProfile) ?? "OPERATOR";
+  const legacyRole =
+    user.legacyRole ?? (isCPORole(user.role) ? undefined : user.role);
+  const assignedStationIds = deriveAssignedStationIds(user);
 
   return {
     ...user,
     role: normalizedRole,
     legacyRole,
     assignedStationIds,
-    createdAt: user.createdAt ?? '',
-    mfaEnabled: user.mfaEnabled ?? ('twoFactorEnabled' in user ? Boolean(user.twoFactorEnabled) : false),
-    tenantId: (user as Record<string, unknown>).activeTenantId as string ?? (user as Record<string, unknown>).activeOrganizationId as string ?? (user as Record<string, unknown>).tenantId as string ?? (user as Record<string, unknown>).organizationId as string,
-    orgId: user.orgId ?? (user as Record<string, unknown>).activeTenantId as string ?? (user as Record<string, unknown>).activeOrganizationId as string ?? (user as Record<string, unknown>).tenantId as string ?? (user as Record<string, unknown>).organizationId as string ?? null,
-    activeTenantId: (user as Record<string, unknown>).activeTenantId as string ?? (user as Record<string, unknown>).activeOrganizationId as string ?? (user as Record<string, unknown>).tenantId as string ?? (user as Record<string, unknown>).organizationId as string ?? null,
+    createdAt: user.createdAt ?? "",
+    mfaEnabled:
+      user.mfaEnabled ??
+      ("twoFactorEnabled" in user ? Boolean(user.twoFactorEnabled) : false),
+    tenantId:
+      ((user as Record<string, unknown>).activeTenantId as string) ??
+      ((user as Record<string, unknown>).activeOrganizationId as string) ??
+      ((user as Record<string, unknown>).tenantId as string) ??
+      ((user as Record<string, unknown>).organizationId as string),
+    orgId:
+      user.orgId ??
+      ((user as Record<string, unknown>).activeTenantId as string) ??
+      ((user as Record<string, unknown>).activeOrganizationId as string) ??
+      ((user as Record<string, unknown>).tenantId as string) ??
+      ((user as Record<string, unknown>).organizationId as string) ??
+      null,
+    activeTenantId:
+      ((user as Record<string, unknown>).activeTenantId as string) ??
+      ((user as Record<string, unknown>).activeOrganizationId as string) ??
+      ((user as Record<string, unknown>).tenantId as string) ??
+      ((user as Record<string, unknown>).organizationId as string) ??
+      null,
     accessProfile: user.accessProfile ?? null,
-  }
+  };
 }
 
 export function getResolvedUserRole(user?: AccessAwareUser) {
-  if (!user) return null
-  return normalizeUserRole(user.role ?? null, user.accessProfile ?? null)
+  if (!user) return null;
+  return normalizeUserRole(user.role ?? null, user.accessProfile ?? null);
 }
 
 export function getCanonicalUserRole(user?: AccessAwareUser) {
-  return user?.accessProfile?.canonicalRole ?? null
+  return user?.accessProfile?.canonicalRole ?? null;
 }
 
 export function getUserScopeType(user?: AccessAwareUser) {
-  return user?.accessProfile?.scope.type ?? null
+  return user?.accessProfile?.scope.type ?? null;
 }
 
 export function isTemporaryScopeUser(user?: AccessAwareUser) {
   return Boolean(
-    user?.accessProfile?.scope.isTemporary
-    || user?.accessProfile?.scope.type === 'temporary',
-  )
+    user?.accessProfile?.scope.isTemporary ||
+    user?.accessProfile?.scope.type === "temporary",
+  );
 }
 
-export function getTemporaryAccessState(user?: AccessAwareUser, referenceTime = Date.now()): TemporaryAccessState {
+export function getTemporaryAccessState(
+  user?: AccessAwareUser,
+  referenceTime = Date.now(),
+): TemporaryAccessState {
   if (!isTemporaryScopeUser(user)) {
-    return 'none'
+    return "none";
   }
 
-  const shiftStart = parseDateValue(user?.activeStationContext?.shiftStart ?? null)
-  const shiftEnd = parseDateValue(user?.activeStationContext?.shiftEnd ?? null)
+  const shiftStart = parseDateValue(
+    user?.activeStationContext?.shiftStart ?? null,
+  );
+  const shiftEnd = parseDateValue(user?.activeStationContext?.shiftEnd ?? null);
 
   if (!shiftStart && !shiftEnd) {
-    return 'unbounded'
+    return "unbounded";
   }
 
   if (shiftStart && referenceTime < shiftStart) {
-    return 'upcoming'
+    return "upcoming";
   }
 
   if (shiftEnd && referenceTime > shiftEnd) {
-    return 'expired'
+    return "expired";
   }
 
-  return 'active'
+  return "active";
 }
 
-export function isTemporaryAccessExpired(user?: AccessAwareUser, referenceTime = Date.now()) {
-  return getTemporaryAccessState(user, referenceTime) === 'expired'
+export function isTemporaryAccessExpired(
+  user?: AccessAwareUser,
+  referenceTime = Date.now(),
+) {
+  return getTemporaryAccessState(user, referenceTime) === "expired";
 }
 
 function formatDateLabel(timestamp: number | null) {
-  return timestamp ? new Date(timestamp).toLocaleString() : null
+  return timestamp ? new Date(timestamp).toLocaleString() : null;
 }
 
 export function getTemporaryAccessWindowLabel(user?: AccessAwareUser) {
   if (!isTemporaryScopeUser(user)) {
-    return 'Not a temporary scope.'
+    return "Not a temporary scope.";
   }
 
-  const shiftStart = parseDateValue(user?.activeStationContext?.shiftStart ?? null)
-  const shiftEnd = parseDateValue(user?.activeStationContext?.shiftEnd ?? null)
-  const startLabel = formatDateLabel(shiftStart)
-  const endLabel = formatDateLabel(shiftEnd)
+  const shiftStart = parseDateValue(
+    user?.activeStationContext?.shiftStart ?? null,
+  );
+  const shiftEnd = parseDateValue(user?.activeStationContext?.shiftEnd ?? null);
+  const startLabel = formatDateLabel(shiftStart);
+  const endLabel = formatDateLabel(shiftEnd);
 
   if (startLabel && endLabel) {
-    return `${startLabel} - ${endLabel}`
+    return `${startLabel} - ${endLabel}`;
   }
 
   if (startLabel) {
-    return `Starts ${startLabel}`
+    return `Starts ${startLabel}`;
   }
 
   if (endLabel) {
-    return `Ends ${endLabel}`
+    return `Ends ${endLabel}`;
   }
 
-  return 'Temporary access is active until backend context changes.'
+  return "Temporary access is active until backend context changes.";
 }
 
 export function isFinanceDashboardUser(user?: AccessAwareUser) {
-  const canonicalRole = getCanonicalUserRole(user)
-  return canonicalRole === 'PLATFORM_BILLING_ADMIN'
-    || canonicalRole === 'TENANT_FINANCE_ANALYST'
-    || getResolvedUserRole(user) === 'FINANCE'
+  const canonicalRole = getCanonicalUserRole(user);
+  return (
+    canonicalRole === "PLATFORM_BILLING_ADMIN" ||
+    canonicalRole === "TENANT_FINANCE_ANALYST" ||
+    getResolvedUserRole(user) === "FINANCE"
+  );
 }
 
 export function isStationManagerDashboardUser(user?: AccessAwareUser) {
-  return getCanonicalUserRole(user) === 'STATION_MANAGER'
-    || getResolvedUserRole(user) === 'STATION_MANAGER'
+  return (
+    getCanonicalUserRole(user) === "STATION_MANAGER" ||
+    getResolvedUserRole(user) === "STATION_MANAGER"
+  );
 }
 
 export function isTechnicianDashboardUser(user?: AccessAwareUser) {
-  const canonicalRole = getCanonicalUserRole(user)
-  return canonicalRole === 'FIELD_TECHNICIAN'
-    || canonicalRole === 'INSTALLER_AGENT'
-    || canonicalRole === 'SMART_CHARGING_ENGINEER'
-    || getResolvedUserRole(user) === 'TECHNICIAN'
+  const canonicalRole = getCanonicalUserRole(user);
+  return (
+    canonicalRole === "FIELD_TECHNICIAN" ||
+    canonicalRole === "INSTALLER_AGENT" ||
+    canonicalRole === "SMART_CHARGING_ENGINEER" ||
+    getResolvedUserRole(user) === "TECHNICIAN"
+  );
 }
 
 export function isSiteScopedUser(user?: AccessAwareUser) {
-  return getUserScopeType(user) === 'site' || getResolvedUserRole(user) === 'SITE_HOST'
+  return (
+    getUserScopeType(user) === "site" ||
+    getResolvedUserRole(user) === "SITE_HOST"
+  );
 }
 
 export function isProviderScopedUser(user?: AccessAwareUser) {
-  return getUserScopeType(user) === 'provider'
+  return getUserScopeType(user) === "provider";
 }
 
 export function isFleetScopedUser(user?: AccessAwareUser) {
-  return getUserScopeType(user) === 'fleet_group'
+  return getUserScopeType(user) === "fleet_group";
 }
 
 function isScopePolicyAllowed(user: AccessAwareUser, policy: AccessPolicyKey) {
   if (isTemporaryAccessExpired(user)) {
-    return TEMPORARY_EXPIRED_ALLOWED_POLICIES.has(policy)
+    return TEMPORARY_EXPIRED_ALLOWED_POLICIES.has(policy);
   }
 
   if (isTemporaryScopeUser(user)) {
-    return TEMPORARY_SCOPE_ALLOWED_POLICIES.has(policy)
+    return TEMPORARY_SCOPE_ALLOWED_POLICIES.has(policy);
   }
 
   if (isSiteScopedUser(user)) {
-    return SITE_SCOPE_ALLOWED_POLICIES.has(policy)
+    return SITE_SCOPE_ALLOWED_POLICIES.has(policy);
   }
 
   if (isProviderScopedUser(user)) {
-    return PROVIDER_SCOPE_ALLOWED_POLICIES.has(policy)
+    return PROVIDER_SCOPE_ALLOWED_POLICIES.has(policy);
   }
 
   if (isFleetScopedUser(user)) {
-    return FLEET_SCOPE_ALLOWED_POLICIES.has(policy)
+    return FLEET_SCOPE_ALLOWED_POLICIES.has(policy);
   }
 
-  return true
+  return true;
 }
 
-export function canAccessRole(role: string | undefined | null, allowedRoles: readonly CPORole[]) {
-  return !!role && isCPORole(role) && allowedRoles.includes(role)
+export function canAccessRole(
+  role: string | undefined | null,
+  allowedRoles: readonly CPORole[],
+) {
+  return !!role && isCPORole(role) && allowedRoles.includes(role);
 }
 
-export function canAccessPolicy(user: AccessAwareUser, policy: AccessPolicyKey) {
-  const permissions = ACCESS_PERMISSION_MAP[policy]
-  const hasPermissionAccess = Boolean(user?.accessProfile && permissions && permissions.length > 0)
+export function canAccessPolicy(
+  user: AccessAwareUser,
+  policy: AccessPolicyKey,
+) {
+  const permissions = ACCESS_PERMISSION_MAP[policy];
+  const hasPermissionAccess = Boolean(
+    user?.accessProfile && permissions && permissions.length > 0,
+  );
   const hasBaseAccess = hasPermissionAccess
     ? matchesPermission(user, permissions ?? [])
-    : canAccessRole(getResolvedUserRole(user), ACCESS_POLICY[policy])
+    : canAccessRole(getResolvedUserRole(user), ACCESS_POLICY[policy]);
 
   if (!hasBaseAccess) {
-    return false
+    return false;
   }
 
-  return isScopePolicyAllowed(user, policy)
+  return isScopePolicyAllowed(user, policy);
 }
 
 export function getUserRoleLabel(user?: AccessAwareUser) {
-  if (!user) return 'Unknown'
+  if (!user) return "Unknown";
 
-  const canonicalRole = user.accessProfile?.canonicalRole
+  const canonicalRole = user.accessProfile?.canonicalRole;
   if (canonicalRole) {
-    return CANONICAL_ROLE_LABELS[canonicalRole] ?? canonicalRole
+    return CANONICAL_ROLE_LABELS[canonicalRole] ?? canonicalRole;
   }
 
-  const resolvedRole = getResolvedUserRole(user)
-  return resolvedRole ? ROLE_LABELS[resolvedRole] : user.legacyRole ?? user.role ?? 'Unknown'
+  const resolvedRole = getResolvedUserRole(user);
+  return resolvedRole
+    ? ROLE_LABELS[resolvedRole]
+    : (user.legacyRole ?? user.role ?? "Unknown");
 }
 
 function getHomePathFromUser(user: AccessAwareUser) {
-  const resolvedRole = getResolvedUserRole(user)
-  const permissions = getPermissions(user)
-  const scopeType = user?.accessProfile?.scope.type
+  const resolvedRole = getResolvedUserRole(user);
+  const permissions = getPermissions(user);
+  const scopeType = user?.accessProfile?.scope.type;
 
-  if (scopeType === 'site' || resolvedRole === 'SITE_HOST') {
-    if (canAccessPolicy(user, 'siteDashboard')) {
-      return PATHS.SITE_DASHBOARD
+  if (scopeType === "site" || resolvedRole === "SITE_HOST") {
+    if (canAccessPolicy(user, "siteDashboard")) {
+      return PATHS.SITE_DASHBOARD;
     }
-    if (canAccessPolicy(user, 'notificationsRead')) {
-      return PATHS.NOTIFICATIONS
+    if (canAccessPolicy(user, "notificationsRead")) {
+      return PATHS.NOTIFICATIONS;
     }
-    return PATHS.LOGIN
+    return PATHS.LOGIN;
   }
 
-  if (scopeType === 'provider') {
-    if (canAccessPolicy(user, 'roamingRead')) {
-      return PATHS.OCPI_PARTNERS
+  if (scopeType === "provider") {
+    if (canAccessPolicy(user, "roamingRead")) {
+      return PATHS.OCPI_PARTNERS;
     }
-    if (canAccessPolicy(user, 'notificationsRead')) {
-      return PATHS.NOTIFICATIONS
+    if (canAccessPolicy(user, "notificationsRead")) {
+      return PATHS.NOTIFICATIONS;
     }
-    return PATHS.LOGIN
+    return PATHS.LOGIN;
   }
 
-  if (scopeType === 'fleet_group') {
-    if (canAccessPolicy(user, 'sessionsRead')) {
-      return PATHS.SESSIONS
+  if (scopeType === "fleet_group") {
+    if (canAccessPolicy(user, "sessionsRead")) {
+      return PATHS.SESSIONS;
     }
-    if (canAccessPolicy(user, 'swapSessionsRead')) {
-      return PATHS.SWAP_SESSIONS
+    if (canAccessPolicy(user, "swapSessionsRead")) {
+      return PATHS.SWAP_SESSIONS;
     }
-    if (canAccessPolicy(user, 'alertsRead')) {
-      return PATHS.ALERTS
+    if (canAccessPolicy(user, "alertsRead")) {
+      return PATHS.ALERTS;
     }
-    if (canAccessPolicy(user, 'notificationsRead')) {
-      return PATHS.NOTIFICATIONS
+    if (canAccessPolicy(user, "notificationsRead")) {
+      return PATHS.NOTIFICATIONS;
     }
-    return PATHS.LOGIN
+    return PATHS.LOGIN;
   }
 
-  if (permissions.includes('platform.tenants.read')) {
-    return ROLE_HOME.SUPER_ADMIN
-  }
-
-  if (permissions.includes('tenant.users.read') || permissions.includes('tenant.settings.read')) {
-    return ROLE_HOME.CPO_ADMIN
-  }
-
-  if (permissions.includes('ocpi.partners.read') || permissions.includes('ocpi.sessions.read')) {
-    return PATHS.OCPI_PARTNERS
+  if (permissions.includes("platform.tenants.read")) {
+    return ROLE_HOME.SUPER_ADMIN;
   }
 
   if (
-    (permissions.includes('finance.billing.read') || permissions.includes('platform.billing.read'))
-    && !permissions.includes('tenant.users.read')
-    && !permissions.includes('stations.write')
+    permissions.includes("tenant.users.read") ||
+    permissions.includes("tenant.settings.read")
   ) {
-    return ROLE_HOME.FINANCE
+    return ROLE_HOME.CPO_ADMIN;
   }
 
   if (
-    permissions.includes('maintenance.dispatch.read')
-    && !permissions.includes('stations.write')
-    && !permissions.includes('tenant.users.read')
+    permissions.includes("ocpi.partners.read") ||
+    permissions.includes("ocpi.sessions.read")
   ) {
-    return ROLE_HOME.TECHNICIAN
+    return PATHS.OCPI_PARTNERS;
   }
 
-  if (permissions.includes('stations.write')) {
-    return resolvedRole === 'CPO_ADMIN' ? ROLE_HOME.CPO_ADMIN : ROLE_HOME.STATION_MANAGER
+  if (
+    (permissions.includes("finance.billing.read") ||
+      permissions.includes("platform.billing.read")) &&
+    !permissions.includes("tenant.users.read") &&
+    !permissions.includes("stations.write")
+  ) {
+    return ROLE_HOME.FINANCE;
   }
 
-  if (permissions.includes('sessions.read') || permissions.includes('commands.read')) {
-    return ROLE_HOME.OPERATOR
+  if (
+    permissions.includes("maintenance.dispatch.read") &&
+    !permissions.includes("stations.write") &&
+    !permissions.includes("tenant.users.read")
+  ) {
+    return ROLE_HOME.TECHNICIAN;
   }
 
-  return resolvedRole ? ROLE_HOME[resolvedRole] : PATHS.LOGIN
+  if (permissions.includes("stations.write")) {
+    return resolvedRole === "CPO_ADMIN"
+      ? ROLE_HOME.CPO_ADMIN
+      : ROLE_HOME.STATION_MANAGER;
+  }
+
+  if (
+    permissions.includes("sessions.read") ||
+    permissions.includes("commands.read")
+  ) {
+    return ROLE_HOME.OPERATOR;
+  }
+
+  return resolvedRole ? ROLE_HOME[resolvedRole] : PATHS.LOGIN;
 }
 
 export function getRoleHomePath(roleOrUser?: CPORole | AccessAwareUser) {
-  if (!roleOrUser) return PATHS.LOGIN
-  if (typeof roleOrUser === 'string') {
-    return ROLE_HOME[roleOrUser]
+  if (!roleOrUser) return PATHS.LOGIN;
+  if (typeof roleOrUser === "string") {
+    return ROLE_HOME[roleOrUser];
   }
-  return getHomePathFromUser(roleOrUser)
+  return getHomePathFromUser(roleOrUser);
 }
 
-export function getRoleDashboardVariant(roleOrUser?: CPORole | AccessAwareUser) {
-  if (!roleOrUser) return null
-  if (typeof roleOrUser === 'string') {
-    return ROLE_DASHBOARD_VARIANT[roleOrUser]
+export function getRoleDashboardVariant(
+  roleOrUser?: CPORole | AccessAwareUser,
+) {
+  if (!roleOrUser) return null;
+  if (typeof roleOrUser === "string") {
+    return ROLE_DASHBOARD_VARIANT[roleOrUser];
   }
 
-  const resolvedRole = getResolvedUserRole(roleOrUser)
-  return resolvedRole ? ROLE_DASHBOARD_VARIANT[resolvedRole] : null
+  const resolvedRole = getResolvedUserRole(roleOrUser);
+  return resolvedRole ? ROLE_DASHBOARD_VARIANT[resolvedRole] : null;
 }
