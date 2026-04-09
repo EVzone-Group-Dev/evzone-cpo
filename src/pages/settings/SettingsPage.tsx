@@ -1,29 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
+import { fetchJson } from '@/core/api/fetchJson'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { getTemporaryAccessState, getTemporaryAccessWindowLabel, getUserRoleLabel, getUserScopeType, isTemporaryScopeUser } from '@/core/auth/access'
 import { useAuthStore } from '@/core/auth/authStore'
 import { useReferenceCities, useReferenceStates } from '@/core/hooks/useGeography'
 import { useTenant } from '@/core/hooks/useTenant'
+import { applySavedSettings, loadSettingsDraft, saveSettingsDraft, type ScreenDensity, type SessionTimeout, type SettingsDraft } from '@/core/settings/settingsPreferences'
+import { useTheme } from '@/core/theme/themeContext'
+import type { AuthenticatedApiUser } from '@/core/types/mockApi'
 import { BellRing, Building2, Globe2, LayoutGrid, Lock, Save, ShieldCheck, SlidersHorizontal, Sparkles, UserCog } from 'lucide-react'
-
-type ScreenDensity = 'Comfortable' | 'Compact'
-type SessionTimeout = '15 minutes' | '30 minutes' | '1 hour'
-
-interface SettingsDraft {
-  currency: string
-  dailyDigest: boolean
-  email: string
-  language: string
-  mfaEnabled: boolean
-  name: string
-  recentAccessAlerts: boolean
-  screenDensity: ScreenDensity
-  sessionTimeout: SessionTimeout
-  tenantCity: string
-  tenantCountryCode: string
-  tenantStateCode: string
-  weeklyOpsReport: boolean
-}
 
 function buildInitialDraft(
   userName: string,
@@ -77,10 +62,10 @@ function SettingToggle({
         aria-checked={checked}
         aria-label={label}
         onClick={() => onChange(!checked)}
-        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${checked ? 'bg-accent' : 'bg-bg-muted border border-border'}`}
+        className={`relative inline-flex h-6 w-11 shrink-0 items-center justify-start rounded-full border p-0.5 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-card)] ${checked ? 'border-[var(--accent)] bg-[var(--accent)]' : 'border-[var(--border)] bg-[var(--bg-card)]'}`}
       >
         <span
-          className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${checked ? 'translate-x-5' : 'translate-x-0.5'}`}
+          className={`inline-flex h-5 w-5 items-center justify-center rounded-full border transition-transform duration-200 ${checked ? 'translate-x-5 border-[var(--accent)] bg-[var(--bg-card)] shadow-sm' : 'translate-x-0 border-[var(--border)] bg-[var(--bg-card)] shadow-[0_1px_2px_rgba(15,23,42,0.12)]'}`}
         />
       </button>
     </div>
@@ -88,7 +73,8 @@ function SettingToggle({
 }
 
 export function SettingsPage() {
-  const { user } = useAuthStore()
+  const { user, replaceUser } = useAuthStore()
+  const { resolvedTheme, setThemeMode, themeMode } = useTheme()
   const {
     activeStationContext,
     activeTenant,
@@ -102,6 +88,11 @@ export function SettingsPage() {
   const userName = user?.name ?? ''
   const userEmail = user?.email ?? ''
   const mfaEnabled = user?.mfaEnabled ?? false
+  const currentUserCountry = useMemo(() => {
+    const country = (user as unknown as Record<string, unknown> | null)?.country
+    return typeof country === 'string' ? country.trim() : ''
+  }, [user])
+  const availableCountryCount = availableCountries?.length ?? 0
   const countryOptions = useMemo(
     () => (availableCountries ?? []).slice().sort((left, right) => left.name.localeCompare(right.name)),
     [availableCountries],
@@ -139,7 +130,7 @@ export function SettingsPage() {
 
     return matchedCountry?.code2 ?? countryOptions[0]?.code2 ?? ''
   }, [activeTenant?.region, countryOptions])
-  const [draft, setDraft] = useState<SettingsDraft>(() => buildInitialDraft(
+  const baseDraft = useMemo(() => buildInitialDraft(
     userName,
     userEmail,
     mfaEnabled,
@@ -148,17 +139,17 @@ export function SettingsPage() {
     initialTenantCountryCode,
     '',
     '',
-  ))
-  const [baseline, setBaseline] = useState<SettingsDraft>(() => buildInitialDraft(
-    userName,
-    userEmail,
-    mfaEnabled,
-    initialLanguage,
+  ), [
     initialCurrency,
+    initialLanguage,
     initialTenantCountryCode,
-    '',
-    '',
-  ))
+    mfaEnabled,
+    userEmail,
+    userName,
+  ])
+  const savedDraft = useMemo(() => loadSettingsDraft(user?.id ?? null), [user?.id])
+  const [draft, setDraft] = useState<SettingsDraft>(() => applySavedSettings(baseDraft, savedDraft))
+  const [baseline, setBaseline] = useState<SettingsDraft>(() => applySavedSettings(baseDraft, savedDraft))
   const {
     data: tenantStates = [],
     isLoading: isTenantStatesLoading,
@@ -169,6 +160,7 @@ export function SettingsPage() {
   } = useReferenceCities(draft.tenantCountryCode, draft.tenantStateCode)
   const [isSaving, setIsSaving] = useState(false)
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   const initials = useMemo(
     () => userName.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'EV',
@@ -203,7 +195,7 @@ export function SettingsPage() {
   const hasUnsavedChanges = JSON.stringify(draft) !== JSON.stringify(baseline)
 
   useEffect(() => {
-    if (hasUnsavedChanges || isSaving) {
+    if (hasUnsavedChanges || isSaving || availableCountryCount === 0) {
       return
     }
 
@@ -255,6 +247,7 @@ export function SettingsPage() {
   }, [
     countryOptions,
     currencyOptions,
+    availableCountryCount,
     hasUnsavedChanges,
     initialCurrency,
     initialLanguage,
@@ -265,17 +258,54 @@ export function SettingsPage() {
     tenantStates,
   ])
 
-  const handleSaveChanges = () => {
+  const handleSaveChanges = async () => {
     if (!hasUnsavedChanges || isSaving) {
       return
     }
 
     setIsSaving(true)
-    window.setTimeout(() => {
-      setBaseline(draft)
+    setSaveError(null)
+
+    try {
+      const normalizedName = draft.name.trim() || userName
+      const selectedCountry = countryOptions.find((country) => country.code2 === draft.tenantCountryCode)?.name?.trim() ?? ''
+      const profilePatch: Record<string, string> = {}
+
+      if (normalizedName !== userName) {
+        profilePatch.name = normalizedName
+      }
+
+      if (selectedCountry && selectedCountry !== currentUserCountry) {
+        profilePatch.country = selectedCountry
+      }
+
+      const nextDraft: SettingsDraft = {
+        ...draft,
+        name: normalizedName,
+      }
+
+      if (Object.keys(profilePatch).length > 0) {
+        const updatedUser = await fetchJson<AuthenticatedApiUser>('/api/v1/auth/me', {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(profilePatch),
+        })
+
+        replaceUser(updatedUser)
+        nextDraft.name = updatedUser.name?.trim() || normalizedName
+      }
+
+      saveSettingsDraft(user?.id ?? null, nextDraft)
+      setDraft(nextDraft)
+      setBaseline(nextDraft)
       setLastSavedAt(new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }))
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Unable to sync changes right now.')
+    } finally {
       setIsSaving(false)
-    }, 900)
+    }
   }
 
   return (
@@ -312,6 +342,11 @@ export function SettingsPage() {
               <div className="text-xs text-subtle">
                 {lastSavedAt ? `Last saved at ${lastSavedAt}` : 'No saved updates in this session'}
               </div>
+              {saveError && (
+                <div className="text-xs text-danger max-w-sm text-left lg:text-right">
+                  {saveError}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -429,7 +464,23 @@ export function SettingsPage() {
 
             <div className="card">
               <div className="section-title"><LayoutGrid size={16} className="text-accent" />Interface Preferences</div>
-              <div className="grid gap-3 md:grid-cols-3">
+              <div className="grid gap-3 md:grid-cols-4">
+                <div>
+                  <label htmlFor="settings-theme" className="form-label">Theme</label>
+                  <select
+                    id="settings-theme"
+                    className="input"
+                    value={themeMode}
+                    onChange={(event) => setThemeMode(event.target.value as 'system' | 'light' | 'dark')}
+                  >
+                    <option value="system">System default</option>
+                    <option value="light">Light</option>
+                    <option value="dark">Dark</option>
+                  </select>
+                  <div className="text-[11px] text-subtle mt-1">
+                    Following {themeMode === 'system' ? 'your OS preference' : `the ${resolvedTheme} palette`} right now.
+                  </div>
+                </div>
                 <div>
                   <label htmlFor="settings-density" className="form-label">Screen Density</label>
                   <select
@@ -610,8 +661,8 @@ export function SettingsPage() {
             <div className="card border-accent/20 bg-accent/5">
               <div className="section-title"><Lock size={16} className="text-accent" />Policy Notes</div>
               <p className="text-xs text-subtle leading-relaxed">
-                Tenant governance, role restrictions, and scope isolation remain policy-driven. UI changes here update local user preferences and
-                are intended for operator workflow optimization.
+                Tenant governance, role restrictions, and scope isolation remain policy-driven. Profile changes sync through the PATCH endpoint,
+                while workspace preferences stay local to this browser.
               </p>
             </div>
           </div>

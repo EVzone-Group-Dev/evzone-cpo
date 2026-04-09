@@ -92,21 +92,25 @@ describe('ChargePointsPage', () => {
     } as unknown as ReturnType<typeof useChargePoints>)
   })
 
+  function renderPage(initialEntry = '/charge-points') {
+    render(
+      <MemoryRouter initialEntries={[initialEntry]}>
+        <ChargePointsPage />
+      </MemoryRouter>,
+    )
+  }
+
   it('applies combined search, status, station, and roaming filters', () => {
     mockedUseAuthStore.mockImplementation((selector) => selector({ user: { role: 'STATION_MANAGER' } } as never))
     mockedCanManageStations.mockReturnValue(true)
 
-    render(
-      <MemoryRouter>
-        <ChargePointsPage />
-      </MemoryRouter>,
-    )
+    renderPage()
 
     fireEvent.change(screen.getByPlaceholderText('Search by model, OCPP ID, station…'), { target: { value: 'EVZ-WL-001' } })
 
     const selects = screen.getAllByRole('combobox')
     fireEvent.change(selects[0], { target: { value: 'Online' } })
-    fireEvent.change(selects[1], { target: { value: 'Westlands Hub' } })
+    fireEvent.change(selects[1], { target: { value: 'st-1' } })
     fireEvent.change(selects[2], { target: { value: 'Published' } })
 
     expect(screen.getByText('EVZ-WL-001')).toBeInTheDocument()
@@ -118,11 +122,7 @@ describe('ChargePointsPage', () => {
     mockedUseAuthStore.mockImplementation((selector) => selector({ user: { role: 'STATION_MANAGER' } } as never))
     mockedCanManageStations.mockReturnValue(true)
 
-    render(
-      <MemoryRouter>
-        <ChargePointsPage />
-      </MemoryRouter>,
-    )
+    renderPage()
 
     expect(screen.getByRole('link', { name: 'Add Charge Point' })).toHaveAttribute('href', '/charge-points/new')
 
@@ -134,12 +134,19 @@ describe('ChargePointsPage', () => {
     mockedUseAuthStore.mockImplementation((selector) => selector({ user: { role: 'OPERATOR' } } as never))
     mockedCanManageStations.mockReturnValue(false)
 
-    render(
-      <MemoryRouter>
-        <ChargePointsPage />
-      </MemoryRouter>,
-    )
+    renderPage()
 
     expect(screen.queryByRole('link', { name: 'Add Charge Point' })).not.toBeInTheDocument()
+  })
+
+  it('honors the stationId query parameter for station-scoped charge point management', () => {
+    mockedUseAuthStore.mockImplementation((selector) => selector({ user: { role: 'STATION_MANAGER' } } as never))
+    mockedCanManageStations.mockReturnValue(true)
+
+    renderPage('/charge-points?stationId=st-1')
+
+    expect(screen.getByText('EVZ-WL-001')).toBeInTheDocument()
+    expect(screen.getByText('EVZ-WL-002')).toBeInTheDocument()
+    expect(screen.queryByText('EVZ-CBD-001')).not.toBeInTheDocument()
   })
 })

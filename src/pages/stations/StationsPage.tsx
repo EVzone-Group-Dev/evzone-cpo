@@ -117,6 +117,22 @@ export function StationsPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Connectivity Indicator */}
+              <div className="mt-4 pt-4 border-t border-border/50">
+                <div className="text-[10px] text-subtle uppercase tracking-wide mb-2">Connectivity</div>
+                <div className="h-12 flex items-end gap-0.5 mb-2">
+                  {station.networkLatency.points.map((height, index) => (
+                    <div
+                      key={`${height}-${index}`}
+                      className="flex-1 bg-accent/20 rounded-t-sm hover:bg-accent transition-all"
+                      style={{ height: `${height}%`, minHeight: '2px' }}
+                    />
+                  ))}
+                </div>
+                <div className="text-[9px] text-subtle">{station.networkLatency.averageLabel}</div>
+              </div>
+
               {station.swapSummary && (
                 <div className="mt-3 rounded-lg border border-border/60 bg-bg-muted/40 px-3 py-2">
                   <div className="text-[10px] text-subtle uppercase tracking-wide">Swap Capacity</div>

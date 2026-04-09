@@ -19,6 +19,11 @@ describe('mapToOCPILocation', () => {
         { id: 'cp-9', status: 'Charging', type: 'DC Fast', lastHeartbeatLabel: '10s ago' },
         { id: 'cp-10', status: 'Unavailable', type: 'AC Type 2', lastHeartbeatLabel: '20s ago' },
       ],
+      networkLatency: {
+        averageLabel: 'just now',
+        modeLabel: 'Derived from charge point heartbeats',
+        points: [100, 100, 95, 90, 85, 80],
+      },
     }
 
     const location = mapToOCPILocation(station, {
