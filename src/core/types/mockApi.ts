@@ -1,996 +1,1142 @@
-import type { AccessProfile, CPORole, CPOUser, ServiceMode } from '@/core/types/domain'
+import type {
+  AccessProfile,
+  CPORole,
+  CPOUser,
+  ServiceMode,
+} from "@/core/types/domain";
 
 export interface DemoUserHint {
-  id: string
-  name: string
-  email: string
-  password: string
-  role: CPORole
+  id: string;
+  name: string;
+  email: string;
+  password: string;
+  role: CPORole;
 }
 
 export interface LoginResponse {
-  accessToken?: string
-  refreshToken?: string
-  token?: string
-  user: AuthenticatedApiUser
+  accessToken?: string;
+  refreshToken?: string;
+  token?: string;
+  user: AuthenticatedApiUser;
 }
 
-export type AuthenticatedApiUser = Omit<CPOUser, 'role'> & {
-  role: string
-  twoFactorEnabled?: boolean
-  accessProfile?: AccessProfile | null
-}
+export type AuthenticatedApiUser = Omit<CPOUser, "role"> & {
+  role: string;
+  twoFactorEnabled?: boolean;
+  accessProfile?: AccessProfile | null;
+};
 
-export type TenantScope = 'platform' | 'tenant' | 'site'
-export type DashboardMode = 'operations' | 'site'
+export type TenantScope = "platform" | "tenant" | "site";
+export type DashboardMode = "operations" | "site";
 
 export interface GeographyCountryReference {
-  code2: string
-  code3: string | null
-  name: string
-  officialName: string | null
-  flagUrl: string | null
-  currencyCode: string | null
-  currencyName: string | null
-  currencySymbol: string | null
-  languages: string[]
+  code2: string;
+  code3: string | null;
+  name: string;
+  officialName: string | null;
+  flagUrl: string | null;
+  currencyCode: string | null;
+  currencyName: string | null;
+  currencySymbol: string | null;
+  languages: string[];
 }
 
 export interface GeographyStateReference {
-  countryCode: string
-  code: string
-  name: string
+  countryCode: string;
+  code: string;
+  name: string;
 }
 
 export interface GeographyCityReference {
-  countryCode: string
-  stateCode: string
-  name: string
+  countryCode: string;
+  stateCode: string;
+  name: string;
 }
 
 export interface TenantSummary {
-  chargePointCount: number
-  code: string
-  currency: string
-  description: string
-  id: string
-  name: string
-  region: string
-  scope: TenantScope
-  scopeLabel: string
-  siteCount: number
-  slug: string
-  stationCount: number
-  timeZone: string
+  chargePointCount: number;
+  code: string;
+  currency: string;
+  description: string;
+  id: string;
+  name: string;
+  region: string;
+  scope: TenantScope;
+  scopeLabel: string;
+  siteCount: number;
+  slug: string;
+  stationCount: number;
+  timeZone: string;
 }
 
 export interface TenantContextResponse {
-  activeTenant: TenantSummary
-  availableTenants: TenantSummary[]
-  canSwitchTenants: boolean
-  dashboardMode: DashboardMode
-  dataScopeLabel: string
+  activeTenant: TenantSummary;
+  availableTenants: TenantSummary[];
+  canSwitchTenants: boolean;
+  dashboardMode: DashboardMode;
+  dataScopeLabel: string;
 }
 
 export type PlatformFeatureFlagKey =
-  | 'commerce_v1'
-  | 'fleet_v1'
-  | 'pnc_v1'
-  | 'enterprise_sso_v1'
-  | string
+  | "commerce_v1"
+  | "fleet_v1"
+  | "pnc_v1"
+  | "enterprise_sso_v1"
+  | string;
 
 export interface PlatformFeatureFlagRecord {
-  id?: string
-  key: PlatformFeatureFlagKey
-  isEnabled: boolean
-  description?: string | null
+  id?: string;
+  key: PlatformFeatureFlagKey;
+  isEnabled: boolean;
+  description?: string | null;
 }
 
 export interface PlatformFeatureFlags {
-  commerce_v1: boolean
-  fleet_v1: boolean
-  pnc_v1: boolean
-  enterprise_sso_v1: boolean
-  [key: string]: boolean
+  commerce_v1: boolean;
+  fleet_v1: boolean;
+  pnc_v1: boolean;
+  enterprise_sso_v1: boolean;
+  [key: string]: boolean;
 }
 
 export interface DashboardKpi {
-  id: string
-  label: string
-  value: string
-  delta: string
-  trend: 'up' | 'down'
-  iconKey: 'activity' | 'charge-points' | 'energy' | 'revenue' | 'incidents' | 'roaming' | 'load' | 'operators'
+  id: string;
+  label: string;
+  value: string;
+  delta: string;
+  trend: "up" | "down";
+  iconKey:
+    | "activity"
+    | "charge-points"
+    | "energy"
+    | "revenue"
+    | "incidents"
+    | "roaming"
+    | "load"
+    | "operators";
 }
 
 export interface DashboardSession {
-  id: string
-  station: string
-  cp: string
-  energy: string
-  amount: string
-  status: 'Active' | 'Completed' | 'Failed'
-  method: string
+  id: string;
+  station: string;
+  cp: string;
+  energy: string;
+  amount: string;
+  status: "Active" | "Completed" | "Failed";
+  method: string;
 }
 
 export interface DashboardIncident {
-  id: string
-  station: string
-  severity: 'High' | 'Medium' | 'Low'
-  title: string
-  status: 'Open' | 'Acknowledged'
+  id: string;
+  station: string;
+  severity: "High" | "Medium" | "Low";
+  title: string;
+  status: "Open" | "Acknowledged";
 }
 
 export interface DashboardOverviewResponse {
-  kpis: DashboardKpi[]
-  recentIncidents: DashboardIncident[]
-  recentSessions: DashboardSession[]
+  kpis: DashboardKpi[];
+  recentIncidents: DashboardIncident[];
+  recentSessions: DashboardSession[];
 }
 
 export interface SiteOwnerMetric {
-  id: 'revenue' | 'uptime' | 'utilisation' | 'energy'
-  label: string
-  value: string
-  delta: string
-  trend: 'up' | 'down' | 'neutral'
-  note: string
+  id: "revenue" | "uptime" | "utilisation" | "energy";
+  label: string;
+  value: string;
+  delta: string;
+  trend: "up" | "down" | "neutral";
+  note: string;
 }
 
 export interface RevenuePoint {
-  day: string
-  rev: number
+  day: string;
+  rev: number;
 }
 
 export interface SiteOwnerTopUnit {
-  id: string
-  loc: string
-  rev: string
-  sessions: number
-  status: 'Online' | 'Offline' | 'Degraded'
+  id: string;
+  loc: string;
+  rev: string;
+  sessions: number;
+  status: "Online" | "Offline" | "Degraded";
 }
 
 export interface SiteOwnerAlert {
-  id: number
-  msg: string
-  time: string
-  type: 'Issue' | 'Info'
+  id: number;
+  msg: string;
+  time: string;
+  type: "Issue" | "Info";
 }
 
 export interface SiteOwnerDashboardResponse {
-  alerts: SiteOwnerAlert[]
-  metrics: SiteOwnerMetric[]
+  alerts: SiteOwnerAlert[];
+  metrics: SiteOwnerMetric[];
   optimizationTip: {
-    cta: string
-    text: string
-    title: string
-  }
-  revenueData: RevenuePoint[]
-  subtitle: string
-  title: string
-  topUnits: SiteOwnerTopUnit[]
+    cta: string;
+    text: string;
+    title: string;
+  };
+  revenueData: RevenuePoint[];
+  subtitle: string;
+  title: string;
+  topUnits: SiteOwnerTopUnit[];
 }
 
 export interface StationChargePointSummary {
-  firmwareVersion?: string
-  id: string
-  lastHeartbeatAt?: string
-  lastHeartbeatLabel?: string
-  manufacturer?: string
-  maxPowerKw?: number
-  model?: string
-  ocppId?: string
-  ocppVersion?: string
-  status: 'Available' | 'Charging' | 'Faulted' | 'Unavailable'
-  type: string
+  firmwareVersion?: string;
+  id: string;
+  lastHeartbeatAt?: string;
+  lastHeartbeatLabel?: string;
+  manufacturer?: string;
+  maxPowerKw?: number;
+  model?: string;
+  ocppId?: string;
+  ocppVersion?: string;
+  status: "Available" | "Charging" | "Faulted" | "Unavailable";
+  type: string;
 }
 
 export interface StationSwapSummary {
-  availableChargedPacks: number
-  cabinetCount: number
-  chargingPacks: number
+  availableChargedPacks: number;
+  cabinetCount: number;
+  chargingPacks: number;
 }
 
 export interface StationSummary {
-  address: string
-  capacity: number
-  chargePoints: StationChargePointSummary[]
-  city: string
-  country: string
-  id: string
-  lat: number
-  lng: number
-  name: string
+  address: string;
+  capacity: number;
+  chargePoints: StationChargePointSummary[];
+  city: string;
+  country: string;
+  id: string;
+  lat: number;
+  lng: number;
+  name: string;
   networkLatency: {
-    averageLabel: string
-    modeLabel: string
-    points: number[]
-  }
-  serviceMode: ServiceMode
-  status: 'Online' | 'Offline' | 'Degraded' | 'Faulted'
-  swapSummary?: StationSwapSummary
+    averageLabel: string;
+    modeLabel: string;
+    points: number[];
+  };
+  serviceMode: ServiceMode;
+  status: "Online" | "Offline" | "Degraded" | "Faulted";
+  swapSummary?: StationSwapSummary;
 }
 
 export interface StationDetail extends StationSummary {
-  dailyAverageKwh: string
-  geofenceStatus: string
+  dailyAverageKwh: string;
+  geofenceStatus: string;
   networkLatency: {
-    averageLabel: string
-    modeLabel: string
-    points: number[]
-  }
+    averageLabel: string;
+    modeLabel: string;
+    points: number[];
+  };
   recentEvents: Array<{
-    description: string
-    time: string
-  }>
+    description: string;
+    time: string;
+  }>;
   systemIntegrity: {
-    firmwareVersion: string
-    ocppVersion: string
-    slaCompliance: string
-  }
-  uptimePercent30d: string
+    firmwareVersion: string;
+    ocppVersion: string;
+    slaCompliance: string;
+  };
+  uptimePercent30d: string;
 }
 
 export interface SwapCabinetSummary {
-  availableChargedPacks: number
-  chargingPacks: number
-  id: string
-  lastHeartbeatLabel: string
-  model: string
-  reservedPacks: number
-  slotCount: number
-  status: 'Online' | 'Offline' | 'Degraded' | 'Maintenance'
+  availableChargedPacks: number;
+  chargingPacks: number;
+  id: string;
+  lastHeartbeatLabel: string;
+  model: string;
+  reservedPacks: number;
+  slotCount: number;
+  status: "Online" | "Offline" | "Degraded" | "Maintenance";
 }
 
-export type BatteryPackStatus = 'Ready' | 'Charging' | 'Reserved' | 'Installed' | 'Quarantined' | 'Retired'
+export type BatteryPackStatus =
+  | "Ready"
+  | "Charging"
+  | "Reserved"
+  | "Installed"
+  | "Quarantined"
+  | "Retired";
 
 export interface BatteryPackTimelineEvent {
-  id: string
-  summary: string
-  timeLabel: string
-  type: 'Swap' | 'Inspection' | 'Lifecycle' | 'Retirement'
+  id: string;
+  summary: string;
+  timeLabel: string;
+  type: "Swap" | "Inspection" | "Lifecycle" | "Retirement";
 }
 
 export interface BatteryPackRetirementAssessment {
-  action: 'None' | 'Monitor' | 'Retire'
-  cycleThresholdBreached: boolean
-  evaluatedAtLabel: string
-  reason: string
-  sohThresholdBreached: boolean
+  action: "None" | "Monitor" | "Retire";
+  cycleThresholdBreached: boolean;
+  evaluatedAtLabel: string;
+  reason: string;
+  sohThresholdBreached: boolean;
 }
 
 export interface BatteryPackRetirementDecision {
-  action: 'Approved' | 'Deferred'
-  actorLabel: string
-  note?: string
-  timeLabel: string
+  action: "Approved" | "Deferred";
+  actorLabel: string;
+  note?: string;
+  timeLabel: string;
 }
 
 export interface BatteryPackRecord {
-  chemistry: 'LFP' | 'NMC'
-  cycleCount: number
-  healthLabel: string
-  id: string
-  inspectionNote?: string
-  inspectionStatus?: 'Passed' | 'Review' | 'Failed'
-  lastInspectionLabel?: string
-  lastSeenLabel: string
-  retirementAssessment?: BatteryPackRetirementAssessment
-  retirementDecision?: BatteryPackRetirementDecision
-  slotLabel: string
-  socLabel: string
-  stationName: string
-  status: BatteryPackStatus
-  timeline?: BatteryPackTimelineEvent[]
+  chemistry: "LFP" | "NMC";
+  cycleCount: number;
+  healthLabel: string;
+  id: string;
+  inspectionNote?: string;
+  inspectionStatus?: "Passed" | "Review" | "Failed";
+  lastInspectionLabel?: string;
+  lastSeenLabel: string;
+  retirementAssessment?: BatteryPackRetirementAssessment;
+  retirementDecision?: BatteryPackRetirementDecision;
+  slotLabel: string;
+  socLabel: string;
+  stationName: string;
+  status: BatteryPackStatus;
+  timeline?: BatteryPackTimelineEvent[];
 }
 
 export interface SwapPackTransitionRequest {
-  note?: string
-  toStatus: BatteryPackRecord['status']
+  note?: string;
+  toStatus: BatteryPackRecord["status"];
 }
 
 export interface SwapPackInspectionRequest {
-  note?: string
-  result: 'Passed' | 'Review' | 'Failed'
+  note?: string;
+  result: "Passed" | "Review" | "Failed";
 }
 
 export interface SwapPackRetirementRequest {
-  action: 'ApproveRetirement' | 'DeferRetirement'
-  note?: string
+  action: "ApproveRetirement" | "DeferRetirement";
+  note?: string;
 }
 
 export interface SwapPackMutationResponse {
-  message: string
-  pack: BatteryPackRecord
+  message: string;
+  pack: BatteryPackRecord;
 }
 
-export type SwapDispatchStatus = 'Proposed' | 'Approved' | 'Rejected' | 'In Transit' | 'Completed'
+export type SwapDispatchStatus =
+  | "Proposed"
+  | "Approved"
+  | "Rejected"
+  | "In Transit"
+  | "Completed";
 
 export interface SwapRebalancingRecommendation {
-  confidencePercent: number
-  demandTrendLabel: 'Rising' | 'Stable' | 'Cooling'
-  etaImpactLabel: string
-  fromStationId: string
-  fromStationName: string
-  id: string
-  packsSuggested: number
-  priority: 'Critical' | 'High' | 'Medium'
-  reason: string
-  sourceSurplusScore: number
-  status: SwapDispatchStatus
-  targetDeficitScore: number
-  toStationId: string
-  toStationName: string
+  confidencePercent: number;
+  demandTrendLabel: "Rising" | "Stable" | "Cooling";
+  etaImpactLabel: string;
+  fromStationId: string;
+  fromStationName: string;
+  id: string;
+  packsSuggested: number;
+  priority: "Critical" | "High" | "Medium";
+  reason: string;
+  sourceSurplusScore: number;
+  status: SwapDispatchStatus;
+  targetDeficitScore: number;
+  toStationId: string;
+  toStationName: string;
 }
 
 export interface SwapDispatchHistoryEvent {
-  actorLabel: string
-  note?: string
-  status: SwapDispatchStatus
-  timeLabel: string
+  actorLabel: string;
+  note?: string;
+  status: SwapDispatchStatus;
+  timeLabel: string;
 }
 
 export interface SwapDispatchRecord {
-  confidencePercent: number
-  etaImpactLabel: string
-  fromStationName: string
-  history: SwapDispatchHistoryEvent[]
-  id: string
-  packs: number
-  recommendationId: string
-  status: Exclude<SwapDispatchStatus, 'Proposed'>
-  toStationName: string
+  confidencePercent: number;
+  etaImpactLabel: string;
+  fromStationName: string;
+  history: SwapDispatchHistoryEvent[];
+  id: string;
+  packs: number;
+  recommendationId: string;
+  status: Exclude<SwapDispatchStatus, "Proposed">;
+  toStationName: string;
 }
 
 export interface SwapRebalancingResponse {
-  dispatches: SwapDispatchRecord[]
-  generatedAtLabel: string
-  recommendations: SwapRebalancingRecommendation[]
+  dispatches: SwapDispatchRecord[];
+  generatedAtLabel: string;
+  recommendations: SwapRebalancingRecommendation[];
 }
 
 export interface SwapDispatchActionRequest {
-  action: 'Approve' | 'Reject' | 'MarkInTransit' | 'MarkCompleted'
-  note?: string
+  action: "Approve" | "Reject" | "MarkInTransit" | "MarkCompleted";
+  note?: string;
 }
 
 export interface SwapDispatchActionResponse {
-  dispatch: SwapDispatchRecord
-  message: string
+  dispatch: SwapDispatchRecord;
+  message: string;
 }
 
 export interface SwapStationSummary {
-  address: string
-  avgSwapDurationLabel: string
-  cabinetCount: number
-  chargingPacks: number
-  city: string
-  country: string
-  id: string
-  lat: number
-  lng: number
-  name: string
-  readyPacks: number
-  serviceMode: Extract<ServiceMode, 'Swapping' | 'Hybrid'>
-  status: 'Online' | 'Offline' | 'Degraded' | 'Maintenance'
+  address: string;
+  avgSwapDurationLabel: string;
+  cabinetCount: number;
+  chargingPacks: number;
+  city: string;
+  country: string;
+  id: string;
+  lat: number;
+  lng: number;
+  name: string;
+  readyPacks: number;
+  serviceMode: Extract<ServiceMode, "Swapping" | "Hybrid">;
+  status: "Online" | "Offline" | "Degraded" | "Maintenance";
 }
 
 export interface SwapStationDetail extends SwapStationSummary {
   alerts: Array<{
-    level: 'Critical' | 'Warning' | 'Info'
-    message: string
-  }>
-  cabinets: SwapCabinetSummary[]
-  gridBufferLabel: string
-  packs: BatteryPackRecord[]
+    level: "Critical" | "Warning" | "Info";
+    message: string;
+  }>;
+  cabinets: SwapCabinetSummary[];
+  gridBufferLabel: string;
+  packs: BatteryPackRecord[];
   recentSwaps: Array<{
-    durationLabel: string
-    id: string
-    riderLabel: string
-    returnedPackId: string
-    status: 'Completed' | 'Flagged' | 'In Progress'
-    timeLabel: string
-  }>
+    durationLabel: string;
+    id: string;
+    riderLabel: string;
+    returnedPackId: string;
+    status: "Completed" | "Flagged" | "In Progress";
+    timeLabel: string;
+  }>;
 }
 
 export interface BatterySwapSessionRecord {
-  cabinetId: string
-  healthCheck: 'Passed' | 'Review' | 'Failed'
-  id: string
-  initiatedAt: string
-  outgoingPackId: string
-  returnedPackId: string
-  revenue: string
-  riderLabel: string
-  stationName: string
-  status: 'Completed' | 'In Progress' | 'Flagged'
-  turnaroundLabel: string
+  cabinetId: string;
+  healthCheck: "Passed" | "Review" | "Failed";
+  id: string;
+  initiatedAt: string;
+  outgoingPackId: string;
+  returnedPackId: string;
+  revenue: string;
+  riderLabel: string;
+  stationName: string;
+  status: "Completed" | "In Progress" | "Flagged";
+  turnaroundLabel: string;
 }
 
 export interface BatteryInventoryResponse {
-  balancingNote: string
+  balancingNote: string;
   metrics: Array<{
-    id: 'ready' | 'charging' | 'reserved' | 'quarantined' | 'retired'
-    label: string
-    tone: 'default' | 'ok' | 'warning' | 'danger'
-    value: string
-  }>
-  packs: BatteryPackRecord[]
+    id: "ready" | "charging" | "reserved" | "quarantined" | "retired";
+    label: string;
+    tone: "default" | "ok" | "warning" | "danger";
+    value: string;
+  }>;
+  packs: BatteryPackRecord[];
 }
 
 export interface ChargePointSummary {
-  bootNotificationAt?: string | null
-  bootNotificationPayload?: Record<string, unknown> | null
-  connectorType: string
-  connectorTypes?: string[]
-  firmwareVersion: string
-  id: string
-  identityConfirmedAt?: string | null
-  lastHeartbeatLabel: string
-  manufacturer: string
-  maxCapacityKw: number
-  model: string
-  ocppId: string
-  ocppStatus: string
-  ocppVersion: string
-  roamingPublished: boolean
-  serialNumber: string
-  stale: boolean
-  stationId: string
-  stationName: string
-  status: 'Online' | 'Offline' | 'Degraded'
+  bootNotificationAt?: string | null;
+  bootNotificationPayload?: Record<string, unknown> | null;
+  connectorType: string;
+  connectorTypes?: string[];
+  firmwareVersion: string;
+  id: string;
+  identityConfirmedAt?: string | null;
+  lastHeartbeatLabel: string;
+  manufacturer: string;
+  maxCapacityKw: number;
+  model: string;
+  ocppId: string;
+  ocppStatus: string;
+  ocppVersion: string;
+  roamingPublished: boolean;
+  serialNumber: string;
+  stale: boolean;
+  stationId: string;
+  stationName: string;
+  status: "Online" | "Offline" | "Degraded";
 }
 
 export interface ChargePointDetail extends ChargePointSummary {
   ocppCredentials?: {
-    authProfile?: 'basic' | 'mtls_bootstrap' | 'mtls'
-    bootstrapExpiresAt?: string
-    mtlsInstructions?: string
-    password?: string
-    requiresClientCertificate?: boolean
-    subprotocol?: string
-    username?: string
-    wsUrl?: string
-  }
-  remoteCommands: string[]
+    authProfile?: "basic" | "mtls_bootstrap" | "mtls";
+    bootstrapExpiresAt?: string;
+    mtlsInstructions?: string;
+    password?: string;
+    requiresClientCertificate?: boolean;
+    subprotocol?: string;
+    username?: string;
+    wsUrl?: string;
+  };
+  remoteCommands: string[];
   unitHealth: {
-    errorCode: string
-    lastHeartbeat: string
-    ocppConnection: string
-  }
-  smartChargingEnabled?: boolean
+    errorCode: string;
+    lastHeartbeat: string;
+    ocppConnection: string;
+  };
+  smartChargingEnabled?: boolean;
 }
 
 export interface ConfirmChargePointIdentityRequest {
-  firmwareVersion: string
-  manufacturer: string
-  model: string
+  firmwareVersion: string;
+  manufacturer: string;
+  model: string;
 }
 
 export interface ChargePointPublicationResponse {
-  chargePointId: string
-  published: boolean
-  updatedAt: string | null
+  chargePointId: string;
+  published: boolean;
+  updatedAt: string | null;
 }
 
 export interface SessionRecord {
-  amount: string
-  chargePointId: string
-  connectorType: string
-  cp: string
-  emsp: string
-  ended: string | null
-  energy: string
-  id: string
-  method: string
-  started: string
-  stationId: string
-  station: string
-  status: 'Active' | 'Completed' | 'Failed'
+  amount: string;
+  chargePointId: string;
+  connectorType: string;
+  cp: string;
+  emsp: string;
+  ended: string | null;
+  energy: string;
+  id: string;
+  method: string;
+  started: string;
+  stationId: string;
+  station: string;
+  status: "Active" | "Completed" | "Failed";
 }
 
 export interface ReservationRecord {
-  id: string
-  reservationId: number | null
-  customer: string
-  customerRef: string
-  stationName: string
-  chargePointId: string
-  startAt: string
-  endAt: string
-  status: 'Pending' | 'Confirmed' | 'Cancelled' | 'No Show' | 'Expired'
-  commandStatus: string
-  source: string
+  id: string;
+  reservationId: number | null;
+  customer: string;
+  customerRef: string;
+  stationName: string;
+  chargePointId: string;
+  startAt: string;
+  endAt: string;
+  status: "Pending" | "Confirmed" | "Cancelled" | "No Show" | "Expired";
+  commandStatus: string;
+  source: string;
 }
 
 export interface ReservationsResponse {
   metrics: Array<{
-    id: 'pending' | 'confirmed' | 'cancelled' | 'exceptions'
-    label: string
-    tone: 'default' | 'ok' | 'warning' | 'danger'
-    value: string
-  }>
-  records: ReservationRecord[]
-  note: string
+    id: "pending" | "confirmed" | "cancelled" | "exceptions";
+    label: string;
+    tone: "default" | "ok" | "warning" | "danger";
+    value: string;
+  }>;
+  records: ReservationRecord[];
+  note: string;
 }
 
 export interface FleetAccountRecord {
-  id: string
-  name: string
-  status: string
-  currency: string
-  driverGroups: number
-  drivers: number
+  id: string;
+  name: string;
+  status: string;
+  currency: string;
+  driverGroups: number;
+  drivers: number;
 }
 
 export interface FleetDriverGroupRecord {
-  id: string
-  accountName: string
-  name: string
-  status: string
-  tariffs: string[]
-  locations: string[]
-  drivers: number
-  monthlySpendLimit: string
+  id: string;
+  accountName: string;
+  name: string;
+  status: string;
+  tariffs: string[];
+  locations: string[];
+  drivers: number;
+  monthlySpendLimit: string;
 }
 
 export interface FleetDriverRecord {
-  id: string
-  accountName: string
-  groupName: string
-  displayName: string
-  contact: string
-  status: string
-  tokenSummary: string
-  monthlySpendLimit: string
+  id: string;
+  accountName: string;
+  groupName: string;
+  displayName: string;
+  contact: string;
+  status: string;
+  tokenSummary: string;
+  monthlySpendLimit: string;
 }
 
 export interface FleetOverviewResponse {
   metrics: Array<{
-    id: 'accounts' | 'groups' | 'drivers' | 'active-tokens'
-    label: string
-    tone: 'default' | 'ok' | 'warning'
-    value: string
-  }>
-  accounts: FleetAccountRecord[]
-  groups: FleetDriverGroupRecord[]
-  drivers: FleetDriverRecord[]
-  note: string
+    id: "accounts" | "groups" | "drivers" | "active-tokens";
+    label: string;
+    tone: "default" | "ok" | "warning";
+    value: string;
+  }>;
+  accounts: FleetAccountRecord[];
+  groups: FleetDriverGroupRecord[];
+  drivers: FleetDriverRecord[];
+  note: string;
+}
+
+export interface PncCertificateRecord {
+  id: string;
+  certificateHash: string;
+  certificateType: string;
+  status: string;
+  validFrom: string | null;
+  validTo: string | null;
+  revokedAt: string | null;
+  revocationReason: string | null;
+  mappedChargePointIds: string[];
+}
+
+export interface PncContractRecord {
+  id: string;
+  contractRef: string;
+  eMobilityAccountId: string | null;
+  providerPartyId: string | null;
+  vehicleVin: string | null;
+  status: string;
+  certificates: PncCertificateRecord[];
+}
+
+export interface PncOverviewResponse {
+  metrics: Array<{
+    id:
+      | "contracts"
+      | "active-contracts"
+      | "certificates"
+      | "active-certificates"
+      | "expiring-30d";
+    label: string;
+    tone: "default" | "ok" | "warning";
+    value: string;
+  }>;
+  contracts: PncContractRecord[];
+  certificates: PncCertificateRecord[];
+  note: string;
+}
+
+export interface EnterpriseIamProviderRecord {
+  id: string;
+  name: string;
+  protocol: string;
+  status: string;
+  syncMode: string;
+  issuerUrl: string | null;
+  metadataUrl: string | null;
+  roleMappings: Record<string, string[]>;
+  lastSyncAt: string | null;
+}
+
+export interface EnterpriseIamSyncJobRecord {
+  id: string;
+  providerId: string;
+  providerName: string;
+  status: string;
+  trigger: string;
+  requestedAt: string;
+  completedAt: string | null;
+  digest: Record<string, unknown> | null;
+}
+
+export interface EnterpriseIamOverviewResponse {
+  metrics: Array<{
+    id: "providers" | "active" | "sync-jobs" | "completed-24h";
+    label: string;
+    tone: "default" | "ok" | "warning";
+    value: string;
+  }>;
+  providers: EnterpriseIamProviderRecord[];
+  syncJobs: EnterpriseIamSyncJobRecord[];
+  note: string;
+}
+
+export interface DeveloperApiKeyRecord {
+  id: string;
+  appId: string;
+  name: string;
+  keyPrefix: string;
+  scopes: string[];
+  rateLimitPerMin: number;
+  status: string;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+}
+
+export interface DeveloperAppRecord {
+  id: string;
+  name: string;
+  slug: string;
+  status: string;
+  defaultRateLimitPerMin: number;
+  apiKeys: DeveloperApiKeyRecord[];
+}
+
+export interface DeveloperUsageRecord {
+  windowStart: string;
+  route: string;
+  method: string;
+  requestCount: number;
+  deniedCount: number;
+}
+
+export interface DeveloperPlatformOverviewResponse {
+  metrics: Array<{
+    id:
+      | "apps"
+      | "active-apps"
+      | "keys"
+      | "active-keys"
+      | "requests-24h"
+      | "denied-24h";
+    label: string;
+    tone: "default" | "ok" | "warning";
+    value: string;
+  }>;
+  apps: DeveloperAppRecord[];
+  usage: DeveloperUsageRecord[];
+  onboarding: Record<string, unknown>;
+  note: string;
 }
 
 export interface CreateChargePointRequest {
-  firmwareVersion?: string
-  manufacturer?: string
-  model?: string
-  ocppId: string
-  ocppVersion: '1.6' | '2.0.1' | '2.1'
-  power: number
-  stationId: string
-  type: string
+  firmwareVersion?: string;
+  manufacturer?: string;
+  model?: string;
+  ocppId: string;
+  ocppVersion: "1.6" | "2.0.1" | "2.1";
+  power: number;
+  stationId: string;
+  type: string;
 }
 
 export interface IncidentStat {
-  id: 'open' | 'response' | 'dispatched' | 'sla'
-  label: string
-  tone: 'default' | 'danger' | 'warning' | 'ok'
-  value: string
+  id: "open" | "response" | "dispatched" | "sla";
+  label: string;
+  tone: "default" | "danger" | "warning" | "ok";
+  value: string;
 }
 
 export interface IncidentRecord {
-  assignedTech?: string
-  id: string
-  reportedAt: string
+  assignedTech?: string;
+  id: string;
+  reportedAt: string;
   serviceLog: Array<{
-    active: boolean
-    note: string
-    title: string
-  }>
-  severity: 'Critical' | 'Major' | 'Minor'
-  situationAudit: string
-  stationId: string
-  stationName: string
-  status: 'Open' | 'Dispatched' | 'Resolving' | 'Closed'
-  type: 'Hardware Failure' | 'Communication Loss' | 'Power Surge' | 'Vandalism'
+    active: boolean;
+    note: string;
+    title: string;
+  }>;
+  severity: "Critical" | "Major" | "Minor";
+  situationAudit: string;
+  stationId: string;
+  stationName: string;
+  status: "Open" | "Dispatched" | "Resolving" | "Closed";
+  type: "Hardware Failure" | "Communication Loss" | "Power Surge" | "Vandalism";
 }
 
 export interface IncidentCommandResponse {
-  incidents: IncidentRecord[]
+  incidents: IncidentRecord[];
   predictiveAlert: {
-    cta: string
-    text: string
-  }
-  stats: IncidentStat[]
+    cta: string;
+    text: string;
+  };
+  stats: IncidentStat[];
 }
 
 export interface AlertRecord {
-  acked: boolean
-  id: string
-  message: string
-  station: string
-  ts: string
-  type: 'Critical' | 'Warning' | 'Info'
+  acked: boolean;
+  id: string;
+  message: string;
+  station: string;
+  ts: string;
+  type: "Critical" | "Warning" | "Info";
 }
 
 export interface TariffRecord {
-  active: boolean
-  currency: string
-  id: string
-  name: string
-  pricePerKwh: number
-  type: 'Energy' | 'Mixed' | 'Time'
+  active: boolean;
+  currency: string;
+  id: string;
+  name: string;
+  pricePerKwh: number;
+  type: "Energy" | "Mixed" | "Time";
 }
 
 export interface SmartChargingMetric {
-  id: 'load' | 'cap' | 'utilisation' | 'sessions'
-  label: string
-  tone: 'default' | 'danger' | 'ok'
-  value: string
+  id: "load" | "cap" | "utilisation" | "sessions";
+  label: string;
+  tone: "default" | "danger" | "ok";
+  value: string;
 }
 
 export interface SmartChargingResponse {
-  activeCurtailments: number
+  activeCurtailments: number;
   distribution: Array<{
-    colorKey: 'accent' | 'ok' | 'warning'
-    label: string
-    val: number
-  }>
+    colorKey: "accent" | "ok" | "warning";
+    label: string;
+    val: number;
+  }>;
   loadProfile: Array<{
-    cap: number
-    load: number
-    time: string
-  }>
-  metrics: SmartChargingMetric[]
+    cap: number;
+    load: number;
+    time: string;
+  }>;
+  metrics: SmartChargingMetric[];
   optimizer: {
-    cta: string
-    forecastTime: string
-    reductionPercent: number
-    selectedStrategy: string
-    strategies: string[]
-  }
+    cta: string;
+    forecastTime: string;
+    reductionPercent: number;
+    selectedStrategy: string;
+    strategies: string[];
+  };
 }
 
 export interface LoadPolicyRecord {
-  active: boolean
-  curtailment: number
-  id: string
-  maxLoadKw: number
-  name: string
-  priority: 'FIFO' | 'Priority' | 'Fair-Share'
-  station: string
+  active: boolean;
+  curtailment: number;
+  id: string;
+  maxLoadKw: number;
+  name: string;
+  priority: "FIFO" | "Priority" | "Fair-Share";
+  station: string;
 }
 
 export interface RoamingPartnerRecord {
-  country: string
-  id: string
-  lastSync: string
-  name: string
-  partyId: string
-  status: 'Connected' | 'Pending' | 'Suspended'
-  type: 'EMSP' | 'HUB'
-  version: string
+  country: string;
+  id: string;
+  lastSync: string;
+  name: string;
+  partyId: string;
+  status: "Connected" | "Pending" | "Suspended";
+  type: "EMSP" | "HUB";
+  version: string;
 }
 
 export interface PartnerObservabilityMetric {
-  id: 'healthy' | 'attention' | 'events' | 'failures'
-  label: string
-  note: string
-  tone: 'accent' | 'ok' | 'warning' | 'danger'
-  value: string
+  id: "healthy" | "attention" | "events" | "failures";
+  label: string;
+  note: string;
+  tone: "accent" | "ok" | "warning" | "danger";
+  value: string;
 }
 
 export interface RoamingPartnerObservabilitySummary {
-  callbackFailures24h: number
-  deliveryStatus: 'Healthy' | 'Retrying' | 'Degraded'
-  eventCoverage: string[]
-  id: string
-  lastEventAt: string
-  lastPartnerActivity: string
-  retryQueueDepth: number
-  successRate: string
-  totalEvents24h: number
+  callbackFailures24h: number;
+  deliveryStatus: "Healthy" | "Retrying" | "Degraded";
+  eventCoverage: string[];
+  id: string;
+  lastEventAt: string;
+  lastPartnerActivity: string;
+  retryQueueDepth: number;
+  successRate: string;
+  totalEvents24h: number;
 }
 
 export interface RoamingPartnerObservabilityEvent {
-  direction: 'Inbound' | 'Outbound'
-  id: string
-  module: string
-  status: 'Delivered' | 'Retried' | 'Failed'
-  summary: string
-  time: string
+  direction: "Inbound" | "Outbound";
+  id: string;
+  module: string;
+  status: "Delivered" | "Retried" | "Failed";
+  summary: string;
+  time: string;
 }
 
 export interface RoamingPartnerObservabilityAlert {
-  detail: string
-  id: string
-  severity: 'Info' | 'Warning' | 'Critical'
-  title: string
+  detail: string;
+  id: string;
+  severity: "Info" | "Warning" | "Critical";
+  title: string;
 }
 
 export interface RoamingPartnerObservabilityDetail extends RoamingPartnerObservabilitySummary {
   callbacks: {
-    avgLatency: string
-    delivered24h: number
-    failed24h: number
-    lastDelivery: string
-    lastHttpStatus: string
-  }
-  recentEvents: RoamingPartnerObservabilityEvent[]
-  warnings: RoamingPartnerObservabilityAlert[]
+    avgLatency: string;
+    delivered24h: number;
+    failed24h: number;
+    lastDelivery: string;
+    lastHttpStatus: string;
+  };
+  recentEvents: RoamingPartnerObservabilityEvent[];
+  warnings: RoamingPartnerObservabilityAlert[];
 }
 
 export interface RoamingPartnerObservabilityResponse {
-  metrics: PartnerObservabilityMetric[]
-  note: string
-  partners: RoamingPartnerObservabilitySummary[]
+  metrics: PartnerObservabilityMetric[];
+  note: string;
+  partners: RoamingPartnerObservabilitySummary[];
 }
 
 export interface RoamingMetric {
-  id: 'incoming' | 'authorized' | 'utilisation'
-  label: string
-  note: string
-  tone: 'accent' | 'ok' | 'warning'
-  value: string
+  id: "incoming" | "authorized" | "utilisation";
+  label: string;
+  note: string;
+  tone: "accent" | "ok" | "warning";
+  value: string;
 }
 
 export interface RoamingSessionRecord {
-  amount: string
-  emspName: string
-  energy: number
-  id: string
-  partnerId: string
-  partyId: string
-  startTime: string
-  stationName: string
-  status: 'Active' | 'Completed' | 'Authorized'
+  amount: string;
+  emspName: string;
+  energy: number;
+  id: string;
+  partnerId: string;
+  partyId: string;
+  startTime: string;
+  stationName: string;
+  status: "Active" | "Completed" | "Authorized";
 }
 
 export interface RoamingSessionsResponse {
-  metrics: RoamingMetric[]
+  metrics: RoamingMetric[];
   regionalReach: Array<{
-    count: number
-    region: string
-  }>
-  sessions: RoamingSessionRecord[]
-  settlementAging: number[]
+    count: number;
+    region: string;
+  }>;
+  sessions: RoamingSessionRecord[];
+  settlementAging: number[];
 }
 
 export interface CdrMetric {
-  id: 'total' | 'awaiting' | 'revenue' | 'error-rate'
-  label: string
-  tone: 'default' | 'warning' | 'ok'
-  value: string
+  id: "total" | "awaiting" | "revenue" | "error-rate";
+  label: string;
+  tone: "default" | "warning" | "ok";
+  value: string;
 }
 
 export interface CdrRecord {
-  country: string
-  currency: string
-  emspName: string
-  end: string
-  id: string
-  kwh: number
-  partnerId: string
-  partyId: string
-  sessionId: string
-  start: string
-  status: 'Sent' | 'Received' | 'Accepted' | 'Rejected' | 'Settled'
-  totalCost: string
+  country: string;
+  currency: string;
+  emspName: string;
+  end: string;
+  id: string;
+  kwh: number;
+  partnerId: string;
+  partyId: string;
+  sessionId: string;
+  start: string;
+  status: "Sent" | "Received" | "Accepted" | "Rejected" | "Settled";
+  totalCost: string;
 }
 
 export interface OCPICdrsResponse {
   automation: {
-    cta: string
-    text: string
-  }
-  metrics: CdrMetric[]
-  records: CdrRecord[]
+    cta: string;
+    text: string;
+  };
+  metrics: CdrMetric[];
+  records: CdrRecord[];
 }
 
 export interface CommandLog {
-  command: string
-  id: string
-  partner: string
-  partnerId: string
-  payload: string
-  status: 'Accepted' | 'Rejected' | 'Timed Out'
-  time: string
+  command: string;
+  id: string;
+  partner: string;
+  partnerId: string;
+  payload: string;
+  status: "Accepted" | "Rejected" | "Timed Out";
+  time: string;
 }
 
 export interface OCPICommandsResponse {
-  logs: CommandLog[]
+  logs: CommandLog[];
   partners: Array<{
-    id: string
-    label: string
-  }>
+    id: string;
+    label: string;
+  }>;
 }
 
 export interface BillingResponse {
   aging: Array<{
-    label: string
-    value: string
-  }>
+    label: string;
+    value: string;
+  }>;
   invoices: Array<{
-    amount: string
-    customer: string
-    dueDate: string
-    id: string
-    scope: string
-    status: 'Draft' | 'Issued' | 'Paid' | 'Overdue'
-  }>
+    amount: string;
+    customer: string;
+    dueDate: string;
+    id: string;
+    scope: string;
+    status: "Draft" | "Issued" | "Paid" | "Overdue";
+  }>;
   metrics: Array<{
-    id: 'revenue' | 'collection-rate' | 'outstanding' | 'tax'
-    label: string
-    tone: 'default' | 'ok' | 'warning'
-    value: string
-  }>
-  note: string
-  totalRevenueThisMonth: string
+    id: "revenue" | "collection-rate" | "outstanding" | "tax";
+    label: string;
+    tone: "default" | "ok" | "warning";
+    value: string;
+  }>;
+  note: string;
+  totalRevenueThisMonth: string;
 }
 
 export interface PayoutRecord {
-  amount: string
-  fee: string
-  id: string
-  net: string
-  period: string
-  sessions: number
-  status: 'Completed' | 'Processing'
+  amount: string;
+  fee: string;
+  id: string;
+  net: string;
+  period: string;
+  sessions: number;
+  status: "Completed" | "Processing";
 }
 
 export interface SettlementRecord {
-  id: string
-  netAmount: string
-  partner: string
-  period: string
-  status: 'Ready' | 'Reconciling' | 'Settled'
+  id: string;
+  netAmount: string;
+  partner: string;
+  period: string;
+  status: "Ready" | "Reconciling" | "Settled";
 }
 
 export interface SettlementResponse {
   exceptions: Array<{
-    action: string
-    id: string
-    impact: string
-    partner: string
-    reason: string
-  }>
+    action: string;
+    id: string;
+    impact: string;
+    partner: string;
+    reason: string;
+  }>;
   metrics: Array<{
-    id: 'ready' | 'reconciling' | 'settled' | 'exceptions'
-    label: string
-    tone: 'default' | 'ok' | 'warning' | 'danger'
-    value: string
-  }>
-  note: string
-  records: SettlementRecord[]
+    id: "ready" | "reconciling" | "settled" | "exceptions";
+    label: string;
+    tone: "default" | "ok" | "warning" | "danger";
+    value: string;
+  }>;
+  note: string;
+  records: SettlementRecord[];
 }
 
 export interface TeamMember {
-  email: string
-  lastSeen: string
-  name: string
-  role: string
-  status: 'Active' | 'Invited'
+  email: string;
+  lastSeen: string;
+  name: string;
+  role: string;
+  status: "Active" | "Invited";
 }
 
 export interface AuditLogRecord {
-  action: string
-  actor: string
-  target: string
-  ts: string
+  action: string;
+  actor: string;
+  target: string;
+  ts: string;
 }
 
 export interface ReportTemplateOption {
-  id: string
-  label: string
+  id: string;
+  label: string;
 }
 
 export interface ReportExportRecord {
-  name: string
-  size: string
-  time: string
-  type: string
+  name: string;
+  size: string;
+  time: string;
+  type: string;
 }
 
 export interface ScheduledEmailRecord {
-  enabled: boolean
-  label: string
+  enabled: boolean;
+  label: string;
 }
 
 export interface ReportsResponse {
-  periods: string[]
-  recentExports: ReportExportRecord[]
-  scheduledEmails: ScheduledEmailRecord[]
-  templates: ReportTemplateOption[]
+  periods: string[];
+  recentExports: ReportExportRecord[];
+  scheduledEmails: ScheduledEmailRecord[];
+  templates: ReportTemplateOption[];
 }
 
 export interface ProtocolEndpointRecord {
-  module: string
-  status: 'Online' | 'Warning'
-  url: string
+  module: string;
+  status: "Online" | "Warning";
+  url: string;
 }
 
 export interface ProtocolLogRecord {
-  level: 'info' | 'success' | 'warning' | 'accent'
-  message: string
+  level: "info" | "success" | "warning" | "accent";
+  message: string;
 }
 
-export type ProtocolImplementationStage = 'Mock Bench' | 'Pilot' | 'Live'
+export type ProtocolImplementationStage = "Mock Bench" | "Pilot" | "Live";
 
 export interface ProtocolEngineResponse {
-  complianceNote: string
-  endpoints: ProtocolEndpointRecord[]
-  handshakeLogs: ProtocolLogRecord[]
-  headline: string
-  implementationStage: ProtocolImplementationStage
-  liveServicesDeployed: boolean
-  plannedVersions: string[]
-  statusNote: string
-  supportedVersions: string[]
+  complianceNote: string;
+  endpoints: ProtocolEndpointRecord[];
+  handshakeLogs: ProtocolLogRecord[];
+  headline: string;
+  implementationStage: ProtocolImplementationStage;
+  liveServicesDeployed: boolean;
+  plannedVersions: string[];
+  statusNote: string;
+  supportedVersions: string[];
 }
 
 export interface IntegrationModuleResponse {
   connections: Array<{
-    authMode: string
-    category: 'Payments' | 'Roaming' | 'ERP' | 'CRM'
-    id: string
-    lastSync: string
-    latency: string
-    name: string
-    status: 'Connected' | 'Degraded' | 'Pending'
-  }>
+    authMode: string;
+    category: "Payments" | "Roaming" | "ERP" | "CRM";
+    id: string;
+    lastSync: string;
+    latency: string;
+    name: string;
+    status: "Connected" | "Degraded" | "Pending";
+  }>;
   metrics: Array<{
-    id: 'connected' | 'degraded' | 'pending' | 'coverage'
-    label: string
-    tone: 'default' | 'ok' | 'warning'
-    value: string
-  }>
-  note: string
+    id: "connected" | "degraded" | "pending" | "coverage";
+    label: string;
+    tone: "default" | "ok" | "warning";
+    value: string;
+  }>;
+  note: string;
 }
 
 export interface WebhooksModuleResponse {
   endpoints: Array<{
-    eventGroup: string
-    id: string
-    lastDelivery: string
-    signingStatus: string
-    status: 'Healthy' | 'Retrying' | 'Muted'
-    successRate: string
-    target: string
-  }>
+    eventGroup: string;
+    id: string;
+    lastDelivery: string;
+    signingStatus: string;
+    status: "Healthy" | "Retrying" | "Muted";
+    successRate: string;
+    target: string;
+  }>;
   metrics: Array<{
-    id: 'healthy' | 'retrying' | 'muted' | 'deliveries'
-    label: string
-    tone: 'default' | 'ok' | 'warning'
-    value: string
-  }>
-  note: string
+    id: "healthy" | "retrying" | "muted" | "deliveries";
+    label: string;
+    tone: "default" | "ok" | "warning";
+    value: string;
+  }>;
+  note: string;
   recentDeliveries: Array<{
-    endpoint: string
-    event: string
-    id: string
-    latency: string
-    result: 'Delivered' | 'Retried' | 'Failed'
-    time: string
-  }>
+    endpoint: string;
+    event: string;
+    id: string;
+    latency: string;
+    result: "Delivered" | "Retried" | "Failed";
+    time: string;
+  }>;
 }
 
 export interface NotificationsModuleResponse {
   channels: Array<{
-    coverage: string
-    id: string
-    name: string
-    status: 'Active' | 'Fallback' | 'Paused'
-    volume: string
-  }>
+    coverage: string;
+    id: string;
+    name: string;
+    status: "Active" | "Fallback" | "Paused";
+    volume: string;
+  }>;
   metrics: Array<{
-    id: 'active-routes' | 'delivery-rate' | 'escalations' | 'suppressed'
-    label: string
-    tone: 'default' | 'ok' | 'warning'
-    value: string
-  }>
-  note: string
+    id: "active-routes" | "delivery-rate" | "escalations" | "suppressed";
+    label: string;
+    tone: "default" | "ok" | "warning";
+    value: string;
+  }>;
+  note: string;
   recentDispatches: Array<{
-    channel: string
-    id: string
-    recipient: string
-    rule: string
-    status: 'Delivered' | 'Queued' | 'Escalated'
-    time: string
-  }>
+    channel: string;
+    id: string;
+    recipient: string;
+    rule: string;
+    status: "Delivered" | "Queued" | "Escalated";
+    time: string;
+  }>;
 }

@@ -31,6 +31,38 @@ export interface EnergyPhaseTriple {
   phase3: number;
 }
 
+export interface EnergyDerProfile {
+  id: string;
+  tenantId: string;
+  organizationId: string;
+  stationId: string;
+  siteId: string | null;
+  status: "ACTIVE" | "DISABLED" | "DRAFT" | string;
+  maxGridImportKw: number | null;
+  reserveGridKw: number | null;
+  solarEnabled: boolean;
+  maxSolarContributionKw: number | null;
+  bessEnabled: boolean;
+  maxBessDischargeKw: number | null;
+  bessSocPercent: number | null;
+  bessReserveSocPercent: number | null;
+  forecast: Record<string, unknown> | unknown[] | null;
+  metadata: Record<string, unknown> | unknown[] | null;
+  createdBy: string | null;
+  updatedBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EnergyDerProfilePayload {
+  stationId: string;
+  siteId: string | null;
+  organizationId: string;
+  profile: EnergyDerProfile | null;
+  constraints: Record<string, unknown>;
+  note: string;
+}
+
 export interface EnergyActiveOverrideSummary {
   id: string;
   status: EnergyOverrideStatus;

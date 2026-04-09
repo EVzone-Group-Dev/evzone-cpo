@@ -7,6 +7,7 @@ import {
   createEnergyGroup,
   createEnergyOverride,
   deleteEnergyGroup,
+  getEnergyDerProfile,
   getEnergyGroup,
   getEnergyGroupHistory,
   ingestEnergyTelemetry,
@@ -16,9 +17,11 @@ import {
   recalculateEnergyStation,
   replaceEnergyGroupMemberships,
   simulateEnergyMeterLoss,
+  upsertEnergyDerProfile,
   disableEnergyGroup,
   updateEnergyGroup,
   type EnergyAllocationDecisionRecord,
+  type EnergyDerProfilePayload,
   type EnergyGroupQuery,
   type EnergyLoadGroupDetail,
   type EnergyLoadGroupMembershipInput,
@@ -98,6 +101,16 @@ export function useEnergyLoadGroupHistory(id?: string, limit = 25) {
       limit,
     ],
     queryFn: () => getEnergyGroupHistory(id ?? "", limit),
+    enabled,
+  });
+}
+
+export function useEnergyDerProfile(stationId?: string) {
+  const { enabled, scopeKey } = useEnergyTenantQueryContext(Boolean(stationId));
+
+  return useQuery<EnergyDerProfilePayload>({
+    queryKey: ["energy-management", "der-profile", scopeKey, stationId ?? null],
+    queryFn: () => getEnergyDerProfile(stationId ?? ""),
     enabled,
   });
 }
@@ -250,6 +263,21 @@ export function useSimulateEnergyMeterLoss() {
 
   return useMutation({
     mutationFn: (id: string) => simulateEnergyMeterLoss(id),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpsertEnergyDerProfile() {
+  const invalidate = useInvalidateEnergyQueries();
+
+  return useMutation({
+    mutationFn: ({
+      stationId,
+      input,
+    }: {
+      stationId: string;
+      input: Record<string, unknown>;
+    }) => upsertEnergyDerProfile(stationId, input),
     onSuccess: invalidate,
   });
 }

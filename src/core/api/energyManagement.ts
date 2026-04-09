@@ -3,6 +3,7 @@ import type {
   EnergyAllocationDecisionRecord,
   EnergyAllocationPlanRecord,
   EnergyAlertRecord,
+  EnergyDerProfilePayload,
   EnergyLoadGroupDetail,
   EnergyLoadGroupMembershipInput,
   EnergyLoadGroupSummary,
@@ -153,6 +154,23 @@ export function recalculateEnergyStation(stationId: string, reason?: string) {
   );
 }
 
+export function getEnergyDerProfile(stationId: string) {
+  return requestJson<EnergyDerProfilePayload>(
+    `/stations/${encodeURIComponent(stationId)}/der-profile`,
+  );
+}
+
+export function upsertEnergyDerProfile(
+  stationId: string,
+  input: Record<string, unknown>,
+) {
+  return jsonRequest<EnergyDerProfilePayload>(
+    `/stations/${encodeURIComponent(stationId)}/der-profile`,
+    input,
+    "PUT",
+  );
+}
+
 export function createEnergyOverride(id: string, input: EnergyOverrideInput) {
   return jsonRequest<EnergyLoadGroupDetail>(
     `/groups/${encodeURIComponent(id)}/overrides`,
@@ -189,6 +207,7 @@ export type {
   EnergyAllocationDecisionRecord,
   EnergyAllocationPlanRecord,
   EnergyAlertRecord,
+  EnergyDerProfilePayload,
   EnergyLoadGroupDetail,
   EnergyLoadGroupMembershipInput,
   EnergyLoadGroupSummary,
