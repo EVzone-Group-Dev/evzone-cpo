@@ -258,6 +258,12 @@ const NAV: NavGroup[] = [
         featureFlag: "pnc_v1",
       },
       {
+        label: "Vendor Baseline",
+        icon: <Puzzle size={16} />,
+        path: PATHS.VENDOR_BASELINE,
+        policy: "platformAdminRead",
+      },
+      {
         label: "Developer APIs",
         icon: <BookOpen size={16} />,
         path: PATHS.DEVELOPER_PLATFORM,

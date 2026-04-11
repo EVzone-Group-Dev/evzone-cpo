@@ -57,6 +57,7 @@ export const PATHS = {
   INTEGRATIONS: "/integrations",
   PROTOCOLS: "/protocols",
   PLUG_AND_CHARGE: "/plug-and-charge",
+  VENDOR_BASELINE: "/vendor-baseline",
   ENTERPRISE_IAM: "/enterprise-iam",
   DEVELOPER_PLATFORM: "/developer-platform",
 

@@ -115,6 +115,11 @@ const PlugAndChargePage = lazy(() =>
     default: m.PlugAndChargePage,
   })),
 );
+const VendorBaselinePage = lazy(() =>
+  import("@/pages/platform/VendorBaselinePage").then((m) => ({
+    default: m.VendorBaselinePage,
+  })),
+);
 const OCPIPartnersPage = lazy(() =>
   import("@/pages/roaming/OCPIPartnersPage").then((m) => ({
     default: m.OCPIPartnersPage,
@@ -589,6 +594,14 @@ export function AppRoutes() {
           element={
             <RequireAuth policy="pncRead">
               <PlugAndChargePage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={PATHS.VENDOR_BASELINE}
+          element={
+            <RequireAuth policy="platformAdminRead">
+              <VendorBaselinePage />
             </RequireAuth>
           }
         />
