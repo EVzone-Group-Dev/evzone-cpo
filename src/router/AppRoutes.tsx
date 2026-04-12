@@ -632,7 +632,7 @@ export function AppRoutes() {
           }
         />
         <Route
-          path="/settings/white-label"
+          path={PATHS.WHITE_LABEL}
           element={
             <RequireAuth policy="whiteLabelAdmin">
               <WhiteLabelPage />

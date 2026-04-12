@@ -1,4 +1,5 @@
 import { PDFGenerator } from './pdfGenerator';
+import type { WhiteLabelConfigV1 } from '@/core/types/branding';
 
 export interface ReceiptData {
   receiptNumber: string;
@@ -12,6 +13,7 @@ export interface ReceiptData {
   total: number;
   paymentMethod?: string;
   transactionId?: string;
+  brandingConfig?: WhiteLabelConfigV1;
 }
 
 /**
@@ -21,9 +23,15 @@ export function generateReceiptPDF(data: ReceiptData): Blob {
   const pdf = new PDFGenerator({
     orientation: 'portrait',
     format: 'a4',
+    brandingConfig: data.brandingConfig,
   });
 
-  pdf.addHeader(undefined, 'RECEIPT');
+  pdf.addHeader(
+    undefined,
+    data.brandingConfig?.branding.shortName
+      ? `${data.brandingConfig.branding.shortName} RECEIPT`
+      : 'RECEIPT',
+  );
   pdf.addSpacing(3);
 
   // Receipt info
@@ -60,6 +68,12 @@ export function generateReceiptPDF(data: ReceiptData): Blob {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
     doc.text(`Transaction ID: ${data.transactionId}`, 10, pdf.getCurrentY() + 4);
+  }
+
+  if (data.brandingConfig?.support.email) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text(`Support: ${data.brandingConfig.support.email}`, 10, pdf.getCurrentY() + 12);
   }
 
   return pdf.getBlob();

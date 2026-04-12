@@ -4,8 +4,10 @@ import { Sidebar } from '@/components/layout/Sidebar'
 import { getTemporaryAccessState, getTemporaryAccessWindowLabel, getUserRoleLabel, isTemporaryScopeUser } from '@/core/auth/access'
 import { useAuthStore } from '@/core/auth/authStore'
 import { useTenant } from '@/core/hooks/useTenant'
+import { useBranding } from '@/core/branding/useBranding'
 import { Bell, LogOut, Settings } from 'lucide-react'
 import { PATHS } from '@/router/paths'
+import { LOGO_PATHS } from '@/utils/assets'
 
 interface Props {
   children: ReactNode
@@ -31,6 +33,8 @@ export function DashboardLayout({ children, pageTitle, actions }: Props) {
   const temporaryAccessState = getTemporaryAccessState(user)
   const temporaryAccessLabel = getTemporaryAccessWindowLabel(user)
   const hasTemporaryScope = isTemporaryScopeUser(user)
+  const { branding } = useBranding()
+  const headerLogoUrl = branding.branding.logoIconUrl || branding.branding.logoUrl || LOGO_PATHS.cpms
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
@@ -64,11 +68,14 @@ export function DashboardLayout({ children, pageTitle, actions }: Props) {
           className="flex items-center justify-between gap-2 px-4 sm:px-6 py-2.5 sm:py-3 border-b flex-shrink-0"
           style={{ borderColor: 'var(--border)', background: 'var(--bg-card)', minHeight: 57 }}
         >
-          {pageTitle ? (
-            <h1 className="text-base font-bold text-[var(--text)]">{pageTitle}</h1>
-          ) : (
-            <div />
-          )}
+          <div className="flex items-center gap-3 min-w-0">
+            <img src={headerLogoUrl} alt={branding.branding.shortName} className="w-6 h-6 object-contain" />
+            {pageTitle ? (
+              <h1 className="text-base font-bold text-[var(--text)] truncate">{pageTitle}</h1>
+            ) : (
+              <div className="text-sm font-semibold text-[var(--text)] truncate">{branding.branding.appName}</div>
+            )}
+          </div>
           <div className="flex items-center gap-2 min-w-0">
             {(activeTenant || activeStationContext) && (
               <div className="hidden md:flex flex-wrap items-center justify-end gap-2 min-w-0">

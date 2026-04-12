@@ -1,4 +1,5 @@
 import { LOGO_PATHS } from '../../utils/assets';
+import { useBranding } from '@/core/branding/useBranding';
 
 interface ReceiptItem {
   description: string;
@@ -26,6 +27,9 @@ export function PrintableReceipt({
   paymentMethod,
   transactionId,
 }: PrintableReceiptProps) {
+  const { branding } = useBranding();
+  const logoUrl = branding.branding.logoUrl || LOGO_PATHS.cpms;
+
   return (
     <div
       id="receipt-content"
@@ -34,11 +38,12 @@ export function PrintableReceipt({
     >
       <div className="text-center mb-4 pb-4 border-b-2 border-gray-300">
         <img
-          src={LOGO_PATHS.cpms}
-          alt="EVzone CPO"
+          src={logoUrl}
+          alt={branding.branding.shortName}
           className="h-10 mx-auto mb-2"
         />
         <h1 className="font-bold text-lg">RECEIPT</h1>
+        <p className="text-xs text-gray-600 mt-1">{branding.branding.appName}</p>
         <p className="text-xs text-gray-600 mt-1">{tenantName}</p>
       </div>
 
@@ -99,6 +104,16 @@ export function PrintableReceipt({
         <p className="text-xs text-gray-600 mb-1">
           Thank you for your business!
         </p>
+        {branding.support.email && (
+          <p className="text-xs text-gray-600 mb-1">
+            Support: {branding.support.email}
+          </p>
+        )}
+        {branding.legal.supportUrl && (
+          <p className="text-xs text-gray-600 mb-1">
+            {branding.legal.supportUrl}
+          </p>
+        )}
         <p className="text-xs text-gray-600">
           {new Date().toLocaleDateString()}
         </p>

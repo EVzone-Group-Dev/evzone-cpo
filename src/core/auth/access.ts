@@ -271,7 +271,11 @@ const ACCESS_PERMISSION_MAP: Record<
   developerPlatformRead: ["platform.integrations.read", "tenant.settings.read"],
   settingsRead: ["tenant.settings.read", "platform.tenants.read"],
   notificationsRead: undefined,
-  whiteLabelAdmin: ["tenant.branding.write"],
+  whiteLabelAdmin: [
+    "tenant.branding.write",
+    "platform.tenants.write",
+    "platform.tenants.read",
+  ],
   remoteCommandStart: ["commands.write"],
   chargePointCommands: ["charge_points.command"],
 };

@@ -63,5 +63,6 @@ export const PATHS = {
 
   // Settings
   SETTINGS: "/settings",
+  WHITE_LABEL: "/settings/white-label",
   NOTIFICATIONS: "/notifications",
 };

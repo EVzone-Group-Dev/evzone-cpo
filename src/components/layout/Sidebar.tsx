@@ -8,7 +8,9 @@ import {
 import { useAuthStore } from "@/core/auth/authStore";
 import { useTenant } from "@/core/hooks/useTenant";
 import { usePlatformFeatureFlags } from "@/core/hooks/usePlatformData";
+import { useBranding } from "@/core/branding/useBranding";
 import { PATHS } from "@/router/paths";
+import { LOGO_PATHS } from "@/utils/assets";
 import {
   LayoutDashboard,
   Cpu,
@@ -285,8 +287,10 @@ export function Sidebar() {
   const { user, logout } = useAuthStore();
   const { activeTenant } = useTenant();
   const { data: featureFlags } = usePlatformFeatureFlags();
+  const { branding } = useBranding();
   const [collapsed, setCollapsed] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const logoUrl = branding.branding.logoUrl || LOGO_PATHS.cpms;
 
   return (
     <aside
@@ -296,14 +300,14 @@ export function Sidebar() {
       {/* Logo / Brand */}
       <div className="flex items-center gap-2.5 px-4 py-4 border-b border-[var(--border)] min-h-[57px]">
         <img
-          src="/assets/logos/cpms.png"
-          alt="EVzone CPO"
+          src={logoUrl}
+          alt={branding.branding.shortName}
           className="w-7 h-7 flex-shrink-0 object-contain"
-          //title="EVzone CPO Platform"
         />
         {!collapsed && (
           <span className="font-extrabold text-sm tracking-tight text-[var(--text)]">
-            EVzone <span className="text-[var(--accent)]">CPO</span>
+            {branding.branding.shortName}{' '}
+            <span className="text-[var(--accent)]">CPO</span>
           </span>
         )}
         <button

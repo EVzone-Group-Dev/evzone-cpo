@@ -1,10 +1,12 @@
 import jsPDF from 'jspdf';
+import type { WhiteLabelConfigV1 } from '@/core/types/branding';
 
 export interface PDFOptions {
   title?: string;
   filename?: string;
   orientation?: 'portrait' | 'landscape';
   format?: 'a4' | 'letter';
+  brandingConfig?: WhiteLabelConfigV1;
 }
 
 /**
@@ -15,9 +17,10 @@ export class PDFGenerator {
   private pageHeight: number;
   private pageWidth: number;
   private currentY: number;
+  private brandingConfig: WhiteLabelConfigV1 | null;
 
   constructor(options: PDFOptions = {}) {
-    const { orientation = 'portrait', format = 'a4' } = options;
+    const { orientation = 'portrait', format = 'a4', brandingConfig = null } = options;
     this.doc = new jsPDF({
       orientation,
       unit: 'mm',
@@ -26,6 +29,18 @@ export class PDFGenerator {
     this.pageWidth = this.doc.internal.pageSize.getWidth();
     this.pageHeight = this.doc.internal.pageSize.getHeight();
     this.currentY = 15; // Start below header
+    this.brandingConfig = brandingConfig;
+  }
+
+  private resolveBrandColor(): [number, number, number] {
+    const color = this.brandingConfig?.theme.primaryColor?.trim() ?? '#3FB950';
+    const normalized = color.startsWith('#') ? color.slice(1) : color;
+    if (!/^[0-9a-fA-F]{6}$/.test(normalized)) {
+      return [63, 185, 80];
+    }
+
+    const value = Number.parseInt(normalized, 16);
+    return [(value >> 16) & 255, (value >> 8) & 255, value & 255];
   }
 
   /**
@@ -37,7 +52,8 @@ export class PDFGenerator {
     const headerHeight = 20;
 
     // Add subtle background line
-    this.doc.setDrawColor(63, 185, 80); // EVzone green (#3fb950)
+    const brandColor = this.resolveBrandColor();
+    this.doc.setDrawColor(brandColor[0], brandColor[1], brandColor[2]);
     this.doc.line(
       marginLeft,
       headerHeight,
@@ -48,7 +64,8 @@ export class PDFGenerator {
     // Add title or company name
     this.doc.setFont('helvetica', 'bold');
     this.doc.setFontSize(14);
-    this.doc.text(title || 'EVzone CPO', marginLeft, 12);
+    const appName = this.brandingConfig?.branding.shortName || 'EVzone CPO';
+    this.doc.text(title || appName, marginLeft, 12);
 
     this.currentY = headerHeight + 5;
     return this;

@@ -5,6 +5,8 @@ import { useAuthStore } from '@/core/auth/authStore'
 import { fetchJson } from '@/core/api/fetchJson'
 import { useDemoUsers } from '@/core/hooks/usePlatformData'
 import type { LoginResponse } from '@/core/types/mockApi'
+import { useBranding } from '@/core/branding/useBranding'
+import { LOGO_PATHS } from '@/utils/assets'
 import { Zap } from 'lucide-react'
 
 export function LoginPage() {
@@ -13,8 +15,10 @@ export function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const { setUser } = useAuthStore()
+  const { branding } = useBranding()
   const navigate = useNavigate()
   const { data: demoUsers = [] } = useDemoUsers()
+  const logoUrl = branding.branding.logoUrl || LOGO_PATHS.cpms
 
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault()
@@ -55,11 +59,21 @@ export function LoginPage() {
       <div className="w-full max-w-sm relative">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4" style={{ background: 'var(--accent)' }}>
-            <Zap size={28} color="var(--accent-ink)" />
-          </div>
-          <h1 className="text-2xl font-extrabold" style={{ color: 'var(--text)' }}>EVzone CPO Central</h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Charge Point Operator Platform</p>
+          {branding.branding.logoUrl ? (
+            <img
+              src={logoUrl}
+              alt={branding.branding.shortName}
+              className="h-14 mx-auto mb-4 object-contain"
+            />
+          ) : (
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4" style={{ background: 'var(--accent)' }}>
+              <Zap size={28} color="var(--accent-ink)" />
+            </div>
+          )}
+          <h1 className="text-2xl font-extrabold" style={{ color: 'var(--text)' }}>{branding.branding.appName}</h1>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
+            {branding.support.email ? `Support: ${branding.support.email}` : 'Charge Point Operator Platform'}
+          </p>
         </div>
 
         <form onSubmit={handleLogin} className="card space-y-4">
@@ -95,6 +109,20 @@ export function LoginPage() {
           ))}
           {demoUsers.length === 0 && (
             <p style={{ color: 'var(--text-subtle)' }}>Loading demo accounts...</p>
+          )}
+          {(branding.legal.termsUrl || branding.legal.privacyUrl) && (
+            <div className="mt-2 pt-2 border-t border-[var(--border)] flex items-center gap-2">
+              {branding.legal.termsUrl && (
+                <a href={branding.legal.termsUrl} target="_blank" rel="noreferrer" className="hover:underline">
+                  Terms
+                </a>
+              )}
+              {branding.legal.privacyUrl && (
+                <a href={branding.legal.privacyUrl} target="_blank" rel="noreferrer" className="hover:underline">
+                  Privacy
+                </a>
+              )}
+            </div>
           )}
         </div>
       </div>
