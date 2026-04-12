@@ -120,6 +120,11 @@ const VendorBaselinePage = lazy(() =>
     default: m.VendorBaselinePage,
   })),
 );
+const TierPricingPage = lazy(() =>
+  import("@/pages/platform/TierPricingPage").then((m) => ({
+    default: m.TierPricingPage,
+  })),
+);
 const OCPIPartnersPage = lazy(() =>
   import("@/pages/roaming/OCPIPartnersPage").then((m) => ({
     default: m.OCPIPartnersPage,
@@ -602,6 +607,14 @@ export function AppRoutes() {
           element={
             <RequireAuth policy="platformAdminRead">
               <VendorBaselinePage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={PATHS.TIER_PRICING}
+          element={
+            <RequireAuth policy="tierPricingAdmin">
+              <TierPricingPage />
             </RequireAuth>
           }
         />

@@ -253,6 +253,12 @@ const NAV: NavGroup[] = [
         policy: "platformAdminRead",
       },
       {
+        label: "Tier Pricing",
+        icon: <DollarSign size={16} />,
+        path: PATHS.TIER_PRICING,
+        policy: "tierPricingAdmin",
+      },
+      {
         label: "Plug & Charge",
         icon: <ShieldCheck size={16} />,
         path: PATHS.PLUG_AND_CHARGE,

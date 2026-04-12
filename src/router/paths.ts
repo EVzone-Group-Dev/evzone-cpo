@@ -56,6 +56,7 @@ export const PATHS = {
   WEBHOOKS: "/webhooks",
   INTEGRATIONS: "/integrations",
   PROTOCOLS: "/protocols",
+  TIER_PRICING: "/tier-pricing",
   PLUG_AND_CHARGE: "/plug-and-charge",
   VENDOR_BASELINE: "/vendor-baseline",
   ENTERPRISE_IAM: "/enterprise-iam",
