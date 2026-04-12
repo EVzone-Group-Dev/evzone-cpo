@@ -103,10 +103,10 @@ function formatAmount(value: unknown, currencyCode: string): string {
 }
 
 const DEFAULT_PLATFORM_FLAGS: PlatformFeatureFlags = {
-  commerce_v1: false,
-  fleet_v1: false,
-  pnc_v1: false,
-  enterprise_sso_v1: false,
+  commerce_v1: true,
+  fleet_v1: true,
+  pnc_v1: true,
+  enterprise_sso_v1: true,
 };
 
 function normalizeFeatureFlags(value: unknown): PlatformFeatureFlags {
@@ -2021,38 +2021,11 @@ export function useSessions() {
 
 export function useReservations() {
   const { enabled, scopeKey } = useTenantQueryContext();
-  const { data: flags } = usePlatformFeatureFlags();
-  const fleetEnabled = flags?.fleet_v1 ?? true;
 
   return useQuery<ReservationsResponse>({
-    queryKey: ["operations", "reservations", scopeKey, fleetEnabled],
-    queryFn: async () => {
-      if (!fleetEnabled) {
-        return {
-          metrics: [
-            { id: "pending", label: "Pending", value: "0", tone: "default" },
-            { id: "confirmed", label: "Confirmed", value: "0", tone: "ok" },
-            {
-              id: "cancelled",
-              label: "Cancelled",
-              value: "0",
-              tone: "warning",
-            },
-            {
-              id: "exceptions",
-              label: "Exceptions",
-              value: "0",
-              tone: "default",
-            },
-          ],
-          records: [],
-          note: "Fleet phase flag is disabled for this tenant.",
-        };
-      }
-      return normalizeReservations(
-        await fetchJson<unknown>("/api/v1/bookings"),
-      );
-    },
+    queryKey: ["operations", "reservations", scopeKey],
+    queryFn: async () =>
+      normalizeReservations(await fetchJson<unknown>("/api/v1/bookings")),
     enabled,
     refetchInterval: 15_000,
   });
@@ -2060,41 +2033,14 @@ export function useReservations() {
 
 export function useFleetOverview() {
   const { currencyCode, enabled, scopeKey } = useTenantQueryContext();
-  const { data: flags } = usePlatformFeatureFlags();
-  const fleetEnabled = flags?.fleet_v1 ?? true;
 
   return useQuery<FleetOverviewResponse>({
-    queryKey: ["operations", "fleet", scopeKey, fleetEnabled],
-    queryFn: async () => {
-      if (!fleetEnabled) {
-        return {
-          metrics: [
-            { id: "accounts", label: "Accounts", value: "0", tone: "default" },
-            {
-              id: "groups",
-              label: "Driver Groups",
-              value: "0",
-              tone: "default",
-            },
-            { id: "drivers", label: "Drivers", value: "0", tone: "ok" },
-            {
-              id: "active-tokens",
-              label: "Active Tokens",
-              value: "0",
-              tone: "warning",
-            },
-          ],
-          accounts: [],
-          groups: [],
-          drivers: [],
-          note: "Fleet phase flag is disabled for this tenant.",
-        };
-      }
-      return normalizeFleetOverview(
+    queryKey: ["operations", "fleet", scopeKey],
+    queryFn: async () =>
+      normalizeFleetOverview(
         await fetchJson<unknown>("/api/v1/fleet/overview"),
         currencyCode,
-      );
-    },
+      ),
     enabled,
     refetchInterval: 15_000,
   });
@@ -2102,50 +2048,11 @@ export function useFleetOverview() {
 
 export function usePncOverview() {
   const { enabled, scopeKey } = useTenantQueryContext();
-  const { data: flags } = usePlatformFeatureFlags();
-  const pncEnabled = flags?.pnc_v1 ?? true;
 
   return useQuery<PncOverviewResponse>({
-    queryKey: ["platform", "pnc", scopeKey, pncEnabled],
-    queryFn: async () => {
-      if (!pncEnabled) {
-        return {
-          metrics: [
-            {
-              id: "contracts",
-              label: "Contracts",
-              value: "0",
-              tone: "default",
-            },
-            { id: "active-contracts", label: "Active", value: "0", tone: "ok" },
-            {
-              id: "certificates",
-              label: "Certificates",
-              value: "0",
-              tone: "default",
-            },
-            {
-              id: "active-certificates",
-              label: "Active Certs",
-              value: "0",
-              tone: "ok",
-            },
-            {
-              id: "expiring-30d",
-              label: "Expiring 30d",
-              value: "0",
-              tone: "warning",
-            },
-          ],
-          contracts: [],
-          certificates: [],
-          note: "Plug & Charge phase flag is disabled for this tenant.",
-        };
-      }
-      return normalizePncOverview(
-        await fetchJson<unknown>("/api/v1/pnc/overview"),
-      );
-    },
+    queryKey: ["platform", "pnc", scopeKey],
+    queryFn: async () =>
+      normalizePncOverview(await fetchJson<unknown>("/api/v1/pnc/overview")),
     enabled,
     refetchInterval: 15_000,
   });
@@ -2153,44 +2060,13 @@ export function usePncOverview() {
 
 export function useEnterpriseIamOverview() {
   const { enabled, scopeKey } = useTenantQueryContext();
-  const { data: flags } = usePlatformFeatureFlags();
-  const ssoEnabled = flags?.enterprise_sso_v1 ?? true;
 
   return useQuery<EnterpriseIamOverviewResponse>({
-    queryKey: ["platform", "enterprise-iam", scopeKey, ssoEnabled],
-    queryFn: async () => {
-      if (!ssoEnabled) {
-        return {
-          metrics: [
-            {
-              id: "providers",
-              label: "Providers",
-              value: "0",
-              tone: "default",
-            },
-            { id: "active", label: "Active", value: "0", tone: "ok" },
-            {
-              id: "sync-jobs",
-              label: "Sync Jobs",
-              value: "0",
-              tone: "default",
-            },
-            {
-              id: "completed-24h",
-              label: "Mapped Providers",
-              value: "0",
-              tone: "warning",
-            },
-          ],
-          providers: [],
-          syncJobs: [],
-          note: "Enterprise SSO phase flag is disabled for this tenant.",
-        };
-      }
-      return normalizeEnterpriseIamOverview(
+    queryKey: ["platform", "enterprise-iam", scopeKey],
+    queryFn: async () =>
+      normalizeEnterpriseIamOverview(
         await fetchJson<unknown>("/api/v1/enterprise-iam/overview"),
-      );
-    },
+      ),
     enabled,
     refetchInterval: 15_000,
   });
@@ -2394,102 +2270,42 @@ export function usePlatformFeatureFlags() {
 
 export function useBilling() {
   const { currencyCode, enabled, scopeKey } = useTenantQueryContext();
-  const { data: flags } = usePlatformFeatureFlags();
-  const commerceEnabled = flags?.commerce_v1 ?? true;
 
   return useQuery<BillingResponse>({
-    queryKey: ["finance", "billing", scopeKey, commerceEnabled],
-    queryFn: async () => {
-      if (!commerceEnabled) {
-        return {
-          metrics: [
-            { id: "revenue", label: "Revenue", value: "N/A", tone: "default" },
-            {
-              id: "collection-rate",
-              label: "Collection Rate",
-              value: "N/A",
-              tone: "ok",
-            },
-            {
-              id: "outstanding",
-              label: "Outstanding",
-              value: "0",
-              tone: "default",
-            },
-            { id: "tax", label: "Tax", value: "N/A", tone: "default" },
-          ],
-          invoices: [],
-          aging: [],
-          note: "Commerce phase flag is disabled for this tenant.",
-          totalRevenueThisMonth: "N/A",
-        };
-      }
-
-      return normalizeBilling(
+    queryKey: ["finance", "billing", scopeKey],
+    queryFn: async () =>
+      normalizeBilling(
         await fetchJson<unknown>("/api/v1/billing/invoices"),
         currencyCode,
-      );
-    },
+      ),
     enabled,
   });
 }
 
 export function usePayouts() {
   const { currencyCode, enabled, scopeKey } = useTenantQueryContext();
-  const { data: flags } = usePlatformFeatureFlags();
-  const commerceEnabled = flags?.commerce_v1 ?? true;
 
   return useQuery<PayoutRecord[]>({
-    queryKey: ["finance", "payouts", scopeKey, commerceEnabled],
-    queryFn: async () => {
-      if (!commerceEnabled) {
-        return [];
-      }
-      return normalizePayouts(
+    queryKey: ["finance", "payouts", scopeKey],
+    queryFn: async () =>
+      normalizePayouts(
         await fetchJson<unknown>("/api/v1/finance/payments"),
         currencyCode,
-      );
-    },
+      ),
     enabled,
   });
 }
 
 export function useSettlement() {
   const { currencyCode, enabled, scopeKey } = useTenantQueryContext();
-  const { data: flags } = usePlatformFeatureFlags();
-  const commerceEnabled = flags?.commerce_v1 ?? true;
 
   return useQuery<SettlementResponse>({
-    queryKey: ["finance", "settlement", scopeKey, commerceEnabled],
-    queryFn: async () => {
-      if (!commerceEnabled) {
-        return {
-          metrics: [
-            { id: "ready", label: "Ready", value: "0", tone: "default" },
-            {
-              id: "reconciling",
-              label: "Reconciling",
-              value: "0",
-              tone: "warning",
-            },
-            { id: "settled", label: "Settled", value: "0", tone: "ok" },
-            {
-              id: "exceptions",
-              label: "Exceptions",
-              value: "0",
-              tone: "default",
-            },
-          ],
-          records: [],
-          exceptions: [],
-          note: "Commerce phase flag is disabled for this tenant.",
-        };
-      }
-      return normalizeSettlement(
+    queryKey: ["finance", "settlement", scopeKey],
+    queryFn: async () =>
+      normalizeSettlement(
         await fetchJson<unknown>("/api/v1/settlements"),
         currencyCode,
-      );
-    },
+      ),
     enabled,
   });
 }
