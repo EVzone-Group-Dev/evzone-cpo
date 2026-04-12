@@ -1,73 +1,80 @@
-import { useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import * as z from 'zod'
-import { AlertCircle, CheckCircle2, Cpu, Zap } from 'lucide-react'
-import { DashboardLayout } from '@/components/layout/DashboardLayout'
-import { useCreateChargePoint } from '@/core/hooks/usePlatformData'
-import { useStations } from '@/core/hooks/useStations'
-import { PATHS } from '@/router/paths'
+import { useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useForm, useWatch } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { AlertCircle, CheckCircle2, Cpu, Zap } from "lucide-react";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { useCreateChargePoint } from "@/core/hooks/usePlatformData";
+import { useStations } from "@/core/hooks/useStations";
+import { PATHS } from "@/router/paths";
 
 const chargePointSchema = z.object({
-  stationId: z.string().min(1, 'Station is required'),
-  ocppId: z.string().min(3, 'OCPP ID must be at least 3 characters'),
-  ocppVersion: z.enum(['1.6', '2.0.1', '2.1']),
-  power: z.number().min(1, 'Power must be at least 1 kW').max(350, 'Power cannot exceed 350 kW'),
-  type: z.string().min(2, 'Connector type is required'),
-})
+  stationId: z.string().min(1, "Station is required"),
+  ocppId: z.string().min(3, "OCPP ID must be at least 3 characters"),
+  ocppVersion: z.enum(["1.6", "2.0.1", "2.1"]),
+  power: z
+    .number()
+    .min(1, "Power must be at least 1 kW")
+    .max(350, "Power cannot exceed 350 kW"),
+  type: z.string().min(2, "Connector type is required"),
+});
 
-type ChargePointFormValues = z.infer<typeof chargePointSchema>
+type ChargePointFormValues = z.infer<typeof chargePointSchema>;
 
 const FIELD_CONFIG = {
   ocppId: {
-    hint: 'Must be unique within station. Used for OCPP protocol communication.',
-    placeholder: 'e.g. EVZ-CP-001, STATION-01-01',
+    hint: "Must be unique within station. Used for OCPP protocol communication.",
+    placeholder: "e.g. EVZ-CP-001, STATION-01-01",
   },
   power: {
-    hint: 'Maximum continuous output power in kilowatts',
-    placeholder: '50',
+    hint: "Maximum continuous output power in kilowatts",
+    placeholder: "50",
   },
   type: {
-    hint: 'Primary connector type for this charge point',
+    hint: "Primary connector type for this charge point",
   },
   ocppVersion: {
-    hint: 'OCPP protocol version for this charge point',
+    hint: "OCPP protocol version for this charge point",
   },
-}
+};
 
 export function CreateChargePointPage() {
-  const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
-  const [submitError, setSubmitError] = useState<string | null>(null)
-  const [submitSuccess, setSubmitSuccess] = useState(false)
-  const presetStationId = searchParams.get('stationId') ?? ''
-  const returnTo = searchParams.get('returnTo')
-  const { data: stations, isLoading: isStationsLoading, error: stationsError } = useStations()
-  const createChargePoint = useCreateChargePoint()
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+  const presetStationId = searchParams.get("stationId") ?? "";
+  const returnTo = searchParams.get("returnTo");
+  const {
+    data: stations,
+    isLoading: isStationsLoading,
+    error: stationsError,
+  } = useStations();
+  const createChargePoint = useCreateChargePoint();
 
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors, isSubmitting },
-    watch,
   } = useForm<ChargePointFormValues>({
     resolver: zodResolver(chargePointSchema),
-    mode: 'onBlur',
+    mode: "onBlur",
     defaultValues: {
       stationId: presetStationId,
-      type: 'CCS2',
-      ocppVersion: '1.6',
+      type: "CCS2",
+      ocppVersion: "1.6",
       power: 50,
     },
-  })
+  });
 
-  const selectedStation = watch('stationId')
-  const stationName = stations?.find(s => s.id === selectedStation)?.name
+  const selectedStation = useWatch({ control, name: "stationId" });
+  const stationName = stations?.find((s) => s.id === selectedStation)?.name;
 
   const onSubmit = async (values: ChargePointFormValues) => {
-    setSubmitError(null)
-    setSubmitSuccess(false)
+    setSubmitError(null);
+    setSubmitSuccess(false);
 
     try {
       const created = await createChargePoint.mutateAsync({
@@ -76,31 +83,35 @@ export function CreateChargePointPage() {
         ocppVersion: values.ocppVersion,
         power: values.power,
         type: values.type.trim(),
-      })
+      });
 
-      setSubmitSuccess(true)
+      setSubmitSuccess(true);
       setTimeout(() => {
         navigate(PATHS.CHARGE_POINT_DETAIL(created.id), {
           state: {
             setupCredentials: created.ocppCredentials ?? null,
             setupStartedAt: new Date().toISOString(),
             returnTo:
-              returnTo === 'station-detail'
+              returnTo === "station-detail"
                 ? PATHS.STATION_DETAIL(values.stationId)
                 : PATHS.CHARGE_POINTS,
           },
-        })
-      }, 450)
+        });
+      }, 450);
     } catch (error) {
       setSubmitError(
         error instanceof Error
           ? error.message
-          : 'Failed to provision charge point. Please try again.',
-      )
+          : "Failed to provision charge point. Please try again.",
+      );
     }
-  }
+  };
 
-  const fieldsDisabled = isStationsLoading || !!stationsError || isSubmitting || createChargePoint.isPending
+  const fieldsDisabled =
+    isStationsLoading ||
+    !!stationsError ||
+    isSubmitting ||
+    createChargePoint.isPending;
 
   return (
     <DashboardLayout pageTitle="Add Charge Point">
@@ -109,7 +120,9 @@ export function CreateChargePointPage() {
           {submitSuccess && (
             <div className="rounded-lg border border-ok/40 bg-ok/10 px-4 py-3 flex items-center gap-3 text-ok">
               <CheckCircle2 size={18} />
-              <span className="text-sm font-medium">Charge point provisioned. Opening setup workflow...</span>
+              <span className="text-sm font-medium">
+                Charge point provisioned. Opening setup workflow...
+              </span>
             </div>
           )}
 
@@ -126,7 +139,9 @@ export function CreateChargePointPage() {
           {stationsError && (
             <div className="rounded-lg border border-danger/40 bg-danger/10 px-4 py-3 flex items-center gap-3 text-danger">
               <AlertCircle size={18} />
-              <span className="text-sm">Unable to load stations. Please refresh the page.</span>
+              <span className="text-sm">
+                Unable to load stations. Please refresh the page.
+              </span>
             </div>
           )}
 
@@ -139,15 +154,15 @@ export function CreateChargePointPage() {
             <div>
               <label className="form-label">Select Station *</label>
               <select
-                {...register('stationId')}
-                className={`input ${errors.stationId ? 'border-danger bg-danger/5' : ''} ${fieldsDisabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+                {...register("stationId")}
+                className={`input ${errors.stationId ? "border-danger bg-danger/5" : ""} ${fieldsDisabled ? "opacity-60 cursor-not-allowed" : ""}`}
                 disabled={fieldsDisabled}
               >
                 <option value="">Choose a station...</option>
                 {(stations || []).map((station) => (
                   <option key={station.id} value={station.id}>
                     {station.name}
-                    {' · '}
+                    {" · "}
                     {station.city}, {station.country}
                   </option>
                 ))}
@@ -159,7 +174,9 @@ export function CreateChargePointPage() {
                 </p>
               )}
               {selectedStation && stationName && (
-                <p className="text-[12px] text-ok mt-1.5">✓ Assigned to: {stationName}</p>
+                <p className="text-[12px] text-ok mt-1.5">
+                  ✓ Assigned to: {stationName}
+                </p>
               )}
             </div>
           </div>
@@ -173,8 +190,8 @@ export function CreateChargePointPage() {
             <div>
               <label className="form-label">OCPP ID *</label>
               <input
-                {...register('ocppId')}
-                className={`input ${errors.ocppId ? 'border-danger bg-danger/5' : ''} ${fieldsDisabled ? 'opacity-60' : ''}`}
+                {...register("ocppId")}
+                className={`input ${errors.ocppId ? "border-danger bg-danger/5" : ""} ${fieldsDisabled ? "opacity-60" : ""}`}
                 placeholder={FIELD_CONFIG.ocppId.placeholder}
                 disabled={fieldsDisabled}
               />
@@ -184,20 +201,24 @@ export function CreateChargePointPage() {
                   {errors.ocppId.message}
                 </p>
               ) : (
-                <p className="text-[12px] text-subtle mt-1.5">{FIELD_CONFIG.ocppId.hint}</p>
+                <p className="text-[12px] text-subtle mt-1.5">
+                  {FIELD_CONFIG.ocppId.hint}
+                </p>
               )}
             </div>
           </div>
 
           <div className="card">
-            <h2 className="text-lg font-bold mb-4">Protocol & Connector Configuration</h2>
+            <h2 className="text-lg font-bold mb-4">
+              Protocol & Connector Configuration
+            </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="form-label">OCPP Version *</label>
                 <select
-                  {...register('ocppVersion')}
-                  className={`input ${errors.ocppVersion ? 'border-danger bg-danger/5' : ''} ${fieldsDisabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  {...register("ocppVersion")}
+                  className={`input ${errors.ocppVersion ? "border-danger bg-danger/5" : ""} ${fieldsDisabled ? "opacity-60 cursor-not-allowed" : ""}`}
                   disabled={fieldsDisabled}
                 >
                   <option value="1.6">1.6 (Legacy)</option>
@@ -205,17 +226,21 @@ export function CreateChargePointPage() {
                   <option value="2.1">2.1 (Latest)</option>
                 </select>
                 {errors.ocppVersion ? (
-                  <p className="text-[12px] text-danger mt-1.5">{errors.ocppVersion.message}</p>
+                  <p className="text-[12px] text-danger mt-1.5">
+                    {errors.ocppVersion.message}
+                  </p>
                 ) : (
-                  <p className="text-[12px] text-subtle mt-1.5">{FIELD_CONFIG.ocppVersion.hint}</p>
+                  <p className="text-[12px] text-subtle mt-1.5">
+                    {FIELD_CONFIG.ocppVersion.hint}
+                  </p>
                 )}
               </div>
 
               <div>
                 <label className="form-label">Connector Type *</label>
                 <select
-                  {...register('type')}
-                  className={`input ${errors.type ? 'border-danger bg-danger/5' : ''} ${fieldsDisabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  {...register("type")}
+                  className={`input ${errors.type ? "border-danger bg-danger/5" : ""} ${fieldsDisabled ? "opacity-60 cursor-not-allowed" : ""}`}
                   disabled={fieldsDisabled}
                 >
                   <option value="">Select type...</option>
@@ -232,7 +257,9 @@ export function CreateChargePointPage() {
                     {errors.type.message}
                   </p>
                 ) : (
-                  <p className="text-[12px] text-subtle mt-1.5">{FIELD_CONFIG.type.hint}</p>
+                  <p className="text-[12px] text-subtle mt-1.5">
+                    {FIELD_CONFIG.type.hint}
+                  </p>
                 )}
               </div>
 
@@ -241,8 +268,8 @@ export function CreateChargePointPage() {
                 <input
                   type="number"
                   step="0.1"
-                  {...register('power', { valueAsNumber: true })}
-                  className={`input ${errors.power ? 'border-danger bg-danger/5' : ''} ${fieldsDisabled ? 'opacity-60' : ''}`}
+                  {...register("power", { valueAsNumber: true })}
+                  className={`input ${errors.power ? "border-danger bg-danger/5" : ""} ${fieldsDisabled ? "opacity-60" : ""}`}
                   placeholder={FIELD_CONFIG.power.placeholder}
                   disabled={fieldsDisabled}
                 />
@@ -252,7 +279,9 @@ export function CreateChargePointPage() {
                     {errors.power.message}
                   </p>
                 ) : (
-                  <p className="text-[12px] text-subtle mt-1.5">{FIELD_CONFIG.power.hint}</p>
+                  <p className="text-[12px] text-subtle mt-1.5">
+                    {FIELD_CONFIG.power.hint}
+                  </p>
                 )}
               </div>
             </div>
@@ -262,14 +291,20 @@ export function CreateChargePointPage() {
             <button
               type="button"
               className="btn secondary"
-              onClick={() => navigate(returnTo === 'station-detail' && presetStationId ? PATHS.STATION_DETAIL(presetStationId) : PATHS.CHARGE_POINTS)}
+              onClick={() =>
+                navigate(
+                  returnTo === "station-detail" && presetStationId
+                    ? PATHS.STATION_DETAIL(presetStationId)
+                    : PATHS.CHARGE_POINTS,
+                )
+              }
               disabled={fieldsDisabled}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className={`btn primary flex items-center gap-2 ${fieldsDisabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+              className={`btn primary flex items-center gap-2 ${fieldsDisabled ? "opacity-60 cursor-not-allowed" : ""}`}
               disabled={fieldsDisabled}
             >
               {isSubmitting || createChargePoint.isPending ? (
@@ -288,5 +323,5 @@ export function CreateChargePointPage() {
         </form>
       </div>
     </DashboardLayout>
-  )
+  );
 }
