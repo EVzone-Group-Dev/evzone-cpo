@@ -9,6 +9,8 @@ export const PATHS = {
   DASHBOARD_OPERATOR: "/dashboard/operator",
   DASHBOARD_TECHNICIAN: "/dashboard/technician",
   SITE_DASHBOARD: "/site-dashboard",
+  ONBOARDING: "/onboarding",
+  ONBOARDING_ADMIN: "/platform/onboarding-review",
 
   // Infrastructure
   STATIONS: "/stations",

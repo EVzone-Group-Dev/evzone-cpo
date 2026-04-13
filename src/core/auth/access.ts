@@ -132,6 +132,8 @@ export const ROLE_HOME = {
 export const ACCESS_POLICY = {
   tenancyContext: ACTIVE_ROLES,
   dashboardHome: ACTIVE_ROLES,
+  onboardingApplicant: ACTIVE_ROLES,
+  onboardingAdmin: SUPER_ADMIN_ROLES,
   dashboardSuperAdmin: SUPER_ADMIN_ROLES,
   dashboardCpoAdmin: CPO_ADMIN_ROLES,
   dashboardStationManager: STATION_MANAGER_ROLES,
@@ -226,6 +228,8 @@ const ACCESS_PERMISSION_MAP: Record<
 > = {
   tenancyContext: undefined,
   dashboardHome: undefined,
+  onboardingApplicant: undefined,
+  onboardingAdmin: ['platform.tenants.read', 'platform.tenants.write'],
   dashboardSuperAdmin: ["platform.tenants.read"],
   dashboardCpoAdmin: ["tenant.users.read", "tenant.settings.read"],
   dashboardStationManager: ["stations.write"],

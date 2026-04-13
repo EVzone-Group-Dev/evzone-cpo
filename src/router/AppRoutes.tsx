@@ -19,6 +19,11 @@ const SiteOwnerDashboard = lazy(() =>
     default: m.SiteOwnerDashboard,
   })),
 );
+const TenantOnboardingPage = lazy(() =>
+  import("@/pages/onboarding/TenantOnboardingPage").then((m) => ({
+    default: m.TenantOnboardingPage,
+  })),
+);
 const StationsPage = lazy(() =>
   import("@/pages/stations/StationsPage").then((m) => ({
     default: m.StationsPage,
@@ -123,6 +128,11 @@ const VendorBaselinePage = lazy(() =>
 const TierPricingPage = lazy(() =>
   import("@/pages/platform/TierPricingPage").then((m) => ({
     default: m.TierPricingPage,
+  })),
+);
+const TenantOnboardingReviewPage = lazy(() =>
+  import("@/pages/platform/TenantOnboardingReviewPage").then((m) => ({
+    default: m.TenantOnboardingReviewPage,
   })),
 );
 const OCPIPartnersPage = lazy(() =>
@@ -323,6 +333,14 @@ export function AppRoutes() {
           element={
             <RequireAuth policy="siteDashboard">
               <SiteOwnerDashboard />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={PATHS.ONBOARDING}
+          element={
+            <RequireAuth policy="onboardingApplicant">
+              <TenantOnboardingPage />
             </RequireAuth>
           }
         />
@@ -615,6 +633,14 @@ export function AppRoutes() {
           element={
             <RequireAuth policy="tierPricingAdmin">
               <TierPricingPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={PATHS.ONBOARDING_ADMIN}
+          element={
+            <RequireAuth policy="onboardingAdmin">
+              <TenantOnboardingReviewPage />
             </RequireAuth>
           }
         />
