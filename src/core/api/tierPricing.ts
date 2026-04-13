@@ -17,6 +17,12 @@ export interface TierPricingVersion {
   monthlyPrice: number | null
   annualPrice: number | null
   setupFee: number | null
+  swapMonthlyAddon: number | null
+  swapAnnualAddon: number | null
+  swapSetupAddon: number | null
+  hybridMonthlyAddon: number | null
+  hybridAnnualAddon: number | null
+  hybridSetupAddon: number | null
   whiteLabelAvailable: boolean
   whiteLabelMonthlyAddon: number | null
   whiteLabelSetupFee: number | null
@@ -47,6 +53,12 @@ export interface CreateTierPricingDraftInput {
   monthlyPrice?: number | null
   annualPrice?: number | null
   setupFee?: number | null
+  swapMonthlyAddon?: number | null
+  swapAnnualAddon?: number | null
+  swapSetupAddon?: number | null
+  hybridMonthlyAddon?: number | null
+  hybridAnnualAddon?: number | null
+  hybridSetupAddon?: number | null
   whiteLabelAvailable?: boolean
   whiteLabelMonthlyAddon?: number | null
   whiteLabelSetupFee?: number | null

@@ -1,6 +1,7 @@
 import { fetchJson } from '@/core/api/fetchJson'
 
 export type TenantAccountType = 'INDIVIDUAL' | 'COMPANY' | 'STATE' | 'ORGANIZATION'
+export type CpoServiceType = 'CHARGE' | 'SWAP' | 'HYBRID'
 export type TenantOnboardingStage =
   | 'SUBMITTED'
   | 'UNDER_REVIEW'
@@ -18,6 +19,7 @@ export interface TenantOnboardingApplication {
   id: string
   applicantId: string
   tenantType: TenantAccountType
+  cpoType: CpoServiceType
   organizationName: string
   businessRegistrationNumber: string | null
   taxComplianceNumber: string | null
@@ -66,9 +68,14 @@ export interface PricingSnapshot {
   tierCode: string
   tierLabel: string
   pricingVersion: number
+  cpoType: CpoServiceType
   currency: string
   billingCycle: string | null
   isCustomPricing: boolean
+  baseRecurringAmount: number | null
+  baseSetupFee: number
+  cpoRecurringAddon: number
+  cpoSetupAddon: number
   recurringAmount: number | null
   setupFee: number | null
   whiteLabelRequested: boolean
@@ -89,6 +96,12 @@ export interface ApplicantTierPricing {
   monthlyPrice: number | null
   annualPrice: number | null
   setupFee: number | null
+  swapMonthlyAddon: number | null
+  swapAnnualAddon: number | null
+  swapSetupAddon: number | null
+  hybridMonthlyAddon: number | null
+  hybridAnnualAddon: number | null
+  hybridSetupAddon: number | null
   whiteLabelAvailable: boolean
   whiteLabelMonthlyAddon: number | null
   whiteLabelSetupFee: number | null
@@ -107,6 +120,7 @@ export interface TenantScopedCanonicalRole {
 
 export interface CreateOnboardingApplicationInput {
   tenantType: TenantAccountType
+  cpoType: CpoServiceType
   organizationName: string
   businessRegistrationNumber?: string
   taxComplianceNumber?: string

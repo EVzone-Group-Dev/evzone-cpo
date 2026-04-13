@@ -45,6 +45,7 @@ const STAGE_LABEL: Record<TenantOnboardingStage, string> = {
 
 const EMPTY_FORM: CreateOnboardingApplicationInput = {
   tenantType: 'COMPANY',
+  cpoType: 'CHARGE',
   organizationName: '',
   businessRegistrationNumber: '',
   taxComplianceNumber: '',
@@ -86,6 +87,28 @@ function normalizeInput(form: CreateOnboardingApplicationInput): CreateOnboardin
   }
 }
 
+function resolveCpoAddons(
+  tier: ApplicantTierPricing,
+  cpoType: 'CHARGE' | 'SWAP' | 'HYBRID',
+  billingCycle: BillingCycle,
+) {
+  if (cpoType === 'CHARGE') {
+    return { recurringAddon: 0, setupAddon: 0 }
+  }
+
+  if (cpoType === 'SWAP') {
+    return {
+      recurringAddon: billingCycle === 'ANNUAL' ? tier.swapAnnualAddon || 0 : tier.swapMonthlyAddon || 0,
+      setupAddon: tier.swapSetupAddon || 0,
+    }
+  }
+
+  return {
+    recurringAddon: billingCycle === 'ANNUAL' ? tier.hybridAnnualAddon || 0 : tier.hybridMonthlyAddon || 0,
+    setupAddon: tier.hybridSetupAddon || 0,
+  }
+}
+
 export function TenantOnboardingPage() {
   const [applications, setApplications] = useState<TenantOnboardingApplication[]>([])
   const [tiers, setTiers] = useState<ApplicantTierPricing[]>([])
@@ -111,6 +134,48 @@ export function TenantOnboardingPage() {
     () => availableTiers.find((tier) => tier.tierCode === selectedTier) || null,
     [availableTiers, selectedTier],
   )
+
+  const tierPricingPreview = useMemo(() => {
+    if (!activeApplication || !selectedTierConfig || selectedTierConfig.isCustomPricing) {
+      return null
+    }
+
+    const baseRecurring =
+      selectedBillingCycle === 'ANNUAL' ? selectedTierConfig.annualPrice : selectedTierConfig.monthlyPrice
+    if (baseRecurring == null) {
+      return null
+    }
+
+    const { recurringAddon, setupAddon } = resolveCpoAddons(
+      selectedTierConfig,
+      activeApplication.cpoType,
+      selectedBillingCycle,
+    )
+    const whiteLabelRecurring = requestWhiteLabel ? selectedTierConfig.whiteLabelMonthlyAddon || 0 : 0
+    const whiteLabelSetup = requestWhiteLabel ? selectedTierConfig.whiteLabelSetupFee || 0 : 0
+    const setupBase = selectedTierConfig.setupFee || 0
+    const recurringTotal = Number((baseRecurring + recurringAddon + whiteLabelRecurring).toFixed(2))
+    const setupTotal = Number((setupBase + setupAddon + whiteLabelSetup).toFixed(2))
+    const dueNow = Number((recurringTotal + setupTotal).toFixed(2))
+
+    return {
+      currency: selectedTierConfig.currency || 'USD',
+      baseRecurring: Number(baseRecurring.toFixed(2)),
+      recurringAddon: Number(recurringAddon.toFixed(2)),
+      whiteLabelRecurring: Number(whiteLabelRecurring.toFixed(2)),
+      recurringTotal,
+      setupBase: Number(setupBase.toFixed(2)),
+      setupAddon: Number(setupAddon.toFixed(2)),
+      whiteLabelSetup: Number(whiteLabelSetup.toFixed(2)),
+      setupTotal,
+      dueNow,
+    }
+  }, [
+    activeApplication,
+    requestWhiteLabel,
+    selectedBillingCycle,
+    selectedTierConfig,
+  ])
 
   async function reload() {
     setLoading(true)
@@ -293,6 +358,20 @@ export function TenantOnboardingPage() {
                 </select>
               </div>
               <div>
+                <label className="form-label">CPO Type</label>
+                <select
+                  className="input"
+                  value={form.cpoType}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, cpoType: event.target.value as CreateOnboardingApplicationInput['cpoType'] }))
+                  }
+                >
+                  <option value="CHARGE">CHARGE</option>
+                  <option value="SWAP">SWAP</option>
+                  <option value="HYBRID">HYBRID</option>
+                </select>
+              </div>
+              <div>
                 <label className="form-label">Organization / Applicant Name</label>
                 <input
                   className="input"
@@ -442,6 +521,23 @@ export function TenantOnboardingPage() {
                     </label>
                   </div>
                 </div>
+                <div className="text-xs text-subtle">
+                  Selected CPO type for this application: <strong>{activeApplication.cpoType}</strong>
+                </div>
+                {tierPricingPreview && (
+                  <div className="rounded border border-[color:var(--border)] p-3 text-sm space-y-1">
+                    <div className="font-semibold">Pricing Preview ({tierPricingPreview.currency})</div>
+                    <div>
+                      Recurring: {tierPricingPreview.baseRecurring.toFixed(2)} base + {tierPricingPreview.recurringAddon.toFixed(2)} CPO add-on + {tierPricingPreview.whiteLabelRecurring.toFixed(2)} white-label = <strong>{tierPricingPreview.recurringTotal.toFixed(2)}</strong>
+                    </div>
+                    <div>
+                      Setup: {tierPricingPreview.setupBase.toFixed(2)} base + {tierPricingPreview.setupAddon.toFixed(2)} CPO add-on + {tierPricingPreview.whiteLabelSetup.toFixed(2)} white-label = <strong>{tierPricingPreview.setupTotal.toFixed(2)}</strong>
+                    </div>
+                    <div>
+                      Due now: <strong>{tierPricingPreview.dueNow.toFixed(2)}</strong>
+                    </div>
+                  </div>
+                )}
                 <button className="btn primary" disabled={working} onClick={() => void handleConfirmTier()}>
                   {working ? 'Saving...' : 'Confirm Tier & Lock Price'}
                 </button>
@@ -454,6 +550,9 @@ export function TenantOnboardingPage() {
                 <div className="text-sm text-subtle">
                   Locked tier: <strong>{activeApplication.selectedTierCode}</strong>{' '}
                   {activeApplication.selectedBillingCycle ? `(${activeApplication.selectedBillingCycle})` : ''}
+                </div>
+                <div className="text-sm text-subtle">
+                  CPO type: <strong>{activeApplication.pricingSnapshot?.cpoType || activeApplication.cpoType}</strong>
                 </div>
                 <div className="text-sm text-subtle">
                   Amount due now:{' '}

@@ -72,13 +72,15 @@ describe('BrandingProvider', () => {
       expect(screen.getByText('Acme')).toBeInTheDocument()
     })
 
-    expect(document.title).toBe('Acme CPO Central')
-    expect(document.documentElement.style.getPropertyValue('--accent')).toBe(
-      '#FF6600',
-    )
-    expect(document.documentElement.style.getPropertyValue('--brand-radius')).toBe(
-      '14px',
-    )
+    await waitFor(() => {
+      expect(document.title).toBe('Acme CPO Central')
+      expect(document.documentElement.style.getPropertyValue('--accent')).toBe(
+        '#FF6600',
+      )
+      expect(document.documentElement.style.getPropertyValue('--brand-radius')).toBe(
+        '14px',
+      )
+    })
   })
 
   it('falls back safely when runtime branding fetch fails', async () => {

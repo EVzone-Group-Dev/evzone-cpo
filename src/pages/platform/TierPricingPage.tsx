@@ -27,6 +27,12 @@ type DraftForm = {
   monthlyPrice: string
   annualPrice: string
   setupFee: string
+  swapMonthlyAddon: string
+  swapAnnualAddon: string
+  swapSetupAddon: string
+  hybridMonthlyAddon: string
+  hybridAnnualAddon: string
+  hybridSetupAddon: string
   whiteLabelAvailable: boolean
   whiteLabelMonthlyAddon: string
   whiteLabelSetupFee: string
@@ -43,6 +49,12 @@ const EMPTY_FORM: Record<TierCode, DraftForm> = {
     monthlyPrice: '99',
     annualPrice: '1010',
     setupFee: '0',
+    swapMonthlyAddon: '49',
+    swapAnnualAddon: '500',
+    swapSetupAddon: '100',
+    hybridMonthlyAddon: '119',
+    hybridAnnualAddon: '1214',
+    hybridSetupAddon: '150',
     whiteLabelAvailable: false,
     whiteLabelMonthlyAddon: '',
     whiteLabelSetupFee: '',
@@ -57,6 +69,12 @@ const EMPTY_FORM: Record<TierCode, DraftForm> = {
     monthlyPrice: '299',
     annualPrice: '3050',
     setupFee: '250',
+    swapMonthlyAddon: '149',
+    swapAnnualAddon: '1520',
+    swapSetupAddon: '300',
+    hybridMonthlyAddon: '239',
+    hybridAnnualAddon: '2438',
+    hybridSetupAddon: '450',
     whiteLabelAvailable: false,
     whiteLabelMonthlyAddon: '',
     whiteLabelSetupFee: '',
@@ -71,6 +89,12 @@ const EMPTY_FORM: Record<TierCode, DraftForm> = {
     monthlyPrice: '1490',
     annualPrice: '15198',
     setupFee: '2000',
+    swapMonthlyAddon: '590',
+    swapAnnualAddon: '6018',
+    swapSetupAddon: '2500',
+    hybridMonthlyAddon: '890',
+    hybridAnnualAddon: '9078',
+    hybridSetupAddon: '3500',
     whiteLabelAvailable: true,
     whiteLabelMonthlyAddon: '350',
     whiteLabelSetupFee: '600',
@@ -85,6 +109,12 @@ const EMPTY_FORM: Record<TierCode, DraftForm> = {
     monthlyPrice: '',
     annualPrice: '',
     setupFee: '',
+    swapMonthlyAddon: '',
+    swapAnnualAddon: '',
+    swapSetupAddon: '',
+    hybridMonthlyAddon: '',
+    hybridAnnualAddon: '',
+    hybridSetupAddon: '',
     whiteLabelAvailable: true,
     whiteLabelMonthlyAddon: '',
     whiteLabelSetupFee: '',
@@ -120,6 +150,12 @@ function toDraftForm(group: TierPricingGroup): DraftForm {
     monthlyPrice: source.monthlyPrice == null ? '' : String(source.monthlyPrice),
     annualPrice: source.annualPrice == null ? '' : String(source.annualPrice),
     setupFee: source.setupFee == null ? '' : String(source.setupFee),
+    swapMonthlyAddon: source.swapMonthlyAddon == null ? '' : String(source.swapMonthlyAddon),
+    swapAnnualAddon: source.swapAnnualAddon == null ? '' : String(source.swapAnnualAddon),
+    swapSetupAddon: source.swapSetupAddon == null ? '' : String(source.swapSetupAddon),
+    hybridMonthlyAddon: source.hybridMonthlyAddon == null ? '' : String(source.hybridMonthlyAddon),
+    hybridAnnualAddon: source.hybridAnnualAddon == null ? '' : String(source.hybridAnnualAddon),
+    hybridSetupAddon: source.hybridSetupAddon == null ? '' : String(source.hybridSetupAddon),
     whiteLabelAvailable: source.whiteLabelAvailable,
     whiteLabelMonthlyAddon:
       source.whiteLabelMonthlyAddon == null ? '' : String(source.whiteLabelMonthlyAddon),
@@ -210,11 +246,29 @@ export function TierPricingPage() {
     const monthlyPrice = toInputNumber(form.monthlyPrice)
     const annualPrice = toInputNumber(form.annualPrice)
     const setupFee = toInputNumber(form.setupFee)
+    const swapMonthlyAddon = toInputNumber(form.swapMonthlyAddon)
+    const swapAnnualAddon = toInputNumber(form.swapAnnualAddon)
+    const swapSetupAddon = toInputNumber(form.swapSetupAddon)
+    const hybridMonthlyAddon = toInputNumber(form.hybridMonthlyAddon)
+    const hybridAnnualAddon = toInputNumber(form.hybridAnnualAddon)
+    const hybridSetupAddon = toInputNumber(form.hybridSetupAddon)
     const whiteLabelMonthlyAddon = toInputNumber(form.whiteLabelMonthlyAddon)
     const whiteLabelSetupFee = toInputNumber(form.whiteLabelSetupFee)
 
     if (monthlyPrice === undefined || annualPrice === undefined || setupFee === undefined) {
       setError('Prices and setup fee must be valid non-negative numbers.')
+      return
+    }
+
+    if (
+      swapMonthlyAddon === undefined ||
+      swapAnnualAddon === undefined ||
+      swapSetupAddon === undefined ||
+      hybridMonthlyAddon === undefined ||
+      hybridAnnualAddon === undefined ||
+      hybridSetupAddon === undefined
+    ) {
+      setError('SWAP and HYBRID add-ons must be valid non-negative numbers.')
       return
     }
 
@@ -237,6 +291,12 @@ export function TierPricingPage() {
         monthlyPrice,
         annualPrice,
         setupFee,
+        swapMonthlyAddon,
+        swapAnnualAddon,
+        swapSetupAddon,
+        hybridMonthlyAddon,
+        hybridAnnualAddon,
+        hybridSetupAddon,
         whiteLabelAvailable: form.whiteLabelAvailable,
         whiteLabelMonthlyAddon,
         whiteLabelSetupFee,
@@ -374,6 +434,72 @@ export function TierPricingPage() {
                     value={form.setupFee}
                     onChange={(event) => updateForm(group.tierCode, { setupFee: event.target.value })}
                   />
+                </div>
+              </div>
+
+              <div className="mt-3">
+                <div className="form-label">SWAP Add-ons (USD)</div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
+                    <label className="form-label">Swap Monthly Add-on</label>
+                    <input
+                      className="input"
+                      value={form.swapMonthlyAddon}
+                      disabled={form.isCustomPricing}
+                      onChange={(event) => updateForm(group.tierCode, { swapMonthlyAddon: event.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">Swap Annual Add-on</label>
+                    <input
+                      className="input"
+                      value={form.swapAnnualAddon}
+                      disabled={form.isCustomPricing}
+                      onChange={(event) => updateForm(group.tierCode, { swapAnnualAddon: event.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">Swap Setup Add-on</label>
+                    <input
+                      className="input"
+                      value={form.swapSetupAddon}
+                      disabled={form.isCustomPricing}
+                      onChange={(event) => updateForm(group.tierCode, { swapSetupAddon: event.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-3">
+                <div className="form-label">HYBRID Add-ons (USD)</div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
+                    <label className="form-label">Hybrid Monthly Add-on</label>
+                    <input
+                      className="input"
+                      value={form.hybridMonthlyAddon}
+                      disabled={form.isCustomPricing}
+                      onChange={(event) => updateForm(group.tierCode, { hybridMonthlyAddon: event.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">Hybrid Annual Add-on</label>
+                    <input
+                      className="input"
+                      value={form.hybridAnnualAddon}
+                      disabled={form.isCustomPricing}
+                      onChange={(event) => updateForm(group.tierCode, { hybridAnnualAddon: event.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">Hybrid Setup Add-on</label>
+                    <input
+                      className="input"
+                      value={form.hybridSetupAddon}
+                      disabled={form.isCustomPricing}
+                      onChange={(event) => updateForm(group.tierCode, { hybridSetupAddon: event.target.value })}
+                    />
+                  </div>
                 </div>
               </div>
 
