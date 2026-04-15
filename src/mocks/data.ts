@@ -4578,6 +4578,21 @@ export function authenticateDemoUser(
     : null;
 }
 
+export function authenticateDemoUserByEmail(email: string): LoginResponse | null {
+  const normalizedEmail = email.trim().toLowerCase()
+  const match = demoUsers.find(
+    (user) => user.email.trim().toLowerCase() === normalizedEmail,
+  )
+
+  return match
+    ? buildDemoLoginResponse(
+        match,
+        match.defaultTenantId,
+        getDefaultStationAssignmentId(match, match.defaultTenantId),
+      )
+    : null
+}
+
 export function getDemoUserHints(): DemoUserHint[] {
   return demoUsers.map(({ id, name, email, password, role }) => ({
     id,
@@ -4706,7 +4721,24 @@ export function updateDemoUserProfile(
     access.demoUser,
     access.tenantId,
     access.user.activeStationContext?.assignmentId ?? null,
-  );
+  )
+}
+
+export function updateDemoUserMfaRequirement(
+  access: ResolvedDemoAccess | null,
+  required: boolean,
+) {
+  if (!access) {
+    return null
+  }
+
+  access.demoUser.user.mfaEnabled = required
+
+  return buildDemoUserSession(
+    access.demoUser,
+    access.tenantId,
+    access.user.activeStationContext?.assignmentId ?? null,
+  )
 }
 
 export function listDemoTenants(authorizationHeader?: string | null) {

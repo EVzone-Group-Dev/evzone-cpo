@@ -268,6 +268,38 @@ describe('SettingsPage', () => {
     })
   })
 
+  it('persists MFA requirement changes to backend policy endpoint', async () => {
+    render(<SettingsPage />)
+
+    const mfaSwitch = screen.getByRole('switch', { name: 'Multi-factor authentication' })
+    fireEvent.click(mfaSwitch)
+
+    const saveButton = screen.getByRole('button', { name: 'Save changes' })
+    fireEvent.click(saveButton)
+
+    await waitFor(() => {
+      expect(mockedFetchJson).toHaveBeenCalledWith(
+        '/api/v1/users/usr-1/mfa-requirement',
+        expect.objectContaining({
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            required: false,
+          }),
+        }),
+      )
+    })
+
+    expect(replaceUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mfaEnabled: false,
+        mfaRequired: false,
+      }),
+    )
+  })
+
   it('restores saved language, country, and currency selections after reload', async () => {
     const { unmount } = render(<SettingsPage />)
 

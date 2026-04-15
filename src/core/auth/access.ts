@@ -525,7 +525,14 @@ export function normalizeAuthenticatedUser<
     createdAt: user.createdAt ?? "",
     mfaEnabled:
       user.mfaEnabled ??
+      ("mfaRequired" in user && typeof user.mfaRequired === "boolean"
+        ? user.mfaRequired
+        : undefined) ??
       ("twoFactorEnabled" in user ? Boolean(user.twoFactorEnabled) : false),
+    mfaRequired:
+      "mfaRequired" in user && typeof user.mfaRequired === "boolean"
+        ? user.mfaRequired
+        : Boolean(user.mfaEnabled),
     tenantId:
       ((user as Record<string, unknown>).activeTenantId as string) ??
       ((user as Record<string, unknown>).activeOrganizationId as string) ??

@@ -9,6 +9,7 @@ import {
   applySwapPackRetirementDecision,
   applySwapDispatchAction,
   authenticateDemoUser,
+  authenticateDemoUserByEmail,
   createChargePoint,
   getBatteryInventory,
   getBilling,
@@ -55,6 +56,7 @@ import {
   transitionSwapPack,
   switchDemoTenant,
   switchDemoStationContext,
+  updateDemoUserMfaRequirement,
   type ResolvedDemoAccess,
 } from "./data";
 import {
@@ -131,6 +133,19 @@ function loginResolver(request: Request) {
     }
     return HttpResponse.json(auth);
   });
+}
+
+const demoPasskeyLoginChallenges = new Map<
+  string,
+  { email: string; expiresAtMs: number }
+>();
+
+function createDemoPasskeyChallengeId() {
+  return `demo-passkey-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function createDemoWebAuthnChallenge() {
+  return `demo-webauthn-${Math.random().toString(36).slice(2, 14)}`;
 }
 
 const REFERENCE_COUNTRIES = [
@@ -297,6 +312,146 @@ export const handlers = [
   http.post("/api/v1/auth/login", ({ request }) => loginResolver(request)),
   http.post("/api/auth/login", ({ request }) => loginResolver(request)),
 
+  http.post("/api/v1/auth/mfa/passkeys/login/options", async ({ request }) => {
+    const body = await readJsonBody<{ email?: string }>(request);
+    const email = body.email?.trim() ?? "";
+
+    if (!email) {
+      return HttpResponse.json(
+        { message: "Email is required" },
+        { status: 400 },
+      );
+    }
+
+    const auth = authenticateDemoUserByEmail(email);
+    if (!auth) {
+      return HttpResponse.json(
+        { message: "Invalid credentials." },
+        { status: 401 },
+      );
+    }
+
+    const challengeId = createDemoPasskeyChallengeId();
+    demoPasskeyLoginChallenges.set(challengeId, {
+      email,
+      expiresAtMs: Date.now() + 5 * 60 * 1000,
+    });
+
+    return HttpResponse.json({
+      challengeId,
+      options: {
+        challenge: createDemoWebAuthnChallenge(),
+        rpId: "localhost",
+        timeout: 60000,
+        userVerification: "required",
+      },
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+    });
+  }),
+  http.post("/api/auth/mfa/passkeys/login/options", async ({ request }) => {
+    const body = await readJsonBody<{ email?: string }>(request);
+    const email = body.email?.trim() ?? "";
+
+    if (!email) {
+      return HttpResponse.json(
+        { message: "Email is required" },
+        { status: 400 },
+      );
+    }
+
+    const auth = authenticateDemoUserByEmail(email);
+    if (!auth) {
+      return HttpResponse.json(
+        { message: "Invalid credentials." },
+        { status: 401 },
+      );
+    }
+
+    const challengeId = createDemoPasskeyChallengeId();
+    demoPasskeyLoginChallenges.set(challengeId, {
+      email,
+      expiresAtMs: Date.now() + 5 * 60 * 1000,
+    });
+
+    return HttpResponse.json({
+      challengeId,
+      options: {
+        challenge: createDemoWebAuthnChallenge(),
+        rpId: "localhost",
+        timeout: 60000,
+        userVerification: "required",
+      },
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+    });
+  }),
+
+  http.post("/api/v1/auth/mfa/passkeys/login/verify", async ({ request }) => {
+    const body = await readJsonBody<{
+      challengeId?: string;
+      response?: Record<string, unknown>;
+    }>(request);
+    const challengeId = body.challengeId?.trim() ?? "";
+    if (!challengeId) {
+      return HttpResponse.json(
+        { message: "challengeId is required" },
+        { status: 400 },
+      );
+    }
+
+    const challenge = demoPasskeyLoginChallenges.get(challengeId);
+    if (!challenge || challenge.expiresAtMs < Date.now()) {
+      return HttpResponse.json(
+        { message: "MFA challenge has expired" },
+        { status: 400 },
+      );
+    }
+
+    const auth = authenticateDemoUserByEmail(challenge.email);
+    demoPasskeyLoginChallenges.delete(challengeId);
+
+    if (!auth) {
+      return HttpResponse.json(
+        { message: "Invalid credentials." },
+        { status: 401 },
+      );
+    }
+
+    return HttpResponse.json(auth);
+  }),
+  http.post("/api/auth/mfa/passkeys/login/verify", async ({ request }) => {
+    const body = await readJsonBody<{
+      challengeId?: string;
+      response?: Record<string, unknown>;
+    }>(request);
+    const challengeId = body.challengeId?.trim() ?? "";
+    if (!challengeId) {
+      return HttpResponse.json(
+        { message: "challengeId is required" },
+        { status: 400 },
+      );
+    }
+
+    const challenge = demoPasskeyLoginChallenges.get(challengeId);
+    if (!challenge || challenge.expiresAtMs < Date.now()) {
+      return HttpResponse.json(
+        { message: "MFA challenge has expired" },
+        { status: 400 },
+      );
+    }
+
+    const auth = authenticateDemoUserByEmail(challenge.email);
+    demoPasskeyLoginChallenges.delete(challengeId);
+
+    if (!auth) {
+      return HttpResponse.json(
+        { message: "Invalid credentials." },
+        { status: 401 },
+      );
+    }
+
+    return HttpResponse.json(auth);
+  }),
+
   http.post("/api/v1/auth/refresh", async ({ request }) => {
     const body = (await request.json()) as { refreshToken?: string | null };
     const auth = refreshDemoUserSession(body.refreshToken ?? null);
@@ -341,6 +496,43 @@ export const handlers = [
     }
 
     return HttpResponse.json(updatedUser);
+  }),
+
+  http.post("/api/v1/users/:id/mfa-requirement", async ({ request, params }) => {
+    const access = getRequestAccess(request);
+    if (!access) {
+      return unauthorized();
+    }
+
+    const targetUserId = String(params.id ?? "");
+    if (!targetUserId) {
+      return HttpResponse.json(
+        { message: "User id is required." },
+        { status: 400 },
+      );
+    }
+
+    if (targetUserId !== access.user.id) {
+      return HttpResponse.json({ message: "Forbidden." }, { status: 403 });
+    }
+
+    const body = await readJsonBody<{ required?: boolean }>(request);
+    if (typeof body.required !== "boolean") {
+      return HttpResponse.json(
+        { message: "required must be a boolean." },
+        { status: 400 },
+      );
+    }
+
+    const updated = updateDemoUserMfaRequirement(access, body.required);
+    if (!updated) {
+      return unauthorized();
+    }
+
+    return HttpResponse.json({
+      success: true,
+      user: updated,
+    });
   }),
 
   http.get("/api/v1/users/me", ({ request }) => {

@@ -340,6 +340,7 @@ export interface CPOUser {
   lastSeen?: string
   createdAt?: string
   mfaEnabled?: boolean
+  mfaRequired?: boolean
   providerId?: string | null
   region?: string | null
   zoneId?: string | null

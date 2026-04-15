@@ -88,6 +88,7 @@ export function SettingsPage() {
   const userName = user?.name ?? ''
   const userEmail = user?.email ?? ''
   const mfaEnabled = user?.mfaEnabled ?? false
+  const currentMfaEnabled = user?.mfaEnabled ?? false
   const currentUserCountry = useMemo(() => {
     const country = (user as unknown as Record<string, unknown> | null)?.country
     return typeof country === 'string' ? country.trim() : ''
@@ -270,6 +271,7 @@ export function SettingsPage() {
       const normalizedName = draft.name.trim() || userName
       const selectedCountry = countryOptions.find((country) => country.code2 === draft.tenantCountryCode)?.name?.trim() ?? ''
       const profilePatch: Record<string, string> = {}
+      let latestUserPayload: AuthenticatedApiUser | null = null
 
       if (normalizedName !== userName) {
         profilePatch.name = normalizedName
@@ -294,7 +296,28 @@ export function SettingsPage() {
         })
 
         replaceUser(updatedUser)
+        latestUserPayload = updatedUser
         nextDraft.name = updatedUser.name?.trim() || normalizedName
+      }
+
+      if (user?.id && draft.mfaEnabled !== currentMfaEnabled) {
+        await fetchJson<{ success: boolean; message?: string }>(
+          `/api/v1/users/${user.id}/mfa-requirement`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ required: draft.mfaEnabled }),
+          },
+        )
+
+        const mergedUser = {
+          ...(latestUserPayload ?? (user as unknown as AuthenticatedApiUser)),
+          mfaEnabled: draft.mfaEnabled,
+          mfaRequired: draft.mfaEnabled,
+        }
+        replaceUser(mergedUser)
       }
 
       saveSettingsDraft(user?.id ?? null, nextDraft)

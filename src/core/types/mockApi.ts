@@ -4,6 +4,10 @@ import type {
   CPOUser,
   ServiceMode,
 } from "@/core/types/domain";
+import type {
+  AuthenticationResponseJSON,
+  PublicKeyCredentialRequestOptionsJSON,
+} from "@simplewebauthn/browser";
 
 export interface DemoUserHint {
   id: string;
@@ -20,9 +24,21 @@ export interface LoginResponse {
   user: AuthenticatedApiUser;
 }
 
+export interface PasskeyLoginOptionsResponse {
+  challengeId: string;
+  options: PublicKeyCredentialRequestOptionsJSON;
+  expiresAt: string;
+}
+
+export interface PasskeyLoginVerifyRequest {
+  challengeId: string;
+  response: AuthenticationResponseJSON;
+}
+
 export type AuthenticatedApiUser = Omit<CPOUser, "role"> & {
   role: string;
   twoFactorEnabled?: boolean;
+  mfaRequired?: boolean;
   accessProfile?: AccessProfile | null;
 };
 
