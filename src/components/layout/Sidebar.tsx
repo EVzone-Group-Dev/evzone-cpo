@@ -34,6 +34,7 @@ import {
   Settings,
   LogOut,
   ClipboardList,
+  X,
 } from "lucide-react";
 
 interface NavGroup {
@@ -299,30 +300,52 @@ const NAV: NavGroup[] = [
   },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  mode?: "desktop" | "mobile";
+  onRequestClose?: () => void;
+}
+
+export function Sidebar({ mode = "desktop", onRequestClose }: SidebarProps) {
   const location = useLocation();
   const { user, logout } = useAuthStore();
   const { activeTenant } = useTenant();
   const { data: featureFlags } = usePlatformFeatureFlags();
   const [collapsed, setCollapsed] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const isMobile = mode === "mobile";
+  const isCollapsed = isMobile ? false : collapsed;
 
   return (
     <aside
-      className={`relative flex flex-col h-full bg-[var(--bg-card)] border-r border-[var(--border)] transition-all duration-200 ${collapsed ? "w-[60px]" : "w-[220px]"}`}
+      className={`relative flex flex-col h-full bg-[var(--bg-card)] border-r border-[var(--border)] transition-all duration-200 ${isCollapsed ? "w-[60px]" : isMobile ? "w-[84vw] max-w-[320px]" : "w-[220px]"}`}
       style={{ flexShrink: 0 }}
     >
-      <button
-        onClick={() => {
-          setIsProfileMenuOpen(false);
-          setCollapsed((c) => !c);
-        }}
-        className="btn ghost icon absolute right-2 top-2 z-10"
-        style={{ flexShrink: 0 }}
-        title={collapsed ? "Expand" : "Collapse"}
-      >
-        {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-      </button>
+      {isMobile ? (
+        <button
+          onClick={() => {
+            setIsProfileMenuOpen(false);
+            onRequestClose?.();
+          }}
+          className="btn ghost icon absolute right-2 top-2 z-10"
+          style={{ flexShrink: 0 }}
+          title="Close navigation"
+          aria-label="Close navigation"
+        >
+          <X size={14} />
+        </button>
+      ) : (
+        <button
+          onClick={() => {
+            setIsProfileMenuOpen(false);
+            setCollapsed((c) => !c);
+          }}
+          className="btn ghost icon absolute right-2 top-2 z-10"
+          style={{ flexShrink: 0 }}
+          title={isCollapsed ? "Expand" : "Collapse"}
+        >
+          {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+        </button>
+      )}
 
       {/* Navigation */}
       <nav className="sidebar-scroll flex-1 overflow-y-auto py-2 space-y-1">
@@ -337,7 +360,7 @@ export function Sidebar() {
 
           return (
             <div key={group.label}>
-              {!collapsed && (
+              {!isCollapsed && (
                 <div className="nav-group-label">{group.label}</div>
               )}
               {visibleItems.map((item) => {
@@ -349,10 +372,14 @@ export function Sidebar() {
                     key={item.path}
                     to={item.path}
                     className={`nav-item ${isActive ? "active" : ""}`}
-                    title={collapsed ? item.label : undefined}
+                    title={isCollapsed ? item.label : undefined}
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      onRequestClose?.();
+                    }}
                   >
                     <span className="flex-shrink-0">{item.icon}</span>
-                    {!collapsed && <span>{item.label}</span>}
+                    {!isCollapsed && <span>{item.label}</span>}
                   </Link>
                 );
               })}
@@ -367,13 +394,13 @@ export function Sidebar() {
           <>
             <button
               onClick={() => setIsProfileMenuOpen((current) => !current)}
-              className={`w-full flex items-center gap-2 rounded-lg border border-transparent hover:border-[var(--border)] transition-colors ${collapsed ? "justify-center px-0 py-1" : "px-2 py-1.5"}`}
+              className={`w-full flex items-center gap-2 rounded-lg border border-transparent hover:border-[var(--border)] transition-colors ${isCollapsed ? "justify-center px-0 py-1" : "px-2 py-1.5"}`}
               aria-label="Open sidebar profile menu"
             >
               <div className="w-7 h-7 rounded-full bg-[var(--accent-dim)] flex items-center justify-center text-[var(--accent-ink)] font-bold text-xs flex-shrink-0">
                 {user.name.charAt(0).toUpperCase()}
               </div>
-              {!collapsed && (
+              {!isCollapsed && (
                 <div className="overflow-hidden text-left">
                   <div className="text-xs font-semibold text-[var(--text)] truncate">
                     {user.name}
@@ -391,19 +418,28 @@ export function Sidebar() {
             </button>
             {isProfileMenuOpen && (
               <div
-                className={`mt-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] p-1 ${collapsed ? "absolute right-3 bottom-14 w-44 z-50 shadow-2xl" : ""}`}
+                className={`mt-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] p-1 ${isCollapsed ? "absolute right-3 bottom-14 w-44 z-50 shadow-2xl" : ""}`}
               >
                 {canAccessPolicy(user, "settingsRead") && (
                   <Link
                     to={PATHS.SETTINGS}
                     className="nav-item"
-                    onClick={() => setIsProfileMenuOpen(false)}
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      onRequestClose?.();
+                    }}
                   >
                     <Settings size={16} />
                     <span>Account Settings</span>
                   </Link>
                 )}
-                <button onClick={logout} className="nav-item w-full text-left">
+                <button
+                  onClick={() => {
+                    logout();
+                    onRequestClose?.();
+                  }}
+                  className="nav-item w-full text-left"
+                >
                   <LogOut size={16} />
                   <span>Sign out</span>
                 </button>
