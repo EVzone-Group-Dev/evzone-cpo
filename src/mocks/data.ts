@@ -6,6 +6,7 @@ import type {
   CPOUser,
   OrganizationMembershipSummary,
   StationContextSummary,
+  TenantCpoType,
 } from "@/core/types/domain";
 import type {
   AlertRecord,
@@ -81,6 +82,7 @@ const tenantCatalog: Record<TenantId, TenantRecord> = {
   "tenant-global": {
     id: "tenant-global",
     code: "GLOBAL",
+    cpoType: "HYBRID",
     currency: "Multi-currency",
     isActivated: true,
     dashboardMode: "operations",
@@ -99,6 +101,7 @@ const tenantCatalog: Record<TenantId, TenantRecord> = {
   "tenant-evzone-ke": {
     id: "tenant-evzone-ke",
     code: "KE-CPO",
+    cpoType: "HYBRID",
     currency: "KES",
     isActivated: true,
     dashboardMode: "operations",
@@ -117,6 +120,7 @@ const tenantCatalog: Record<TenantId, TenantRecord> = {
   "tenant-westlands-mall": {
     id: "tenant-westlands-mall",
     code: "WML",
+    cpoType: "CHARGE",
     currency: "KES",
     isActivated: true,
     dashboardMode: "site",
@@ -146,22 +150,30 @@ const tenantActivationState: Record<TenantId, boolean> = {
 
 const tenantOrganizationCatalog: Record<
   TenantId,
-  { organizationId: string; organizationName: string; organizationType: string }
+  {
+    organizationId: string
+    organizationName: string
+    organizationType: string
+    cpoType: TenantCpoType
+  }
 > = {
   "tenant-global": {
     organizationId: "org-evzone-global",
     organizationName: "EVzone Global",
     organizationType: "Platform",
+    cpoType: "HYBRID",
   },
   "tenant-evzone-ke": {
     organizationId: "org-evzone-ke",
     organizationName: "EVzone Kenya",
     organizationType: "Operating Company",
+    cpoType: "HYBRID",
   },
   "tenant-westlands-mall": {
     organizationId: "org-westlands-mall",
     organizationName: "Westlands Mall Portfolio",
     organizationType: "Hosted Site",
+    cpoType: "CHARGE",
   },
 };
 
@@ -4440,6 +4452,7 @@ function buildDemoMemberships(
     tenantId: tenantOrganizationCatalog[tenantId].organizationId,
     tenantName: tenantOrganizationCatalog[tenantId].organizationName,
     tenantType: tenantOrganizationCatalog[tenantId].organizationType,
+    cpoType: tenantOrganizationCatalog[tenantId].cpoType,
     ownerCapability: demoUser.user.ownerCapability ?? null,
     role: demoUser.canonicalRole,
     status: "ACTIVE",
@@ -4527,6 +4540,9 @@ function buildDemoUserSession(
   return {
     ...demoUser.user,
     activeTenantId: activeTenantIdProp,
+    activeTenantCpoType: activeTenantId
+      ? tenantOrganizationCatalog[activeTenantId].cpoType
+      : null,
     tenantActivated: isTenantActivated(activeTenantId),
     activeTenantName,
     accessProfile,

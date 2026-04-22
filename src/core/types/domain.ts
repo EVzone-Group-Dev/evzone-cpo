@@ -257,6 +257,8 @@ export type CanonicalAccessRole =
   | 'EXTERNAL_PROVIDER_OPERATOR'
   | 'LEGACY_UNMAPPED'
 
+export type TenantCpoType = 'CHARGE' | 'SWAP' | 'HYBRID'
+
 export type AccessScopeType =
   | 'platform'
   | 'tenant'
@@ -306,6 +308,7 @@ export interface OrganizationMembershipSummary {
   status?: string
   tenantName?: string
   tenantType?: string
+  cpoType?: TenantCpoType
 }
 
 export interface StationContextSummary {
@@ -332,6 +335,7 @@ export interface CPOUser {
   tenantId?: OrganizationId
   tenantActivated?: boolean
   activeTenantId?: OrganizationId | null
+  activeTenantCpoType?: TenantCpoType | null
   orgId?: OrganizationId | null
   organizationName?: string | null
   activeTenantName?: string | null

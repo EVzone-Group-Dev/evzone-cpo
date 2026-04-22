@@ -1840,6 +1840,21 @@ function useTenantQueryContext(enabled = true) {
   };
 }
 
+function isAuthorizationFailure(error: unknown) {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  return (
+    message.includes("forbidden") ||
+    message.includes("unauthorized") ||
+    message.includes("status 401") ||
+    message.includes("status 403") ||
+    message.includes("session expired")
+  );
+}
+
 export function useDemoUsers() {
   return useQuery<DemoUserHint[]>({
     queryKey: ["auth", "demo-users"],
@@ -1857,7 +1872,13 @@ export function useDashboardOverview(options?: { enabled?: boolean }) {
     queryKey: ["dashboard", "overview", scopeKey],
     queryFn: async () => {
       const [analytics, sessions, incidents] = await Promise.all([
-        fetchJson<unknown>("/api/v1/analytics/dashboard"),
+        fetchJson<unknown>("/api/v1/analytics/dashboard").catch((error) => {
+          if (isAuthorizationFailure(error)) {
+            return {};
+          }
+
+          throw error;
+        }),
         fetchJson<unknown>("/api/v1/sessions/history/all").catch(() => []),
         fetchJson<unknown>("/api/v1/incidents").catch(() => []),
       ]);

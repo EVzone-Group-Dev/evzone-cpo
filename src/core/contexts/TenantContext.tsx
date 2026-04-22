@@ -4,7 +4,8 @@ import { fetchJson } from '@/core/api/fetchJson'
 import { useAuthStore } from '@/core/auth/authStore'
 import { TenantContext } from '@/core/contexts/tenantSessionContext'
 import type { TenantContextType } from '@/core/contexts/tenantSessionContext'
-import type { AccessScopeType, CPOUser, OrganizationMembershipSummary, StationContextSummary } from '@/core/types/domain'
+import { resolveTenantCpoTypeFromCandidates } from '@/core/tenancy/cpoType'
+import type { AccessScopeType, CPOUser, OrganizationMembershipSummary, StationContextSummary, TenantCpoType } from '@/core/types/domain'
 import type { AuthenticatedApiUser, GeographyCountryReference, LoginResponse, TenantContextResponse, TenantSummary } from '@/core/types/mockApi'
 
 type BackendTenantRecord = {
@@ -21,6 +22,13 @@ type BackendTenantRecord = {
   timeZone?: string
   stationCount?: number
   siteCount?: number
+  cpoType?: string
+  cpoServiceType?: string
+  serviceType?: string
+  serviceMode?: string
+  tenantCpoType?: string
+  onboardingCpoType?: string
+  type?: string
 }
 
 const DEFAULT_CURRENCY = 'USD'
@@ -77,6 +85,18 @@ function normalizeCurrencyCode(value: unknown, fallback = DEFAULT_CURRENCY): str
   return normalized.toUpperCase()
 }
 
+function resolveTenantCpoTypeFromRecord(record: BackendTenantRecord): TenantCpoType | null {
+  return resolveTenantCpoTypeFromCandidates([
+    record.cpoType,
+    record.cpoServiceType,
+    record.serviceType,
+    record.serviceMode,
+    record.tenantCpoType,
+    record.onboardingCpoType,
+    record.type,
+  ])
+}
+
 function normalizeTimeZone(value: unknown, fallback = DEFAULT_TIME_ZONE): string {
   return normalizeNonEmptyString(value) ?? fallback
 }
@@ -103,6 +123,7 @@ function toTenantSummary(raw: BackendTenantRecord): TenantSummary {
     id: raw.id,
     name: raw.name ?? 'Unnamed Tenant',
     code: raw.code ?? raw.id.slice(0, 8).toUpperCase(),
+    cpoType: resolveTenantCpoTypeFromRecord(raw) ?? undefined,
     currency: normalizeNonEmptyString(raw.currency) ?? '',
     description: raw.description ?? '',
     isActivated: typeof raw.isActivated === 'boolean' ? raw.isActivated : true,
@@ -260,11 +281,17 @@ function enrichTenantSummary(
 function buildTenantFromMembership(membership: OrganizationMembershipSummary, user: CPOUser, isActive: boolean): TenantSummary {
   const activeScopeType = isActive ? user.accessProfile?.scope.type : null
   const scope = toTenantScope(activeScopeType)
+  const cpoType = resolveTenantCpoTypeFromCandidates([
+    membership.cpoType,
+    membership.tenantType,
+    isActive ? user.activeTenantCpoType : null,
+  ])
 
   return {
     id: membership.tenantId,
     name: membership.tenantName ?? membership.tenantId,
     code: buildTenantCode(membership.tenantId),
+    cpoType: cpoType ?? undefined,
     currency: '',
     description: membership.tenantType ? `${membership.tenantType} workspace` : '',
     region: normalizeNonEmptyString(user.region) ?? 'Unknown',
@@ -298,6 +325,7 @@ function buildFallbackTenant(user: CPOUser, requestedTenantId: string | null): T
     id: tenantIdProp,
     name: user.activeTenantName ?? user.organizationName ?? tenantIdProp,
     code: buildTenantCode(tenantIdProp),
+    cpoType: resolveTenantCpoTypeFromCandidates([user.activeTenantCpoType]) ?? undefined,
     currency: '',
     description: '',
     region: normalizeNonEmptyString(user.region) ?? 'Unknown',
@@ -438,6 +466,24 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     return options.length > 0 ? options : [DEFAULT_CURRENCY]
   }, [availableCountries])
 
+  const { data: tenantDirectoryRecords } = useQuery<BackendTenantRecord[]>({
+    queryKey: ['tenancy', 'tenants', token, user?.sessionScopeType, user?.selectedTenantId],
+    queryFn: async () => {
+      const tenantEndpoint = isPlatformSessionWithoutTenantContext(user)
+        ? '/api/v1/platform/tenants'
+        : '/api/v1/tenants'
+
+      try {
+        const records = await fetchJson<BackendTenantRecord[]>(tenantEndpoint)
+        return Array.isArray(records) ? records : []
+      } catch {
+        return []
+      }
+    },
+    enabled: isAuthenticated && !!token,
+    staleTime: 60_000,
+  })
+
   const { data: fallbackContext, isLoading: isFallbackLoading, isSuccess: isFallbackSuccess } = useQuery<TenantContextResponse>({
     queryKey: ['tenancy', 'context', token, activeTenantId],
     queryFn: async () => {
@@ -497,12 +543,33 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       return null
     }
 
+    const tenantDirectory = new Map<string, TenantSummary>(
+      (tenantDirectoryRecords ?? [])
+        .filter((record) => Boolean(record.id))
+        .map((record) => {
+          const normalized = toTenantSummary(record)
+          return [normalized.id, normalized]
+        }),
+    )
+    const mergeWithTenantDirectory = (tenant: TenantSummary): TenantSummary => {
+      const directoryTenant = tenantDirectory.get(tenant.id)
+      if (!directoryTenant) {
+        return tenant
+      }
+
+      return {
+        ...tenant,
+        cpoType: tenant.cpoType ?? directoryTenant.cpoType,
+        isActivated: tenant.isActivated ?? directoryTenant.isActivated,
+      }
+    }
+
     const normalizedTenants = rawContext.availableTenants.map((tenant) =>
-      enrichTenantSummary(tenant, user, availableCountries),
+      enrichTenantSummary(mergeWithTenantDirectory(tenant), user, availableCountries),
     )
 
     const fallbackActiveTenant = rawContext.activeTenant
-      ? enrichTenantSummary(rawContext.activeTenant, user, availableCountries)
+      ? enrichTenantSummary(mergeWithTenantDirectory(rawContext.activeTenant), user, availableCountries)
       : null
 
     const activeTenant = fallbackActiveTenant
@@ -523,7 +590,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         rawContext.dataScopeLabel
         || (activeTenant ? `${activeTenant.name} scope` : 'Platform-wide visibility. Select a tenant to act as.'),
     }
-  }, [authDerivedContext, availableCountries, fallbackContext, user])
+  }, [authDerivedContext, availableCountries, fallbackContext, tenantDirectoryRecords, user])
 
   const resolvedTenantScopeId = contextData?.activeTenant?.id
     ?? user?.activeTenantId

@@ -3,6 +3,7 @@ import type {
   CPORole,
   CPOUser,
   ServiceMode,
+  TenantCpoType,
 } from "@/core/types/domain";
 import type {
   AuthenticationResponseJSON,
@@ -72,6 +73,7 @@ export interface GeographyCityReference {
 export interface TenantSummary {
   chargePointCount: number;
   code: string;
+  cpoType?: TenantCpoType;
   currency: string;
   description: string;
   id: string;

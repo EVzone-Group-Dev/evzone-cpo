@@ -6,6 +6,7 @@ import type {
 } from "@/core/types/domain";
 import { PATHS } from "@/router/paths";
 import { resolveDisplayLabel } from "@/core/auth/displayLabel";
+import { normalizeTenantCpoType } from "@/core/tenancy/cpoType";
 
 export type DashboardVariant =
   | "super-admin"
@@ -657,6 +658,11 @@ export function normalizeAuthenticatedUser<
     null;
   const rawOrganizationName = readRawStringValue(rawUser, "organizationName");
   const rawActiveTenantName = readRawStringValue(rawUser, "activeTenantName");
+  const activeTenantCpoType = normalizeTenantCpoType(
+    readRawStringValue(rawUser, "activeTenantCpoType") ??
+      readRawStringValue(rawUser, "tenantCpoType") ??
+      readRawStringValue(rawUser, "cpoType"),
+  );
   const rawScopeDisplayName = readRawStringValue(rawUser, "scopeDisplayName");
   const rawActiveStationName =
     readRawStringValue(rawUser, "activeStationName") ??
@@ -725,11 +731,17 @@ export function normalizeAuthenticatedUser<
       membershipRecord,
       "organizationType",
     );
+    const cpoType = normalizeTenantCpoType(
+      readRawStringValue(membershipRecord, "cpoType") ??
+        readRawStringValue(membershipRecord, "tenantCpoType") ??
+        readRawStringValue(membershipRecord, "cpo_service_type"),
+    );
 
     return {
       ...membership,
       tenantName: membership.tenantName ?? organizationName ?? membership.tenantId,
       tenantType: membership.tenantType ?? organizationType ?? undefined,
+      cpoType: membership.cpoType ?? cpoType ?? undefined,
     };
   });
 
@@ -752,6 +764,8 @@ export function normalizeAuthenticatedUser<
     tenantId: normalizedTenantId ?? undefined,
     orgId: normalizedOrganizationId,
     activeTenantId: normalizedActiveTenantId,
+    activeTenantCpoType:
+      normalizedSessionScopeType === "tenant" ? activeTenantCpoType : null,
     organizationName: displayOrganizationName,
     activeTenantName: displayTenantName,
     scopeDisplayName: displayScopeName,

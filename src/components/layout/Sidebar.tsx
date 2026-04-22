@@ -8,6 +8,8 @@ import {
 import { useAuthStore } from "@/core/auth/authStore";
 import { useTenant } from "@/core/hooks/useTenant";
 import { usePlatformFeatureFlags } from "@/core/hooks/usePlatformData";
+import { canAccessTenantCpoScopedNavItem } from "@/core/tenancy/cpoType";
+import type { TenantCpoType } from "@/core/types/domain";
 import { PATHS } from "@/router/paths";
 import {
   LayoutDashboard,
@@ -44,6 +46,7 @@ interface NavGroup {
 interface NavItem {
   policy: AccessPolicyKey;
   featureFlag?: "pnc_v1" | "enterprise_sso_v1";
+  tenantCpoTypes?: readonly TenantCpoType[];
   label: string;
   icon: React.ReactNode;
   path: string;
@@ -75,12 +78,14 @@ const NAV: NavGroup[] = [
         icon: <Gauge size={16} />,
         path: PATHS.CHARGE_POINTS,
         policy: "chargePointsRead",
+        tenantCpoTypes: ["CHARGE", "HYBRID"],
       },
       {
         label: "Swap Stations",
         icon: <RefreshCw size={16} />,
         path: PATHS.SWAP_STATIONS,
         policy: "swapStationsRead",
+        tenantCpoTypes: ["SWAP", "HYBRID"],
       },
     ],
   },
@@ -92,12 +97,14 @@ const NAV: NavGroup[] = [
         icon: <Activity size={16} />,
         path: PATHS.SESSIONS,
         policy: "sessionsRead",
+        tenantCpoTypes: ["CHARGE", "HYBRID"],
       },
       {
         label: "Reservations",
         icon: <BookOpen size={16} />,
         path: PATHS.RESERVATIONS,
         policy: "reservationsRead",
+        tenantCpoTypes: ["CHARGE", "HYBRID"],
       },
       {
         label: "Fleet",
@@ -110,6 +117,7 @@ const NAV: NavGroup[] = [
         icon: <RefreshCw size={16} />,
         path: PATHS.SWAP_SESSIONS,
         policy: "swapSessionsRead",
+        tenantCpoTypes: ["SWAP", "HYBRID"],
       },
       {
         label: "Incidents",
@@ -133,24 +141,28 @@ const NAV: NavGroup[] = [
         icon: <Gauge size={16} />,
         path: PATHS.SMART_CHARGING,
         policy: "smartChargingRead",
+        tenantCpoTypes: ["CHARGE", "HYBRID"],
       },
       {
         label: "Load Policy",
         icon: <TrendingUp size={16} />,
         path: PATHS.LOAD_POLICY,
         policy: "loadPoliciesRead",
+        tenantCpoTypes: ["CHARGE", "HYBRID"],
       },
       {
         label: "DER Orchestration",
         icon: <Activity size={16} />,
         path: PATHS.DER_ORCHESTRATION,
         policy: "derOrchestrationRead",
+        tenantCpoTypes: ["CHARGE", "HYBRID"],
       },
       {
         label: "Battery Inventory",
         icon: <Package size={16} />,
         path: PATHS.BATTERY_INVENTORY,
         policy: "batteryInventoryRead",
+        tenantCpoTypes: ["SWAP", "HYBRID"],
       },
     ],
   },
@@ -263,6 +275,7 @@ const NAV: NavGroup[] = [
         path: PATHS.PLUG_AND_CHARGE,
         policy: "pncRead",
         featureFlag: "pnc_v1",
+        tenantCpoTypes: ["CHARGE", "HYBRID"],
       },
       {
         label: "Vendor Baseline",
@@ -297,6 +310,7 @@ export function Sidebar({ mode = "desktop", onRequestClose }: SidebarProps) {
   const { user, logout } = useAuthStore();
   const { activeTenant } = useTenant();
   const { data: featureFlags } = usePlatformFeatureFlags();
+  const tenantCpoType = activeTenant?.cpoType ?? null;
   const [collapsed, setCollapsed] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const isMobile = mode === "mobile";
@@ -341,7 +355,18 @@ export function Sidebar({ mode = "desktop", onRequestClose }: SidebarProps) {
             const flagEnabled = item.featureFlag
               ? (featureFlags?.[item.featureFlag] ?? true)
               : true;
-            return flagEnabled && canAccessPolicy(user, item.policy);
+            return (
+              flagEnabled &&
+              canAccessPolicy(user, item.policy) &&
+              canAccessTenantCpoScopedNavItem(
+                {
+                  accessScopeType: user?.accessProfile?.scope.type ?? null,
+                  sessionScopeType: user?.sessionScopeType ?? null,
+                  tenantCpoType,
+                },
+                item.tenantCpoTypes,
+              )
+            );
           });
           if (visibleItems.length === 0) return null;
 
