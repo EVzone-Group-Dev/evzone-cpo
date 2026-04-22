@@ -21,12 +21,9 @@ export function DashboardLayout({ children, pageTitle, actions }: Props) {
     activeTenant,
     activeStationContext,
     availableStationContexts,
-    availableTenants,
     canSwitchStationContexts,
-    canSwitchTenants,
     isLoading,
     setActiveStationContextId,
-    setActiveTenantId,
   } = useTenant()
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false)
   const profileMenuRef = useRef<HTMLDivElement | null>(null)
@@ -77,36 +74,8 @@ export function DashboardLayout({ children, pageTitle, actions }: Props) {
             )}
           </div>
           <div className="flex items-center gap-2 min-w-0">
-            {(activeTenant || activeStationContext || canSwitchTenants) && (
+            {(activeStationContext || canSwitchStationContexts) && (
               <div className="hidden md:flex flex-wrap items-center justify-end gap-2 min-w-0">
-                {(activeTenant || canSwitchTenants) && (
-                  <div className="flex items-center gap-3 rounded-xl border px-3 py-2 min-w-0" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
-                    <div className="text-right leading-tight shrink-0">
-                      <div className="text-[10px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-subtle)' }}>{activeTenant?.scopeLabel ?? 'Platform scope'}</div>
-                      <div className="text-xs font-semibold" style={{ color: 'var(--text)' }}>{activeTenant?.name ?? 'Platform'}</div>
-                    </div>
-                    {canSwitchTenants && (
-                      <select
-                        className="input !h-9 !py-0 min-w-[180px] xl:min-w-[220px]"
-                        value={activeTenant?.id ?? ''}
-                        onChange={(event) => setActiveTenantId(event.target.value || null)}
-                        disabled={isLoading}
-                        aria-label="Switch organization context"
-                      >
-                        {user?.accessProfile?.scope.type === 'platform' && (
-                          <option value="">
-                            Platform (no tenant)
-                          </option>
-                        )}
-                        {availableTenants.map((tenant) => (
-                          <option key={tenant.id} value={tenant.id}>
-                            {tenant.name}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
-                )}
                 {(activeStationContext || canSwitchStationContexts) && (
                   <div className="flex items-center gap-3 rounded-xl border px-3 py-2 min-w-0" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
                     <div className="text-right leading-tight shrink-0">
