@@ -55,16 +55,11 @@ export function DashboardLayout({ children, pageTitle, actions }: Props) {
   }, [])
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: 'var(--bg)' }}>
-      <Sidebar />
-
-      {/* Main content area */}
-      <div className="flex flex-col flex-1 overflow-hidden min-w-0">
-        {/* Top bar */}
-        <header
-          className="flex items-center justify-between gap-2 px-4 sm:px-6 py-2.5 sm:py-3 border-b flex-shrink-0"
-          style={{ borderColor: 'var(--border)', background: 'var(--bg-card)', minHeight: 57 }}
-        >
+    <div className="flex h-screen flex-col overflow-hidden" style={{ background: 'var(--bg)' }}>
+      <header
+        className="flex items-center justify-between gap-2 px-4 sm:px-6 py-2.5 sm:py-3 border-b flex-shrink-0"
+        style={{ borderColor: 'var(--border)', background: 'var(--bg-card)', minHeight: 57 }}
+      >
           <div className="flex items-center gap-3 min-w-0">
             <img src={headerLogoUrl} alt={branding.branding.shortName} className="w-6 h-6 object-contain" />
             {pageTitle ? (
@@ -162,39 +157,43 @@ export function DashboardLayout({ children, pageTitle, actions }: Props) {
               </div>
             )}
           </div>
-        </header>
+      </header>
 
-        {hasTemporaryScope && (
-          <div
-            className="border-b px-4 sm:px-6 py-3"
-            style={{
-              borderColor: temporaryAccessState === 'expired' ? 'var(--danger)' : temporaryAccessState === 'upcoming' ? 'var(--warning)' : 'var(--border)',
-              background: temporaryAccessState === 'expired'
-                ? 'rgba(248, 81, 73, 0.08)'
+      {hasTemporaryScope && (
+        <div
+          className="border-b px-4 sm:px-6 py-3"
+          style={{
+            borderColor: temporaryAccessState === 'expired' ? 'var(--danger)' : temporaryAccessState === 'upcoming' ? 'var(--warning)' : 'var(--border)',
+            background: temporaryAccessState === 'expired'
+              ? 'rgba(248, 81, 73, 0.08)'
+              : temporaryAccessState === 'upcoming'
+                ? 'rgba(187, 128, 9, 0.12)'
+                : 'rgba(63, 185, 80, 0.08)',
+          }}
+        >
+          <div className="flex flex-col gap-1 text-sm">
+            <div className="font-semibold" style={{ color: temporaryAccessState === 'expired' ? 'var(--danger)' : 'var(--text)' }}>
+              {temporaryAccessState === 'expired'
+                ? 'Temporary station access expired'
                 : temporaryAccessState === 'upcoming'
-                  ? 'rgba(187, 128, 9, 0.12)'
-                  : 'rgba(63, 185, 80, 0.08)',
-            }}
-          >
-            <div className="flex flex-col gap-1 text-sm">
-              <div className="font-semibold" style={{ color: temporaryAccessState === 'expired' ? 'var(--danger)' : 'var(--text)' }}>
-                {temporaryAccessState === 'expired'
-                  ? 'Temporary station access expired'
-                  : temporaryAccessState === 'upcoming'
-                    ? 'Temporary station access scheduled'
-                    : 'Temporary station access active'}
-              </div>
-              <div style={{ color: 'var(--text-subtle)' }}>
-                {activeStationContext?.stationName ?? 'Assigned station scope'} · {temporaryAccessLabel}
-              </div>
+                  ? 'Temporary station access scheduled'
+                  : 'Temporary station access active'}
+            </div>
+            <div style={{ color: 'var(--text-subtle)' }}>
+              {activeStationContext?.stationName ?? 'Assigned station scope'} · {temporaryAccessLabel}
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Page scroll area */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6">
-          {children}
-        </main>
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <Sidebar />
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          {/* Page scroll area */}
+          <main className="flex-1 overflow-y-auto p-4 sm:p-6">
+            {children}
+          </main>
+        </div>
       </div>
     </div>
   )

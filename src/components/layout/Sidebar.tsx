@@ -8,9 +8,7 @@ import {
 import { useAuthStore } from "@/core/auth/authStore";
 import { useTenant } from "@/core/hooks/useTenant";
 import { usePlatformFeatureFlags } from "@/core/hooks/usePlatformData";
-import { useBranding } from "@/core/branding/useBranding";
 import { PATHS } from "@/router/paths";
-import { LOGO_PATHS } from "@/utils/assets";
 import {
   LayoutDashboard,
   Cpu,
@@ -306,29 +304,15 @@ export function Sidebar() {
   const { user, logout } = useAuthStore();
   const { activeTenant } = useTenant();
   const { data: featureFlags } = usePlatformFeatureFlags();
-  const { branding } = useBranding();
   const [collapsed, setCollapsed] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
-  const logoUrl = branding.branding.logoUrl || LOGO_PATHS.cpms;
 
   return (
     <aside
-      className={`flex flex-col h-screen bg-[var(--bg-card)] border-r border-[var(--border)] transition-all duration-200 ${collapsed ? "w-[60px]" : "w-[220px]"}`}
+      className={`flex flex-col h-full bg-[var(--bg-card)] border-r border-[var(--border)] transition-all duration-200 ${collapsed ? "w-[60px]" : "w-[220px]"}`}
       style={{ flexShrink: 0 }}
     >
-      {/* Logo / Brand */}
-      <div className="flex items-center gap-2.5 px-4 py-4 border-b border-[var(--border)] min-h-[57px]">
-        <img
-          src={logoUrl}
-          alt={branding.branding.shortName}
-          className="w-7 h-7 flex-shrink-0 object-contain"
-        />
-        {!collapsed && (
-          <span className="font-extrabold text-sm tracking-tight text-[var(--text)]">
-            {branding.branding.shortName}{' '}
-            <span className="text-[var(--accent)]">CPO</span>
-          </span>
-        )}
+      <div className="flex items-center justify-end px-3 py-2 border-b border-[var(--border)] min-h-[57px]">
         <button
           onClick={() => {
             setIsProfileMenuOpen(false);
