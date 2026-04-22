@@ -133,7 +133,7 @@ export const ROLE_HOME = {
 export const ACCESS_POLICY = {
   tenancyContext: ACTIVE_ROLES,
   dashboardHome: ACTIVE_ROLES,
-  onboardingApplicant: ACTIVE_ROLES,
+  onboardingApplicant: CPO_ADMIN_ROLES,
   onboardingAdmin: SUPER_ADMIN_ROLES,
   dashboardSuperAdmin: SUPER_ADMIN_ROLES,
   dashboardCpoAdmin: CPO_ADMIN_ROLES,
@@ -197,6 +197,7 @@ type AccessAwareUser =
       | "sessionScopeType"
       | "actingAsTenant"
       | "selectedTenantId"
+      | "tenantActivated"
     >
   | {
       role?: string | null;
@@ -205,6 +206,7 @@ type AccessAwareUser =
       sessionScopeType?: "platform" | "tenant";
       actingAsTenant?: boolean;
       selectedTenantId?: string | null;
+      tenantActivated?: boolean;
       activeStationContext?: {
         stationId?: string | null;
         stationName?: string | null;
@@ -238,7 +240,7 @@ const ACCESS_PERMISSION_MAP: Record<
 > = {
   tenancyContext: undefined,
   dashboardHome: undefined,
-  onboardingApplicant: undefined,
+  onboardingApplicant: ["tenant.users.read", "tenant.settings.read"],
   onboardingAdmin: ['platform.tenants.read', 'platform.tenants.write'],
   dashboardSuperAdmin: ["platform.tenants.read"],
   dashboardCpoAdmin: ["tenant.users.read", "tenant.settings.read"],
@@ -896,6 +898,36 @@ export function isProviderScopedUser(user?: AccessAwareUser) {
 
 export function isFleetScopedUser(user?: AccessAwareUser) {
   return getUserScopeType(user) === "fleet_group";
+}
+
+function isTenantScopedSession(user?: AccessAwareUser) {
+  const scopeType = getUserScopeType(user);
+  if (scopeType) {
+    return scopeType !== "platform";
+  }
+
+  return user?.sessionScopeType === "tenant";
+}
+
+function isTenantAdminForActivation(user?: AccessAwareUser) {
+  const canonicalRole = getCanonicalUserRole(user);
+  if (canonicalRole) {
+    return canonicalRole === "TENANT_ADMIN";
+  }
+
+  return getResolvedUserRole(user) === "CPO_ADMIN";
+}
+
+export function isTenantActivationPendingForUser(user?: AccessAwareUser) {
+  if (user?.tenantActivated !== false) {
+    return false;
+  }
+
+  if (!isTenantScopedSession(user)) {
+    return false;
+  }
+
+  return !isTenantAdminForActivation(user);
 }
 
 function isScopePolicyAllowed(user: AccessAwareUser, policy: AccessPolicyKey) {

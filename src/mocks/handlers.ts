@@ -33,6 +33,8 @@ import {
   getStationById,
   getSwapStationById,
   getWebhooksModule,
+  isDemoLoginBlockedByCredentials,
+  isDemoLoginBlockedByEmail,
   // Legacy analytics mocks remain for backward compatibility.
   inspectSwapPack,
   listAlerts,
@@ -86,6 +88,8 @@ type AccessResult =
   | { ok: true; access: RequestAccess }
   | { ok: false; response: Response };
 
+const TENANT_NOT_ACTIVATED_MESSAGE = "Account Not Activated---- contact Admin.";
+
 function getRequestAccess(request: Request): RequestAccess | null {
   return resolveDemoAccess(
     request.headers.get("authorization"),
@@ -126,6 +130,12 @@ function loginResolver(request: Request) {
   return request.json().then(({ email, password }) => {
     const auth = authenticateDemoUser(email, password);
     if (!auth) {
+      if (isDemoLoginBlockedByCredentials(email, password)) {
+        return HttpResponse.json(
+          { message: TENANT_NOT_ACTIVATED_MESSAGE },
+          { status: 403 },
+        );
+      }
       return HttpResponse.json(
         { message: "Invalid credentials." },
         { status: 401 },
@@ -325,6 +335,12 @@ export const handlers = [
 
     const auth = authenticateDemoUserByEmail(email);
     if (!auth) {
+      if (isDemoLoginBlockedByEmail(email)) {
+        return HttpResponse.json(
+          { message: TENANT_NOT_ACTIVATED_MESSAGE },
+          { status: 403 },
+        );
+      }
       return HttpResponse.json(
         { message: "Invalid credentials." },
         { status: 401 },
@@ -361,6 +377,12 @@ export const handlers = [
 
     const auth = authenticateDemoUserByEmail(email);
     if (!auth) {
+      if (isDemoLoginBlockedByEmail(email)) {
+        return HttpResponse.json(
+          { message: TENANT_NOT_ACTIVATED_MESSAGE },
+          { status: 403 },
+        );
+      }
       return HttpResponse.json(
         { message: "Invalid credentials." },
         { status: 401 },
@@ -410,6 +432,12 @@ export const handlers = [
     demoPasskeyLoginChallenges.delete(challengeId);
 
     if (!auth) {
+      if (isDemoLoginBlockedByEmail(challenge.email)) {
+        return HttpResponse.json(
+          { message: TENANT_NOT_ACTIVATED_MESSAGE },
+          { status: 403 },
+        );
+      }
       return HttpResponse.json(
         { message: "Invalid credentials." },
         { status: 401 },
@@ -443,6 +471,12 @@ export const handlers = [
     demoPasskeyLoginChallenges.delete(challengeId);
 
     if (!auth) {
+      if (isDemoLoginBlockedByEmail(challenge.email)) {
+        return HttpResponse.json(
+          { message: TENANT_NOT_ACTIVATED_MESSAGE },
+          { status: 403 },
+        );
+      }
       return HttpResponse.json(
         { message: "Invalid credentials." },
         { status: 401 },

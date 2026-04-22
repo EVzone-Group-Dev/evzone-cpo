@@ -13,6 +13,7 @@ type BackendTenantRecord = {
   code?: string
   currency?: string
   description?: string
+  isActivated?: boolean
   region?: string
   scope?: 'platform' | 'tenant' | 'site'
   scopeLabel?: string
@@ -104,6 +105,7 @@ function toTenantSummary(raw: BackendTenantRecord): TenantSummary {
     code: raw.code ?? raw.id.slice(0, 8).toUpperCase(),
     currency: normalizeNonEmptyString(raw.currency) ?? '',
     description: raw.description ?? '',
+    isActivated: typeof raw.isActivated === 'boolean' ? raw.isActivated : true,
     region: normalizeNonEmptyString(raw.region) ?? 'Unknown',
     scope: raw.scope ?? 'tenant',
     scopeLabel: raw.scopeLabel ?? 'Tenant scope',

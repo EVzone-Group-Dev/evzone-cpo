@@ -79,6 +79,44 @@ describe('RequireAuth', () => {
     expect(screen.queryByText('Finance Billing')).not.toBeInTheDocument()
   })
 
+  it('shows account not activated notice for non-admin tenant users when tenant activation is pending', async () => {
+    mockAuthState({
+      isAuthenticated: true,
+      user: {
+        ...buildUser('OPERATOR'),
+        tenantActivated: false,
+        accessProfile: buildAccessProfile({
+          legacyRole: 'OPERATIONS_OPERATOR',
+          canonicalRole: 'OPERATIONS_OPERATOR',
+          roleFamily: 'operations',
+          permissions: ['sessions.read'],
+          scope: {
+            type: 'tenant',
+            tenantId: 'org-1',
+            stationId: null,
+            stationIds: [],
+            providerId: null,
+            isTemporary: false,
+          },
+        }),
+      },
+    })
+
+    render(
+      <MemoryRouter initialEntries={[PATHS.DASHBOARD_OPERATOR]}>
+        <Routes>
+          <Route
+            path={PATHS.DASHBOARD_OPERATOR}
+            element={<RequireAuth policy="dashboardOperator"><div>Operator Dashboard</div></RequireAuth>}
+          />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByText('Account Not Activated---- contact Admin.')).toBeInTheDocument()
+    expect(screen.queryByText('Operator Dashboard')).not.toBeInTheDocument()
+  })
+
   it('allows permission-based access even when the fallback role would not match', async () => {
     mockAuthState({
       isAuthenticated: true,

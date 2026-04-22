@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { setupServer } from 'msw/node'
-import { resetDemoAuthSessions } from '@/mocks/data'
+import { resetDemoAuthSessions, resetDemoTenantActivationState, setDemoTenantActivationStatus } from '@/mocks/data'
 import { handlers } from '@/mocks/handlers'
 
 const server = setupServer(...handlers)
@@ -19,6 +19,7 @@ beforeAll(() => {
 afterEach(() => {
   server.resetHandlers()
   resetDemoAuthSessions()
+  resetDemoTenantActivationState()
 })
 
 afterAll(() => {
@@ -26,6 +27,46 @@ afterAll(() => {
 })
 
 describe('MSW RBAC authorization boundaries', () => {
+  it('blocks non-admin tenant users from login when tenant activation is pending', async () => {
+    setDemoTenantActivationStatus('tenant-evzone-ke', false)
+
+    const blockedResponse = await fetch('/api/v1/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: 'technician@evzone.io',
+        password: 'technician',
+      }),
+    })
+
+    expect(blockedResponse.status).toBe(403)
+    expect(await blockedResponse.json()).toMatchObject({
+      message: 'Account Not Activated---- contact Admin.',
+    })
+
+    const adminResponse = await fetch('/api/v1/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: 'manager@evzone.io',
+        password: 'manager',
+      }),
+    })
+
+    expect(adminResponse.status).toBe(200)
+    expect(await adminResponse.json()).toMatchObject({
+      user: {
+        accessProfile: {
+          canonicalRole: 'TENANT_ADMIN',
+        },
+      },
+    })
+  })
+
   it('logs in through v1 auth and returns canonical access context', async () => {
     const response = await fetch('/api/v1/auth/login', {
       method: 'POST',

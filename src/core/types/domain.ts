@@ -330,6 +330,7 @@ export interface CPOUser {
   legacyRole?: string
   status: UserStatus
   tenantId?: OrganizationId
+  tenantActivated?: boolean
   activeTenantId?: OrganizationId | null
   orgId?: OrganizationId | null
   organizationName?: string | null

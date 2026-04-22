@@ -75,6 +75,7 @@ export interface TenantSummary {
   currency: string;
   description: string;
   id: string;
+  isActivated?: boolean;
   name: string;
   region: string;
   scope: TenantScope;

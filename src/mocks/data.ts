@@ -82,6 +82,7 @@ const tenantCatalog: Record<TenantId, TenantRecord> = {
     id: "tenant-global",
     code: "GLOBAL",
     currency: "Multi-currency",
+    isActivated: true,
     dashboardMode: "operations",
     dataScopeLabel:
       "Platform-wide visibility across all operating companies and hosted sites.",
@@ -99,6 +100,7 @@ const tenantCatalog: Record<TenantId, TenantRecord> = {
     id: "tenant-evzone-ke",
     code: "KE-CPO",
     currency: "KES",
+    isActivated: true,
     dashboardMode: "operations",
     dataScopeLabel:
       "Operating company scope for EVzone Kenya public infrastructure.",
@@ -116,6 +118,7 @@ const tenantCatalog: Record<TenantId, TenantRecord> = {
     id: "tenant-westlands-mall",
     code: "WML",
     currency: "KES",
+    isActivated: true,
     dashboardMode: "site",
     dataScopeLabel:
       "Hosted-site scope limited to the Westlands Mall charging portfolio.",
@@ -129,6 +132,16 @@ const tenantCatalog: Record<TenantId, TenantRecord> = {
     stationCount: 1,
     timeZone: "Africa/Nairobi",
   },
+};
+
+const DEFAULT_TENANT_ACTIVATION_STATE: Record<TenantId, boolean> = {
+  "tenant-global": true,
+  "tenant-evzone-ke": true,
+  "tenant-westlands-mall": true,
+};
+
+const tenantActivationState: Record<TenantId, boolean> = {
+  ...DEFAULT_TENANT_ACTIVATION_STATE,
 };
 
 const tenantOrganizationCatalog: Record<
@@ -4372,6 +4385,29 @@ function isPlatformDemoUser(demoUser: DemoUserRecord) {
   );
 }
 
+function isTenantAdminDemoUser(demoUser: DemoUserRecord) {
+  return demoUser.canonicalRole === "TENANT_ADMIN";
+}
+
+function isTenantActivated(tenantId: TenantId | null) {
+  if (!tenantId) {
+    return true;
+  }
+
+  return tenantActivationState[tenantId];
+}
+
+function isLoginBlockedForInactiveTenant(
+  demoUser: DemoUserRecord,
+  activeTenantId: TenantId | null,
+) {
+  if (isPlatformDemoUser(demoUser) || isTenantAdminDemoUser(demoUser)) {
+    return false;
+  }
+
+  return activeTenantId ? !isTenantActivated(activeTenantId) : false;
+}
+
 function resolveInitialTenantSession(
   demoUser: DemoUserRecord,
 ): TenantId | null {
@@ -4491,6 +4527,7 @@ function buildDemoUserSession(
   return {
     ...demoUser.user,
     activeTenantId: activeTenantIdProp,
+    tenantActivated: isTenantActivated(activeTenantId),
     activeTenantName,
     accessProfile,
     memberships: buildDemoMemberships(demoUser),
@@ -4555,6 +4592,22 @@ export function resetDemoAuthSessions() {
   demoSessionStore.clear();
 }
 
+export function setDemoTenantActivationStatus(
+  tenantId: TenantId,
+  isActivated: boolean,
+) {
+  tenantActivationState[tenantId] = isActivated;
+}
+
+export function resetDemoTenantActivationState() {
+  for (const tenantId of Object.keys(
+    DEFAULT_TENANT_ACTIVATION_STATE,
+  ) as TenantId[]) {
+    tenantActivationState[tenantId] =
+      DEFAULT_TENANT_ACTIVATION_STATE[tenantId];
+  }
+}
+
 export function resolveDemoAccess(
   authorizationHeader?: string | null,
   requestedTenantId?: string | null,
@@ -4605,18 +4658,62 @@ export function resolveDemoAccess(
 function getTenantSummary(tenantId: TenantId): TenantSummary {
   return {
     ...tenantCatalog[tenantId],
+    isActivated: isTenantActivated(tenantId),
     chargePointCount: getChargePointCount(tenantId),
   };
+}
+
+function findDemoUserByCredentials(email: string, password: string) {
+  return demoUsers.find(
+    (user) => user.email === email && user.password === password,
+  );
+}
+
+function findDemoUserByEmail(email: string) {
+  const normalizedEmail = email.trim().toLowerCase();
+  return demoUsers.find(
+    (user) => user.email.trim().toLowerCase() === normalizedEmail,
+  );
+}
+
+export function isDemoLoginBlockedByCredentials(
+  email: string,
+  password: string,
+) {
+  const match = findDemoUserByCredentials(email, password);
+  if (!match) {
+    return false;
+  }
+
+  return isLoginBlockedForInactiveTenant(
+    match,
+    resolveInitialTenantSession(match),
+  );
+}
+
+export function isDemoLoginBlockedByEmail(email: string) {
+  const match = findDemoUserByEmail(email);
+  if (!match) {
+    return false;
+  }
+
+  return isLoginBlockedForInactiveTenant(
+    match,
+    resolveInitialTenantSession(match),
+  );
 }
 
 export function authenticateDemoUser(
   email: string,
   password: string,
 ): LoginResponse | null {
-  const match = demoUsers.find(
-    (user) => user.email === email && user.password === password,
-  );
+  const match = findDemoUserByCredentials(email, password);
   const initialTenantId = match ? resolveInitialTenantSession(match) : null;
+
+  if (match && isLoginBlockedForInactiveTenant(match, initialTenantId)) {
+    return null;
+  }
+
   return match
     ? buildDemoLoginResponse(
         match,
@@ -4627,11 +4724,12 @@ export function authenticateDemoUser(
 }
 
 export function authenticateDemoUserByEmail(email: string): LoginResponse | null {
-  const normalizedEmail = email.trim().toLowerCase()
-  const match = demoUsers.find(
-    (user) => user.email.trim().toLowerCase() === normalizedEmail,
-  )
+  const match = findDemoUserByEmail(email)
   const initialTenantId = match ? resolveInitialTenantSession(match) : null
+
+  if (match && isLoginBlockedForInactiveTenant(match, initialTenantId)) {
+    return null
+  }
 
   return match
     ? buildDemoLoginResponse(

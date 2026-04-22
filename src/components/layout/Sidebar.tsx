@@ -33,7 +33,6 @@ import {
   Package,
   Settings,
   LogOut,
-  ClipboardList,
   X,
 } from "lucide-react";
 
@@ -59,12 +58,6 @@ const NAV: NavGroup[] = [
         icon: <LayoutDashboard size={16} />,
         path: PATHS.DASHBOARD,
         policy: "dashboardHome",
-      },
-      {
-        label: "My Onboarding",
-        icon: <ClipboardList size={16} />,
-        path: PATHS.ONBOARDING,
-        policy: "onboardingApplicant",
       },
     ],
   },
@@ -263,12 +256,6 @@ const NAV: NavGroup[] = [
         icon: <DollarSign size={16} />,
         path: PATHS.TIER_PRICING,
         policy: "tierPricingAdmin",
-      },
-      {
-        label: "Onboarding Review",
-        icon: <ClipboardList size={16} />,
-        path: PATHS.ONBOARDING_ADMIN,
-        policy: "onboardingAdmin",
       },
       {
         label: "Plug & Charge",
