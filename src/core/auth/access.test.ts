@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { canAccessPolicy, getRoleHomePath, getTemporaryAccessState, isTemporaryAccessExpired } from '@/core/auth/access'
+import { canAccessPolicy, getRoleHomePath, getTemporaryAccessState, isTemporaryAccessExpired, normalizeAuthenticatedUser } from '@/core/auth/access'
 import { PATHS } from '@/router/paths'
 import type { AccessProfile, CPORole } from '@/core/types/domain'
 
@@ -226,6 +226,90 @@ describe('canAccessPolicy', () => {
         'roamingRead',
       ),
     ).toBe(true)
+  })
+
+  it('blocks tenancy context policy for platform sessions without explicit tenant impersonation', () => {
+    expect(
+      canAccessPolicy(
+        {
+          role: 'SUPER_ADMIN',
+          sessionScopeType: 'platform',
+          actingAsTenant: false,
+          accessProfile: buildAccessProfile({
+            canonicalRole: 'PLATFORM_SUPER_ADMIN',
+            scope: {
+              type: 'platform',
+              tenantId: null,
+              stationId: null,
+              stationIds: [],
+              providerId: null,
+              isTemporary: false,
+            },
+          }),
+        },
+        'tenancyContext',
+      ),
+    ).toBe(false)
+  })
+
+  it('allows tenancy context policy for platform sessions when acting as tenant', () => {
+    expect(
+      canAccessPolicy(
+        {
+          role: 'SUPER_ADMIN',
+          sessionScopeType: 'tenant',
+          actingAsTenant: true,
+          selectedTenantId: 'org-1',
+          accessProfile: buildAccessProfile({
+            canonicalRole: 'PLATFORM_SUPER_ADMIN',
+            scope: {
+              type: 'platform',
+              tenantId: 'org-1',
+              stationId: null,
+              stationIds: [],
+              providerId: null,
+              isTemporary: false,
+            },
+          }),
+        },
+        'tenancyContext',
+      ),
+    ).toBe(true)
+  })
+})
+
+describe('normalizeAuthenticatedUser', () => {
+  it('nulls tenant identifiers for platform sessions without tenant impersonation', () => {
+    const normalized = normalizeAuthenticatedUser({
+      id: 'u-platform',
+      name: 'Platform User',
+      email: 'platform@evzone.io',
+      role: 'SUPER_ADMIN',
+      status: 'Active',
+      createdAt: '2026-04-21T10:00:00.000Z',
+      tenantId: 'org-leak',
+      activeTenantId: 'org-leak',
+      orgId: 'org-leak',
+      organizationId: 'org-leak',
+      sessionScopeType: 'platform',
+      actingAsTenant: false,
+      accessProfile: buildAccessProfile({
+        canonicalRole: 'PLATFORM_SUPER_ADMIN',
+        scope: {
+          type: 'platform',
+          tenantId: null,
+          stationId: null,
+          stationIds: [],
+          providerId: null,
+          isTemporary: false,
+        },
+      }),
+    })
+
+    expect(normalized.tenantId).toBeUndefined()
+    expect(normalized.activeTenantId).toBeNull()
+    expect(normalized.orgId).toBeNull()
+    expect(normalized.displayScopeName).toBe('Platform')
   })
 })
 

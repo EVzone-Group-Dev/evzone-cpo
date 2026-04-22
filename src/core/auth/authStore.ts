@@ -20,8 +20,35 @@ export interface AuthState {
   setLoading: (v: boolean) => void
 }
 
+function isPlatformSessionWithoutTenantContext(
+  user: Partial<CPOUser | AuthenticatedApiUser> | null | undefined,
+) {
+  if (!user) {
+    return false
+  }
+
+  const scopeType = user.sessionScopeType ?? user.accessProfile?.scope.type ?? null
+  if (scopeType !== 'platform') {
+    return false
+  }
+
+  const hasTenantSelection = Boolean(
+    user.actingAsTenant
+    || user.sessionScopeType === 'tenant'
+    || user.selectedTenantId
+    || user.activeTenantId
+    || user.tenantId,
+  )
+
+  return !hasTenantSelection
+}
+
 function resolveTenantIdFromUser(user: CPOUser | AuthenticatedApiUser) {
-  return user.activeTenantId ?? user.tenantId ?? null
+  if (isPlatformSessionWithoutTenantContext(user)) {
+    return null
+  }
+
+  return user.selectedTenantId ?? user.activeTenantId ?? user.tenantId ?? null
 }
 
 function mergeAuthUser(currentUser: CPOUser | null, incomingUser: CPOUser | AuthenticatedApiUser) {
@@ -29,20 +56,32 @@ function mergeAuthUser(currentUser: CPOUser | null, incomingUser: CPOUser | Auth
     return incomingUser
   }
 
-  return {
+  const mergedUser = {
     ...currentUser,
     ...incomingUser,
     activeTenantId:
-      incomingUser.activeTenantId
+      incomingUser.selectedTenantId
+      ?? incomingUser.activeTenantId
       ?? incomingUser.tenantId
+      ?? currentUser.selectedTenantId
       ?? currentUser.activeTenantId
       ?? currentUser.tenantId
       ?? null,
     orgId:
       incomingUser.orgId
+      ?? incomingUser.selectedTenantId
       ?? incomingUser.activeTenantId
       ?? incomingUser.tenantId
       ?? currentUser.orgId
+      ?? currentUser.selectedTenantId
+      ?? currentUser.activeTenantId
+      ?? currentUser.tenantId
+      ?? null,
+    selectedTenantId:
+      incomingUser.selectedTenantId
+      ?? incomingUser.activeTenantId
+      ?? incomingUser.tenantId
+      ?? currentUser.selectedTenantId
       ?? currentUser.activeTenantId
       ?? currentUser.tenantId
       ?? null,
@@ -54,6 +93,17 @@ function mergeAuthUser(currentUser: CPOUser | null, incomingUser: CPOUser | Auth
     mfaEnabled: incomingUser.mfaEnabled ?? currentUser.mfaEnabled,
     createdAt: incomingUser.createdAt ?? currentUser.createdAt,
   }
+
+  if (isPlatformSessionWithoutTenantContext(mergedUser)) {
+    return {
+      ...mergedUser,
+      activeTenantId: null,
+      orgId: null,
+      selectedTenantId: null,
+    }
+  }
+
+  return mergedUser
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -75,11 +125,19 @@ export const useAuthStore = create<AuthState>()(
           isAuthenticated: true,
         }),
       replaceUser: (user) =>
-        set((state) => ({
-          activeTenantId: resolveTenantIdFromUser(user) ?? state.activeTenantId,
-          user: normalizeAuthenticatedUser(mergeAuthUser(state.user, user)),
-          isAuthenticated: true,
-        })),
+        set((state) => {
+          const resolvedTenantId = resolveTenantIdFromUser(user)
+          return {
+            activeTenantId:
+              resolvedTenantId === null
+                ? isPlatformSessionWithoutTenantContext(user)
+                  ? null
+                  : state.activeTenantId
+                : resolvedTenantId,
+            user: normalizeAuthenticatedUser(mergeAuthUser(state.user, user)),
+            isAuthenticated: true,
+          }
+        }),
       setTokens: (token, refreshToken) =>
         set((state) => ({
           token,
@@ -111,7 +169,7 @@ export const useAuthStore = create<AuthState>()(
         }
       },
       partialize: (s) => ({
-        activeTenantId: s.activeTenantId,
+        activeTenantId: isPlatformSessionWithoutTenantContext(s.user) ? null : s.activeTenantId,
         user: s.user,
         token: s.token,
         refreshToken: s.refreshToken,

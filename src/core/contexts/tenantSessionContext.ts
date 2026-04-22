@@ -18,7 +18,7 @@ export interface TenantContextType {
   availableCurrencies?: string[]
   isLoading: boolean
   isReady: boolean
-  setActiveTenantId: (tenantId: string) => void
+  setActiveTenantId: (tenantId: string | null) => void
   setActiveStationContextId: (assignmentId: string) => void
 }
 

@@ -27,6 +27,24 @@ const DEFAULT_LANGUAGE = 'English'
 const DEFAULT_TIME_ZONE = 'UTC'
 const EMPTY_STATION_CONTEXTS: StationContextSummary[] = []
 
+function isPlatformSessionWithoutTenantContext(user: CPOUser | null) {
+  if (!user) {
+    return false
+  }
+
+  const scopeType = user.sessionScopeType ?? user.accessProfile?.scope.type ?? null
+  if (scopeType !== 'platform') {
+    return false
+  }
+
+  return !(
+    user.actingAsTenant
+    || user.selectedTenantId
+    || user.activeTenantId
+    || user.tenantId
+  )
+}
+
 function normalizeNonEmptyString(value: unknown): string | null {
   if (typeof value !== 'string') {
     return null
@@ -256,7 +274,8 @@ function buildTenantFromMembership(membership: OrganizationMembershipSummary, us
 
 function buildFallbackTenant(user: CPOUser, requestedTenantId: string | null): TenantSummary | null {
   const tenantIdProp =
-    user.activeTenantId
+    user.selectedTenantId
+    ?? user.activeTenantId
     ?? user.tenantId
     ?? user.accessProfile?.scope.tenantId
     ?? requestedTenantId
@@ -271,7 +290,7 @@ function buildFallbackTenant(user: CPOUser, requestedTenantId: string | null): T
 
   return {
     id: tenantIdProp,
-    name: tenantIdProp,
+    name: user.activeTenantName ?? user.organizationName ?? tenantIdProp,
     code: buildTenantCode(tenantIdProp),
     currency: '',
     description: '',
@@ -319,8 +338,13 @@ function buildTenantContextFromUser(user: CPOUser | null, requestedTenantId: str
     return null
   }
 
+  if (isPlatformSessionWithoutTenantContext(user)) {
+    return null
+  }
+
   const activeTenantIdProp =
-    user.activeTenantId
+    user.selectedTenantId
+    ?? user.activeTenantId
     ?? user.tenantId
     ?? user.accessProfile?.scope.tenantId
     ?? requestedTenantId
@@ -410,8 +434,21 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   const { data: fallbackContext, isLoading: isFallbackLoading, isSuccess: isFallbackSuccess } = useQuery<TenantContextResponse>({
     queryKey: ['tenancy', 'context', token, activeTenantId],
     queryFn: async () => {
-      const tenantRecords = await fetchJson<BackendTenantRecord[]>('/api/v1/tenants')
+      const tenantEndpoint = isPlatformSessionWithoutTenantContext(user)
+        ? '/api/v1/platform/tenants'
+        : '/api/v1/tenants'
+      const tenantRecords = await fetchJson<BackendTenantRecord[]>(tenantEndpoint)
       const availableTenants = (Array.isArray(tenantRecords) ? tenantRecords : []).map(toTenantSummary)
+
+      if (isPlatformSessionWithoutTenantContext(user)) {
+        return {
+          activeTenant: null,
+          availableTenants,
+          canSwitchTenants: availableTenants.length > 0,
+          dashboardMode: 'operations',
+          dataScopeLabel: 'Platform-wide visibility. Select a tenant to act as.',
+        }
+      }
 
       const fallbackTenant: TenantSummary = {
         id: 'default',
@@ -457,25 +494,35 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       enrichTenantSummary(tenant, user, availableCountries),
     )
 
-    const fallbackActiveTenant = enrichTenantSummary(rawContext.activeTenant, user, availableCountries)
+    const fallbackActiveTenant = rawContext.activeTenant
+      ? enrichTenantSummary(rawContext.activeTenant, user, availableCountries)
+      : null
 
-    const activeTenant =
-      normalizedTenants.find((tenant) => tenant.id === fallbackActiveTenant.id)
-      ?? fallbackActiveTenant
+    const activeTenant = fallbackActiveTenant
+      ? normalizedTenants.find((tenant) => tenant.id === fallbackActiveTenant.id)
+        ?? fallbackActiveTenant
+      : null
 
     return {
       ...rawContext,
       activeTenant,
-      availableTenants: normalizedTenants.length > 0 ? normalizedTenants : [activeTenant],
-      dataScopeLabel: rawContext.dataScopeLabel || `${activeTenant.name} scope`,
+      availableTenants:
+        normalizedTenants.length > 0
+          ? normalizedTenants
+          : activeTenant
+            ? [activeTenant]
+            : [],
+      dataScopeLabel:
+        rawContext.dataScopeLabel
+        || (activeTenant ? `${activeTenant.name} scope` : 'Platform-wide visibility. Select a tenant to act as.'),
     }
   }, [authDerivedContext, availableCountries, fallbackContext, user])
 
-  const resolvedTenantScopeId = contextData?.activeTenant.id
+  const resolvedTenantScopeId = contextData?.activeTenant?.id
     ?? user?.activeTenantId
     ?? user?.tenantId
     ?? activeTenantId
-    ?? 'default'
+    ?? 'platform'
   const activeScopeKey = `${resolvedTenantScopeId}:${activeStationContext?.assignmentId ?? 'all'}`
 
   const refreshCurrentUser = useCallback(async () => {
@@ -484,21 +531,28 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   }, [replaceUser])
 
   useEffect(() => {
-    const synchronizedTenantId = user?.activeTenantId ?? contextData?.activeTenant.id
-    if (synchronizedTenantId && synchronizedTenantId !== activeTenantId) {
+    const synchronizedTenantId = user?.activeTenantId ?? contextData?.activeTenant?.id ?? null
+    if (synchronizedTenantId !== activeTenantId) {
       setActiveTenantId(synchronizedTenantId)
     }
-  }, [activeTenantId, contextData?.activeTenant.id, setActiveTenantId, user?.activeTenantId])
+  }, [activeTenantId, contextData?.activeTenant?.id, setActiveTenantId, user?.activeTenantId])
 
-  const handleTenantSwitch = useCallback((tenantId: string) => {
+  const handleTenantSwitch = useCallback((tenantId: string | null) => {
     void (async () => {
-      if (!tenantId || tenantId === activeTenantId) {
+      if (tenantId === activeTenantId) {
         return
       }
 
+      const isPlatformUser = Boolean(
+        user?.sessionScopeType === 'platform'
+        || (user?.accessProfile?.scope.type === 'platform' && !user?.actingAsTenant),
+      )
       const canSwitchViaBackend = Boolean(
         token
-        && user?.memberships?.some((membership) => membership.tenantId === tenantId),
+        && (
+          isPlatformUser
+          || (tenantId && user?.memberships?.some((membership) => membership.tenantId === tenantId))
+        ),
       )
 
       if (!canSwitchViaBackend) {
@@ -525,7 +579,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         if (auth.user) {
           replaceUser(auth.user)
         } else {
-          setActiveTenantId(tenantId)
+          setActiveTenantId(tenantId ?? null)
         }
       } catch (error) {
         console.error('Failed to switch organization context.', error)
@@ -533,7 +587,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         setIsSwitchingTenant(false)
       }
     })()
-  }, [activeTenantId, replaceUser, setActiveTenantId, setTokens, token, user?.memberships])
+  }, [activeTenantId, replaceUser, setActiveTenantId, setTokens, token, user?.accessProfile?.scope.type, user?.actingAsTenant, user?.memberships, user?.sessionScopeType])
 
   const handleStationContextSwitch = useCallback((assignmentId: string) => {
     void (async () => {
@@ -566,7 +620,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<TenantContextType>(() => ({
     activeTenant: contextData?.activeTenant ?? null,
-    activeTenantId: contextData?.activeTenant.id ?? activeTenantId,
+    activeTenantId: contextData?.activeTenant?.id ?? activeTenantId,
     activeStationContext,
     activeScopeKey,
     availableTenants: contextData?.availableTenants ?? [],
@@ -574,7 +628,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     canSwitchTenants: contextData?.canSwitchTenants ?? false,
     canSwitchStationContexts,
     dashboardMode: contextData?.dashboardMode ?? 'operations',
-    dataScopeLabel: contextData?.dataScopeLabel ?? 'Tenant scope loading',
+    dataScopeLabel: contextData?.dataScopeLabel ?? 'Platform-wide visibility. Select a tenant to act as.',
     availableCountries,
     availableLanguages,
     availableCurrencies,

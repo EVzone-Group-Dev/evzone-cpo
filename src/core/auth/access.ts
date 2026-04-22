@@ -5,6 +5,7 @@ import type {
   CanonicalAccessRole,
 } from "@/core/types/domain";
 import { PATHS } from "@/router/paths";
+import { resolveDisplayLabel } from "@/core/auth/displayLabel";
 
 export type DashboardVariant =
   | "super-admin"
@@ -189,12 +190,21 @@ export type AccessPolicyKey = keyof typeof ACCESS_POLICY;
 type AccessAwareUser =
   | Pick<
       CPOUser,
-      "role" | "accessProfile" | "legacyRole" | "activeStationContext"
+      | "role"
+      | "accessProfile"
+      | "legacyRole"
+      | "activeStationContext"
+      | "sessionScopeType"
+      | "actingAsTenant"
+      | "selectedTenantId"
     >
   | {
       role?: string | null;
       accessProfile?: AccessProfile | null;
       legacyRole?: string;
+      sessionScopeType?: "platform" | "tenant";
+      actingAsTenant?: boolean;
+      selectedTenantId?: string | null;
       activeStationContext?: {
         stationId?: string | null;
         stationName?: string | null;
@@ -442,6 +452,67 @@ function deriveAssignedStationIds(user: {
   return undefined;
 }
 
+function readRawStringValue(
+  record: Record<string, unknown>,
+  key: string,
+): string | null {
+  const value = record[key];
+  return typeof value === "string" && value.trim().length > 0 ? value : null;
+}
+
+function isTenantImpersonationSession(user: {
+  accessProfile?: AccessProfile | null;
+  sessionScopeType?: "platform" | "tenant";
+  actingAsTenant?: boolean;
+  selectedTenantId?: string | null;
+  activeTenantId?: string | null;
+  tenantId?: string | null;
+}) {
+  if (user.sessionScopeType === "tenant") {
+    return true;
+  }
+
+  if (user.actingAsTenant === true) {
+    return true;
+  }
+
+  if (typeof user.selectedTenantId === "string" && user.selectedTenantId) {
+    return true;
+  }
+
+  if (
+    user.accessProfile?.scope.type !== "platform" &&
+    (Boolean(user.activeTenantId) || Boolean(user.tenantId))
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+function isPlatformSessionWithoutTenant(user: AccessAwareUser) {
+  if (!user) {
+    return false;
+  }
+
+  const sessionScopeType = user.sessionScopeType;
+  const isPlatformScope =
+    sessionScopeType === "platform" || user.accessProfile?.scope.type === "platform";
+
+  if (!isPlatformScope) {
+    return false;
+  }
+
+  return !isTenantImpersonationSession({
+    accessProfile: user.accessProfile ?? null,
+    sessionScopeType,
+    actingAsTenant: user.actingAsTenant,
+    selectedTenantId: user.selectedTenantId ?? null,
+    activeTenantId: null,
+    tenantId: null,
+  });
+}
+
 export function normalizeUserRole(
   role?: string | null,
   accessProfile?: AccessProfile | null,
@@ -516,6 +587,108 @@ export function normalizeAuthenticatedUser<
   const legacyRole =
     user.legacyRole ?? (isCPORole(user.role) ? undefined : user.role);
   const assignedStationIds = deriveAssignedStationIds(user);
+  const rawUser = user as unknown as Record<string, unknown>;
+  const rawSessionScopeType = readRawStringValue(rawUser, "sessionScopeType");
+  const sessionScopeType =
+    rawSessionScopeType === "platform" || rawSessionScopeType === "tenant"
+      ? rawSessionScopeType
+      : null;
+  const actingAsTenant = rawUser.actingAsTenant === true;
+  const selectedTenantId = readRawStringValue(rawUser, "selectedTenantId");
+  const selectedTenantName = readRawStringValue(rawUser, "selectedTenantName");
+  const rawTenantId =
+    readRawStringValue(rawUser, "activeTenantId") ??
+    readRawStringValue(rawUser, "activeOrganizationId") ??
+    readRawStringValue(rawUser, "tenantId") ??
+    readRawStringValue(rawUser, "organizationId");
+  const rawOrganizationId =
+    readRawStringValue(rawUser, "orgId") ??
+    readRawStringValue(rawUser, "activeTenantId") ??
+    readRawStringValue(rawUser, "activeOrganizationId") ??
+    readRawStringValue(rawUser, "tenantId") ??
+    readRawStringValue(rawUser, "organizationId");
+  const membershipTenantName =
+    user.memberships?.find((membership) => membership.tenantId === rawTenantId)
+      ?.tenantName ??
+    user.memberships?.[0]?.tenantName ??
+    null;
+  const rawOrganizationName = readRawStringValue(rawUser, "organizationName");
+  const rawActiveTenantName = readRawStringValue(rawUser, "activeTenantName");
+  const rawScopeDisplayName = readRawStringValue(rawUser, "scopeDisplayName");
+  const rawActiveStationName =
+    readRawStringValue(rawUser, "activeStationName") ??
+    user.activeStationContext?.stationName ??
+    null;
+
+  const tenantSession = isTenantImpersonationSession({
+    accessProfile: user.accessProfile ?? null,
+    sessionScopeType: sessionScopeType ?? undefined,
+    actingAsTenant,
+    selectedTenantId,
+    activeTenantId: rawTenantId,
+    tenantId: readRawStringValue(rawUser, "tenantId"),
+  });
+  const platformSessionWithoutTenant =
+    (sessionScopeType === "platform" ||
+      user.accessProfile?.scope.type === "platform") &&
+    !tenantSession;
+  const normalizedSessionScopeType: "platform" | "tenant" =
+    platformSessionWithoutTenant ? "platform" : "tenant";
+  const normalizedTenantId = platformSessionWithoutTenant
+    ? null
+    : selectedTenantId ?? rawTenantId ?? null;
+  const normalizedOrganizationId = platformSessionWithoutTenant
+    ? null
+    : rawOrganizationId ?? normalizedTenantId;
+  const normalizedActiveTenantId = platformSessionWithoutTenant
+    ? null
+    : selectedTenantId ?? rawTenantId ?? null;
+  const displayTenantName = platformSessionWithoutTenant
+    ? null
+    : resolveDisplayLabel({
+        primary: selectedTenantName ?? rawActiveTenantName,
+        secondary: rawOrganizationName ?? membershipTenantName,
+        fallback: "Unknown tenant",
+      });
+  const displayOrganizationName = platformSessionWithoutTenant
+    ? null
+    : resolveDisplayLabel({
+        primary: rawOrganizationName ?? rawActiveTenantName,
+        secondary: membershipTenantName,
+        fallback: "Unknown tenant",
+      });
+  const displayStationName = resolveDisplayLabel({
+    primary: rawActiveStationName,
+    secondary: null,
+    fallback: "Unassigned",
+  });
+  const displayScopeName = platformSessionWithoutTenant
+    ? "Platform"
+    : resolveDisplayLabel({
+        primary: rawScopeDisplayName,
+        secondary:
+          user.accessProfile?.scope.type === "station"
+            ? rawActiveStationName
+            : displayTenantName,
+        fallback: "Tenant Scope",
+      });
+  const normalizedMemberships = user.memberships?.map((membership) => {
+    const membershipRecord = membership as unknown as Record<string, unknown>;
+    const organizationName = readRawStringValue(
+      membershipRecord,
+      "organizationName",
+    );
+    const organizationType = readRawStringValue(
+      membershipRecord,
+      "organizationType",
+    );
+
+    return {
+      ...membership,
+      tenantName: membership.tenantName ?? organizationName ?? membership.tenantId,
+      tenantType: membership.tenantType ?? organizationType ?? undefined,
+    };
+  });
 
   return {
     ...user,
@@ -533,24 +706,26 @@ export function normalizeAuthenticatedUser<
       "mfaRequired" in user && typeof user.mfaRequired === "boolean"
         ? user.mfaRequired
         : Boolean(user.mfaEnabled),
-    tenantId:
-      ((user as Record<string, unknown>).activeTenantId as string) ??
-      ((user as Record<string, unknown>).activeOrganizationId as string) ??
-      ((user as Record<string, unknown>).tenantId as string) ??
-      ((user as Record<string, unknown>).organizationId as string),
-    orgId:
-      user.orgId ??
-      ((user as Record<string, unknown>).activeTenantId as string) ??
-      ((user as Record<string, unknown>).activeOrganizationId as string) ??
-      ((user as Record<string, unknown>).tenantId as string) ??
-      ((user as Record<string, unknown>).organizationId as string) ??
-      null,
-    activeTenantId:
-      ((user as Record<string, unknown>).activeTenantId as string) ??
-      ((user as Record<string, unknown>).activeOrganizationId as string) ??
-      ((user as Record<string, unknown>).tenantId as string) ??
-      ((user as Record<string, unknown>).organizationId as string) ??
-      null,
+    tenantId: normalizedTenantId ?? undefined,
+    orgId: normalizedOrganizationId,
+    activeTenantId: normalizedActiveTenantId,
+    organizationName: displayOrganizationName,
+    activeTenantName: displayTenantName,
+    scopeDisplayName: displayScopeName,
+    activeStationName: displayStationName,
+    displayTenantName,
+    displayOrganizationName,
+    displayScopeName,
+    displayStationName,
+    sessionScopeType: normalizedSessionScopeType,
+    actingAsTenant:
+      normalizedSessionScopeType === "tenant" &&
+      (actingAsTenant || Boolean(normalizedActiveTenantId)),
+    selectedTenantId:
+      normalizedSessionScopeType === "tenant" ? normalizedActiveTenantId : null,
+    selectedTenantName:
+      normalizedSessionScopeType === "tenant" ? displayTenantName : null,
+    memberships: normalizedMemberships,
     accessProfile: user.accessProfile ?? null,
   };
 }
@@ -726,6 +901,10 @@ export function canAccessPolicy(
     : canAccessRole(getResolvedUserRole(user), ACCESS_POLICY[policy]);
 
   if (!hasBaseAccess) {
+    return false;
+  }
+
+  if (policy === "tenancyContext" && isPlatformSessionWithoutTenant(user)) {
     return false;
   }
 

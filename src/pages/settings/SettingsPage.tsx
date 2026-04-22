@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { fetchJson } from '@/core/api/fetchJson'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { getTemporaryAccessState, getTemporaryAccessWindowLabel, getUserRoleLabel, getUserScopeType, isTemporaryScopeUser } from '@/core/auth/access'
+import { resolveDisplayLabel } from '@/core/auth/displayLabel'
 import { useAuthStore } from '@/core/auth/authStore'
 import { useReferenceCities, useReferenceStates } from '@/core/hooks/useGeography'
 import { useTenant } from '@/core/hooks/useTenant'
@@ -172,6 +173,34 @@ export function SettingsPage() {
     : user?.accessProfile?.scope.stationIds.length
       ? user.accessProfile.scope.stationIds.join(', ')
       : 'All tenant stations'
+  const tenantDisplayName = useMemo(
+    () =>
+      resolveDisplayLabel({
+        primary:
+          user?.displayTenantName
+          ?? user?.activeTenantName
+          ?? user?.organizationName
+          ?? user?.selectedTenantName
+          ?? activeTenant?.name
+          ?? null,
+        secondary: null,
+        fallback: 'Platform-wide access',
+      }),
+    [activeTenant?.name, user?.activeTenantName, user?.displayTenantName, user?.organizationName, user?.selectedTenantName],
+  )
+  const activeStationDisplayName = useMemo(
+    () =>
+      resolveDisplayLabel({
+        primary:
+          activeStationContext?.stationName
+          ?? user?.displayStationName
+          ?? user?.activeStationName
+          ?? null,
+        secondary: null,
+        fallback: 'All assigned stations',
+      }),
+    [activeStationContext?.stationName, user?.activeStationName, user?.displayStationName],
+  )
   const scopeType = getUserScopeType(user)
   const temporaryAccessState = getTemporaryAccessState(user)
   const temporaryAccessWindowLabel = getTemporaryAccessWindowLabel(user)
@@ -287,7 +316,7 @@ export function SettingsPage() {
       }
 
       if (Object.keys(profilePatch).length > 0) {
-        const updatedUser = await fetchJson<AuthenticatedApiUser>('/api/v1/auth/me', {
+        const updatedUser = await fetchJson<AuthenticatedApiUser>('/api/v1/users/me', {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
@@ -406,7 +435,7 @@ export function SettingsPage() {
                     </div>
                     <div>
                       <div className="form-label">Tenant</div>
-                      <div className="rounded-lg border border-border/70 bg-bg-muted/35 px-3 py-2 text-sm">{user?.activeTenantId ?? user?.tenantId ?? 'Platform-wide access'}</div>
+                      <div className="rounded-lg border border-border/70 bg-bg-muted/35 px-3 py-2 text-sm">{tenantDisplayName}</div>
                     </div>
                   </div>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -646,9 +675,9 @@ export function SettingsPage() {
             <div className="card">
               <div className="section-title"><Building2 size={16} className="text-accent" />Tenant Scope</div>
               <div className="space-y-3 text-sm">
-                <div><div className="form-label">Active Tenant</div><div>{activeTenant?.name ?? 'Loading...'}</div></div>
+                <div><div className="form-label">Active Tenant</div><div>{activeTenant?.name ?? 'Platform'}</div></div>
                 <div><div className="form-label">Scope</div><div>{activeTenant?.scopeLabel ?? '-'}</div></div>
-                <div><div className="form-label">Active Station</div><div>{activeStationContext?.stationName ?? activeStationContext?.stationId ?? 'All assigned stations'}</div></div>
+                <div><div className="form-label">Active Station</div><div>{activeStationDisplayName}</div></div>
                 <div><div className="form-label">Region</div><div>{activeTenant?.region ?? '-'}</div></div>
                 <div><div className="form-label">Provisioning Country</div><div>{selectedTenantCountryName}</div></div>
                 <div><div className="form-label">Provisioning State</div><div>{selectedTenantStateName}</div></div>

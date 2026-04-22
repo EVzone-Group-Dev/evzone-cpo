@@ -480,6 +480,23 @@ export const handlers = [
 
     return HttpResponse.json(updatedUser);
   }),
+  http.patch("/api/v1/users/me", async ({ request }) => {
+    const access = getRequestAccess(request);
+    if (!access) {
+      return unauthorized();
+    }
+
+    const body = await readJsonBody<{ country?: string; name?: string }>(
+      request,
+    );
+    const updatedUser = updateDemoUserProfile(access, body);
+
+    if (!updatedUser) {
+      return unauthorized();
+    }
+
+    return HttpResponse.json(updatedUser);
+  }),
   http.patch("/api/auth/me", async ({ request }) => {
     const access = getRequestAccess(request);
     if (!access) {
@@ -553,7 +570,7 @@ export const handlers = [
 
   http.post("/api/v1/auth/switch-tenant", async ({ request }) => {
     const authorization = request.headers.get("authorization");
-    const { tenantId } = (await request.json()) as { tenantId: string };
+    const { tenantId } = (await request.json()) as { tenantId?: string | null };
     const auth = switchDemoTenant(authorization, tenantId);
 
     if (!auth) {
@@ -591,6 +608,14 @@ export const handlers = [
   }),
 
   http.get("/api/v1/tenants", ({ request }) => {
+    const tenants = listDemoTenants(request.headers.get("authorization"));
+    if (tenants.length === 0) {
+      return unauthorized();
+    }
+    return HttpResponse.json(tenants);
+  }),
+
+  http.get("/api/v1/platform/tenants", ({ request }) => {
     const tenants = listDemoTenants(request.headers.get("authorization"));
     if (tenants.length === 0) {
       return unauthorized();
@@ -866,9 +891,13 @@ export const handlers = [
       );
 
     const { command } = (await request.json()) as { command: string };
+    const scopeName =
+      result.access.context.activeTenant?.name ??
+      result.access.user.displayScopeName ??
+      "Platform";
 
     return HttpResponse.json({
-      message: `${command} command accepted for ${chargePoint.ocppId} in ${result.access.context.activeTenant.name}.`,
+      message: `${command} command accepted for ${chargePoint.ocppId} in ${scopeName}.`,
       status: "Accepted",
     });
   }),
@@ -1538,7 +1567,10 @@ export const handlers = [
     return HttpResponse.json({
       status: "Accepted",
       sessionId: `ses-${Math.random().toString(36).slice(2, 9)}`,
-      tenant: result.access.context.activeTenant.name,
+      tenant:
+        result.access.context.activeTenant?.name ??
+        result.access.user.displayTenantName ??
+        "Platform",
       chargePointId,
     });
   }),

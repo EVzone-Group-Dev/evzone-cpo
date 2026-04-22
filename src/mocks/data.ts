@@ -331,7 +331,7 @@ const DEMO_PERMISSION_SETS = {
 
 interface DemoSessionState {
   activeStationAssignmentId: string | null;
-  activeTenantId: TenantId;
+  activeTenantId: TenantId | null;
   userId: string;
 }
 
@@ -4364,6 +4364,20 @@ function getDefaultStationAssignmentId(
   );
 }
 
+function isPlatformDemoUser(demoUser: DemoUserRecord) {
+  return (
+    demoUser.canonicalRole === "PLATFORM_SUPER_ADMIN" ||
+    demoUser.canonicalRole === "PLATFORM_BILLING_ADMIN" ||
+    demoUser.canonicalRole === "PLATFORM_NOC_LEAD"
+  );
+}
+
+function resolveInitialTenantSession(
+  demoUser: DemoUserRecord,
+): TenantId | null {
+  return isPlatformDemoUser(demoUser) ? null : demoUser.defaultTenantId;
+}
+
 function getDemoSessionState(token: string | null) {
   const demoUser = getDemoUserByToken(token);
   if (!demoUser) {
@@ -4371,14 +4385,14 @@ function getDemoSessionState(token: string | null) {
   }
 
   const accessToken = getDemoAccessToken(demoUser.id);
+  const initialTenantId = resolveInitialTenantSession(demoUser);
   return (
     demoSessionStore.get(accessToken) ?? {
       userId: demoUser.id,
-      activeTenantId: demoUser.defaultTenantId,
-      activeStationAssignmentId: getDefaultStationAssignmentId(
-        demoUser,
-        demoUser.defaultTenantId,
-      ),
+      activeTenantId: initialTenantId,
+      activeStationAssignmentId: initialTenantId
+        ? getDefaultStationAssignmentId(demoUser, initialTenantId)
+        : null,
     }
   );
 }
@@ -4398,7 +4412,7 @@ function buildDemoMemberships(
 
 function buildDemoScope(
   demoUser: DemoUserRecord,
-  activeTenantId: TenantId,
+  activeTenantId: TenantId | null,
   stationContexts: StationContextSummary[],
   activeStationContext: StationContextSummary | null,
 ): AccessScopeSummary {
@@ -4427,7 +4441,9 @@ function buildDemoScope(
     tenantId:
       type === "platform"
         ? null
-        : tenantOrganizationCatalog[activeTenantId].organizationId,
+        : activeTenantId
+          ? tenantOrganizationCatalog[activeTenantId].organizationId
+          : null,
     stationId: activeStationContext?.stationId ?? null,
     stationIds: stationContexts.map((context) => context.stationId),
     providerId: demoUser.providerId ?? demoUser.user.providerId ?? null,
@@ -4437,10 +4453,12 @@ function buildDemoScope(
 
 function buildDemoUserSession(
   demoUser: DemoUserRecord,
-  activeTenantId: TenantId,
+  activeTenantId: TenantId | null,
   activeStationAssignmentId: string | null,
 ): AuthenticatedApiUser {
-  const stationContexts = getStationContextsForTenant(demoUser, activeTenantId);
+  const stationContexts = activeTenantId
+    ? getStationContextsForTenant(demoUser, activeTenantId)
+    : [];
   const activeStationContext =
     stationContexts.find(
       (context) => context.assignmentId === activeStationAssignmentId,
@@ -4448,8 +4466,14 @@ function buildDemoUserSession(
     stationContexts.find((context) => context.isPrimary) ??
     stationContexts[0] ??
     null;
-  const activeTenantIdProp =
-    tenantOrganizationCatalog[activeTenantId].organizationId;
+  const activeTenantIdProp = activeTenantId
+    ? tenantOrganizationCatalog[activeTenantId].organizationId
+    : null;
+  const activeTenantName = activeTenantId
+    ? tenantOrganizationCatalog[activeTenantId].organizationName
+    : null;
+  const sessionScopeType: "platform" | "tenant" =
+    activeTenantIdProp ? "tenant" : "platform";
   const accessProfile: AccessProfile = {
     version: "2026-04-v1",
     legacyRole: demoUser.user.legacyRole ?? demoUser.user.role,
@@ -4467,12 +4491,26 @@ function buildDemoUserSession(
   return {
     ...demoUser.user,
     activeTenantId: activeTenantIdProp,
+    activeTenantName,
     accessProfile,
     memberships: buildDemoMemberships(demoUser),
     orgId: activeTenantIdProp,
-    tenantId: activeTenantIdProp,
+    tenantId: activeTenantIdProp ?? undefined,
+    organizationName: activeTenantName,
+    scopeDisplayName:
+      sessionScopeType === "platform" ? "Platform" : activeTenantName,
+    activeStationName: activeStationContext?.stationName ?? null,
+    sessionScopeType,
+    actingAsTenant: sessionScopeType === "tenant",
+    selectedTenantId: activeTenantIdProp,
+    selectedTenantName: activeTenantName,
+    displayTenantName: activeTenantName,
+    displayOrganizationName: activeTenantName,
+    displayScopeName:
+      sessionScopeType === "platform" ? "Platform" : activeTenantName,
+    displayStationName: activeStationContext?.stationName ?? "Unassigned",
     providerId: demoUser.providerId ?? demoUser.user.providerId ?? null,
-    region: tenantCatalog[activeTenantId].region,
+    region: activeTenantId ? tenantCatalog[activeTenantId].region : null,
     stationContexts,
     activeStationContext,
   };
@@ -4480,7 +4518,7 @@ function buildDemoUserSession(
 
 function buildDemoLoginResponse(
   demoUser: DemoUserRecord,
-  activeTenantId: TenantId,
+  activeTenantId: TenantId | null,
   activeStationAssignmentId: string | null,
 ): LoginResponse {
   const accessToken = getDemoAccessToken(demoUser.id);
@@ -4529,24 +4567,33 @@ export function resolveDemoAccess(
     return null;
   }
 
-  const activeTenantId = demoUser.tenantIds.includes(
-    requestedTenantId as TenantId,
-  )
-    ? (requestedTenantId as TenantId)
-    : sessionState.activeTenantId;
+  const requestedTenant = demoUser.tenantIds.find(
+    (tenantId) => tenantId === requestedTenantId,
+  );
+  const activeTenantId =
+    requestedTenant ??
+    sessionState.activeTenantId ??
+    resolveInitialTenantSession(demoUser);
+  const activeTenantSummary = activeTenantId
+    ? getTenantSummary(activeTenantId)
+    : null;
 
   return {
     accessToken: getDemoAccessToken(demoUser.id),
     context: {
-      activeTenant: getTenantSummary(activeTenantId),
+      activeTenant: activeTenantSummary,
       availableTenants: demoUser.tenantIds.map(getTenantSummary),
       canSwitchTenants: demoUser.tenantIds.length > 1,
-      dashboardMode: tenantCatalog[activeTenantId].dashboardMode,
-      dataScopeLabel: tenantCatalog[activeTenantId].dataScopeLabel,
+      dashboardMode: activeTenantId
+        ? tenantCatalog[activeTenantId].dashboardMode
+        : "operations",
+      dataScopeLabel: activeTenantId
+        ? tenantCatalog[activeTenantId].dataScopeLabel
+        : "Platform-wide visibility. Select a tenant to act as.",
     },
     demoUser,
     refreshToken: getDemoRefreshToken(demoUser.id),
-    tenantId: activeTenantId,
+    tenantId: activeTenantId ?? demoUser.defaultTenantId,
     user: buildDemoUserSession(
       demoUser,
       activeTenantId,
@@ -4569,11 +4616,12 @@ export function authenticateDemoUser(
   const match = demoUsers.find(
     (user) => user.email === email && user.password === password,
   );
+  const initialTenantId = match ? resolveInitialTenantSession(match) : null;
   return match
     ? buildDemoLoginResponse(
         match,
-        match.defaultTenantId,
-        getDefaultStationAssignmentId(match, match.defaultTenantId),
+        initialTenantId,
+        initialTenantId ? getDefaultStationAssignmentId(match, initialTenantId) : null,
       )
     : null;
 }
@@ -4583,12 +4631,13 @@ export function authenticateDemoUserByEmail(email: string): LoginResponse | null
   const match = demoUsers.find(
     (user) => user.email.trim().toLowerCase() === normalizedEmail,
   )
+  const initialTenantId = match ? resolveInitialTenantSession(match) : null
 
   return match
     ? buildDemoLoginResponse(
         match,
-        match.defaultTenantId,
-        getDefaultStationAssignmentId(match, match.defaultTenantId),
+        initialTenantId,
+        initialTenantId ? getDefaultStationAssignmentId(match, initialTenantId) : null,
       )
     : null
 }
@@ -4631,12 +4680,20 @@ export function refreshDemoUserSession(
 
 export function switchDemoTenant(
   authorizationHeader: string | null,
-  tenantId: string,
+  tenantId?: string | null,
 ): LoginResponse | null {
   const access = resolveDemoAccess(authorizationHeader);
 
   if (!access) {
     return null;
+  }
+
+  if (!tenantId) {
+    if (!isPlatformDemoUser(access.demoUser)) {
+      return null;
+    }
+
+    return buildDemoLoginResponse(access.demoUser, null, null);
   }
 
   const nextTenantId = access.demoUser.tenantIds.find(
@@ -4678,7 +4735,7 @@ export function switchDemoStationContext(
       (tenantId) =>
         tenantOrganizationCatalog[tenantId].organizationId ===
         targetContext.tenantId,
-    ) ?? access.tenantId;
+    ) ?? access.tenantId ?? access.demoUser.defaultTenantId;
 
   demoSessionStore.set(access.accessToken, {
     userId: access.demoUser.id,

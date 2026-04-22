@@ -86,7 +86,7 @@ export interface TenantSummary {
 }
 
 export interface TenantContextResponse {
-  activeTenant: TenantSummary;
+  activeTenant: TenantSummary | null;
   availableTenants: TenantSummary[];
   canSwitchTenants: boolean;
   dashboardMode: DashboardMode;

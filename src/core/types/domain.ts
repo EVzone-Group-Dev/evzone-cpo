@@ -332,6 +332,18 @@ export interface CPOUser {
   tenantId?: OrganizationId
   activeTenantId?: OrganizationId | null
   orgId?: OrganizationId | null
+  organizationName?: string | null
+  activeTenantName?: string | null
+  scopeDisplayName?: string | null
+  activeStationName?: string | null
+  displayTenantName?: string | null
+  displayOrganizationName?: string | null
+  displayScopeName?: string | null
+  displayStationName?: string | null
+  sessionScopeType?: 'platform' | 'tenant'
+  actingAsTenant?: boolean
+  selectedTenantId?: OrganizationId | null
+  selectedTenantName?: string | null
   assignedStationIds?: StationId[]
   memberships?: OrganizationMembershipSummary[]
   stationContexts?: StationContextSummary[]

@@ -93,7 +93,7 @@ describe('MSW RBAC authorization boundaries', () => {
   })
 
   it('patches the current user profile and keeps users/me in sync', async () => {
-    const patchResponse = await fetch('/api/v1/auth/me', {
+    const patchResponse = await fetch('/api/v1/users/me', {
       method: 'PATCH',
       headers: {
         ...authHeaders('demo-token-u5', 'tenant-global'),

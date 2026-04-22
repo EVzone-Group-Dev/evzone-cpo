@@ -195,7 +195,7 @@ describe('SettingsPage', () => {
     fireEvent.click(saveButton)
     await waitFor(() => expect(replaceUser).toHaveBeenCalled())
     expect(mockedFetchJson).toHaveBeenCalledWith(
-      '/api/v1/auth/me',
+      '/api/v1/users/me',
       expect.objectContaining({
         method: 'PATCH',
         headers: {

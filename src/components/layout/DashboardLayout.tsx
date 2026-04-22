@@ -77,22 +77,27 @@ export function DashboardLayout({ children, pageTitle, actions }: Props) {
             )}
           </div>
           <div className="flex items-center gap-2 min-w-0">
-            {(activeTenant || activeStationContext) && (
+            {(activeTenant || activeStationContext || canSwitchTenants) && (
               <div className="hidden md:flex flex-wrap items-center justify-end gap-2 min-w-0">
-                {activeTenant && (
+                {(activeTenant || canSwitchTenants) && (
                   <div className="flex items-center gap-3 rounded-xl border px-3 py-2 min-w-0" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
                     <div className="text-right leading-tight shrink-0">
-                      <div className="text-[10px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-subtle)' }}>{activeTenant.scopeLabel}</div>
-                      <div className="text-xs font-semibold" style={{ color: 'var(--text)' }}>{activeTenant.name}</div>
+                      <div className="text-[10px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-subtle)' }}>{activeTenant?.scopeLabel ?? 'Platform scope'}</div>
+                      <div className="text-xs font-semibold" style={{ color: 'var(--text)' }}>{activeTenant?.name ?? 'Platform'}</div>
                     </div>
                     {canSwitchTenants && (
                       <select
                         className="input !h-9 !py-0 min-w-[180px] xl:min-w-[220px]"
-                        value={activeTenant.id}
-                        onChange={(event) => setActiveTenantId(event.target.value)}
+                        value={activeTenant?.id ?? ''}
+                        onChange={(event) => setActiveTenantId(event.target.value || null)}
                         disabled={isLoading}
                         aria-label="Switch organization context"
                       >
+                        {user?.accessProfile?.scope.type === 'platform' && (
+                          <option value="">
+                            Platform (no tenant)
+                          </option>
+                        )}
                         {availableTenants.map((tenant) => (
                           <option key={tenant.id} value={tenant.id}>
                             {tenant.name}
@@ -107,7 +112,7 @@ export function DashboardLayout({ children, pageTitle, actions }: Props) {
                     <div className="text-right leading-tight shrink-0">
                       <div className="text-[10px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-subtle)' }}>Station Context</div>
                       <div className="text-xs font-semibold" style={{ color: 'var(--text)' }}>
-                        {activeStationContext?.stationName ?? activeStationContext?.stationId ?? 'Assigned stations'}
+                        {activeStationContext?.stationName ?? 'Assigned stations'}
                       </div>
                     </div>
                     {canSwitchStationContexts ? (
@@ -120,7 +125,7 @@ export function DashboardLayout({ children, pageTitle, actions }: Props) {
                       >
                         {availableStationContexts.map((context) => (
                           <option key={context.assignmentId} value={context.assignmentId}>
-                            {(context.stationName ?? context.stationId)} · {context.role}
+                            {(context.stationName ?? 'Unassigned station')} · {context.role}
                           </option>
                         ))}
                       </select>
@@ -159,7 +164,7 @@ export function DashboardLayout({ children, pageTitle, actions }: Props) {
                       )}
                       {activeStationContext && (
                         <div className="text-[11px] text-[var(--text-subtle)] mt-1">
-                          {activeStationContext.stationName ?? activeStationContext.stationId}
+                          {activeStationContext.stationName ?? 'Unassigned station'}
                         </div>
                       )}
                     </div>
@@ -211,7 +216,7 @@ export function DashboardLayout({ children, pageTitle, actions }: Props) {
                     : 'Temporary station access active'}
               </div>
               <div style={{ color: 'var(--text-subtle)' }}>
-                {activeStationContext?.stationName ?? activeStationContext?.stationId ?? 'Assigned station scope'} · {temporaryAccessLabel}
+                {activeStationContext?.stationName ?? 'Assigned station scope'} · {temporaryAccessLabel}
               </div>
             </div>
           </div>

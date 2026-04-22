@@ -87,7 +87,7 @@ export function TechnicianDashboard() {
             <div className="section-title"><Shield size={16} className="text-ok" />Technician Scope</div>
             <div className="space-y-3 mt-4 text-sm">
               <div><span className="text-subtle">User:</span> {user?.name}</div>
-              <div><span className="text-subtle">Active Station:</span> {activeStationContext?.stationName ?? activeStationContext?.stationId ?? 'All assigned stations'}</div>
+              <div><span className="text-subtle">Active Station:</span> {activeStationContext?.stationName ?? 'All assigned stations'}</div>
               <div><span className="text-subtle">Assigned Stations:</span> {assignedStationsLabel}</div>
               <div><span className="text-subtle">Shift Window:</span> {activeStationContext?.shiftStart && activeStationContext?.shiftEnd ? `${activeStationContext.shiftStart} - ${activeStationContext.shiftEnd}` : 'Not time-bound'}</div>
               {hasTemporaryScope && <div><span className="text-subtle">Temporary Access:</span> {temporaryAccessState}</div>}
