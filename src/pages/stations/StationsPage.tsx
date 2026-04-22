@@ -27,7 +27,7 @@ export function StationsPage() {
   return (
     <DashboardLayout pageTitle="Stations">
       {/* Aggregates */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div className="kpi-row mb-6">
         <div className="kpi-card"><div className="label">Total Stations</div><div className="value">{stations?.length}</div></div>
         <div className="kpi-card"><div className="label">Online</div><div className="value">{stations?.filter(s => s.status === 'Online').length}</div></div>
         <div className="kpi-card"><div className="label">Faulted</div><div className="value">{stations?.filter(s => s.status === 'Faulted').length}</div></div>
@@ -172,3 +172,4 @@ export function StationsPage() {
     </DashboardLayout>
   )
 }
+

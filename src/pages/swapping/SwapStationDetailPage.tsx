@@ -143,7 +143,7 @@ export function SwapStationDetailPage() {
         <div className="text-xs text-subtle">{station.gridBufferLabel}</div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="kpi-row mb-6">
         <div className="kpi-card"><div className="label">Cabinets</div><div className="value">{station.cabinetCount}</div></div>
         <div className="kpi-card"><div className="label">Ready Packs</div><div className="value text-ok">{station.readyPacks}</div></div>
         <div className="kpi-card"><div className="label">Charging Packs</div><div className="value text-warning">{station.chargingPacks}</div></div>
@@ -375,3 +375,4 @@ export function SwapStationDetailPage() {
     </DashboardLayout>
   )
 }
+

@@ -23,7 +23,7 @@ export function StationManagerDashboard() {
 
   return (
     <DashboardLayout pageTitle="Station Operations">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="kpi-row mb-6">
         <div className="kpi-card"><div className="label">Managed Sites</div><div className="value">{stations.length}</div></div>
         <div className="kpi-card"><div className="label">Charge Assets</div><div className="value">{totalChargeAssets}</div></div>
         <div className="kpi-card"><div className="label">Swap Sites</div><div className="value">{swapStations.length}</div></div>
@@ -95,3 +95,4 @@ export function StationManagerDashboard() {
     </DashboardLayout>
   )
 }
+

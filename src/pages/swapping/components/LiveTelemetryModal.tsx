@@ -84,7 +84,7 @@ export function LiveTelemetryModal({ packId, stationId, onClose }: LiveTelemetry
           </div>
         )}
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="kpi-row mb-6">
           <div className="kpi-card bg-[var(--bg-elevated)] p-4 rounded-xl">
             <div className="text-sm text-subtle">Pack Voltage</div>
             <div className="text-2xl font-bold font-mono">{voltage.toFixed(2)}v</div>
@@ -149,3 +149,4 @@ export function LiveTelemetryModal({ packId, stationId, onClose }: LiveTelemetry
     </div>
   )
 }
+

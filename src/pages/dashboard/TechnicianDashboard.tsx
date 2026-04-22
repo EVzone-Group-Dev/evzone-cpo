@@ -35,7 +35,7 @@ export function TechnicianDashboard() {
 
   return (
     <DashboardLayout pageTitle="Field Service">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="kpi-row mb-6">
         {incidents.stats.map((stat) => (
           <div key={stat.id} className="kpi-card">
             <div className="label">{stat.label}</div>
@@ -101,3 +101,4 @@ export function TechnicianDashboard() {
     </DashboardLayout>
   )
 }
+

@@ -71,7 +71,7 @@ export function IncidentsPage() {
 
   return (
     <DashboardLayout pageTitle="Incident Command">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+      <div className="kpi-row mb-8">
         {data.stats.map((stat) => (
           <div key={stat.id} className="kpi-card">
             <div className="label">{stat.label}</div>
@@ -273,3 +273,4 @@ export function IncidentsPage() {
     </DashboardLayout>
   )
 }
+

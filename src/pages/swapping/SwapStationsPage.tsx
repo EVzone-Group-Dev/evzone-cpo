@@ -395,7 +395,7 @@ export function SwapStationsPage() {
 
   return (
     <DashboardLayout pageTitle="Swap Stations">
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+      <div className="kpi-row mb-6">
         {operationsMetrics.map((metric) => (
           <div key={metric.id} className="kpi-card">
             <div className="label">{metric.label}</div>
@@ -405,7 +405,7 @@ export function SwapStationsPage() {
         ))}
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="kpi-row mb-6">
         <div className="kpi-card"><div className="label">Sites</div><div className="value">{stations?.length ?? 0}</div></div>
         <div className="kpi-card"><div className="label">Cabinets</div><div className="value">{totals.cabinets}</div></div>
         <div className="kpi-card"><div className="label">Ready Packs</div><div className="value text-ok">{totals.readyPacks}</div></div>
@@ -414,7 +414,7 @@ export function SwapStationsPage() {
 
       <div className="card mb-6">
         <div className="section-title">Swap Economics Dashboard</div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+        <div className="kpi-row mt-4">
           {economicsMetrics.cards.map((metric) => (
             <div key={metric.id} className="kpi-card">
               <div className="label">{metric.label}</div>
@@ -670,3 +670,4 @@ export function SwapStationsPage() {
     </DashboardLayout>
   )
 }
+

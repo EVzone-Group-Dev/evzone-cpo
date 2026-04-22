@@ -93,7 +93,7 @@ export function OCPICDRsPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="kpi-row mb-6">
         {data.metrics.map((metric) => (
           <div key={metric.id} className="kpi-card">
             <div className="label">{metric.label}</div>
@@ -295,3 +295,4 @@ export function OCPICDRsPage() {
     </DashboardLayout>
   )
 }
+

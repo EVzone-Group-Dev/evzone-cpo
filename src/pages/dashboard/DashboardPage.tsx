@@ -74,7 +74,7 @@ export function DashboardPage() {
         </div>
 
         {/* KPI Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5 gap-4 mb-6 sm:mb-8">
+        <div className="kpi-row mb-6 sm:mb-8">
           {data.kpis.map((kpi) => {
             const meta = KPI_META[kpi.iconKey]
 
@@ -170,3 +170,4 @@ export function DashboardPage() {
     </DashboardLayout>
   )
 }
+

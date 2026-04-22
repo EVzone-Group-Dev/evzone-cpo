@@ -32,7 +32,7 @@ export function NotificationsPage() {
 
   return (
     <DashboardLayout pageTitle="Notifications">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="kpi-row mb-6">
         {data.metrics.map((metric) => (
           <div key={metric.id} className="kpi-card">
             <div className="label">{metric.label}</div>
@@ -92,3 +92,4 @@ export function NotificationsPage() {
     </DashboardLayout>
   )
 }
+

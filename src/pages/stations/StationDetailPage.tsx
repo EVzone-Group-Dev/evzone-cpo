@@ -226,7 +226,7 @@ export function StationDetailPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="kpi-row">
             <div className="kpi-card group hover:border-accent transition-all cursor-default">
               <div className="label">Nominal Power</div>
               <div className="value flex items-center gap-2">{station.capacity.toFixed(0)} kW <Zap size={14} className="text-ok" /></div>
@@ -402,3 +402,4 @@ export function StationDetailPage() {
     </DashboardLayout>
   )
 }
+

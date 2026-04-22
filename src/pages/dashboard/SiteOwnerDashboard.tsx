@@ -53,7 +53,7 @@ export function SiteOwnerDashboard() {
          </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+      <div className="kpi-row mb-8">
         {data.metrics.map((metric) => {
           const accent = METRIC_ACCENTS[metric.id]
           const toneClass = metric.trend === 'up' ? 'text-ok' : metric.trend === 'down' ? 'text-danger' : 'text-subtle'
@@ -154,3 +154,4 @@ export function SiteOwnerDashboard() {
     </DashboardLayout>
   )
 }
+
