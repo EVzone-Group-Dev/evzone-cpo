@@ -5,7 +5,7 @@ import { getTemporaryAccessState, getTemporaryAccessWindowLabel, getUserRoleLabe
 import { useAuthStore } from '@/core/auth/authStore'
 import { useTenant } from '@/core/hooks/useTenant'
 import { useBranding } from '@/core/branding/useBranding'
-import { Bell, LogOut, Settings } from 'lucide-react'
+import { Bell, Globe2, LogOut, Search, Settings } from 'lucide-react'
 import { PATHS } from '@/router/paths'
 import { LOGO_PATHS } from '@/utils/assets'
 
@@ -31,7 +31,7 @@ export function DashboardLayout({ children, pageTitle, actions }: Props) {
   const temporaryAccessLabel = getTemporaryAccessWindowLabel(user)
   const hasTemporaryScope = isTemporaryScopeUser(user)
   const { branding } = useBranding()
-  const headerLogoUrl = branding.branding.logoIconUrl || branding.branding.logoUrl || LOGO_PATHS.cpms
+  const headerLogoUrl = branding.branding.logoUrl || branding.branding.logoIconUrl || LOGO_PATHS.cpms
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
@@ -60,15 +60,23 @@ export function DashboardLayout({ children, pageTitle, actions }: Props) {
         className="flex items-center justify-between gap-2 px-4 sm:px-6 py-2.5 sm:py-3 border-b flex-shrink-0"
         style={{ borderColor: 'var(--border)', background: 'var(--bg-card)', minHeight: 57 }}
       >
-          <div className="flex items-center gap-3 min-w-0">
-            <img src={headerLogoUrl} alt={branding.branding.shortName} className="w-6 h-6 object-contain" />
-            {pageTitle ? (
-              <h1 className="text-base font-bold text-[var(--text)] truncate">{pageTitle}</h1>
-            ) : (
-              <div className="text-sm font-semibold text-[var(--text)] truncate">{branding.branding.appName}</div>
-            )}
-          </div>
-          <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-3 min-w-0">
+          <img src={headerLogoUrl} alt={branding.branding.shortName} className="h-6 w-auto max-w-[148px] object-contain" />
+          <span className="sr-only">{pageTitle ?? branding.branding.appName}</span>
+        </div>
+        <div className="flex items-center gap-2 min-w-0">
+            <label
+              className="hidden md:flex items-center gap-2 rounded-xl border px-3 h-9 min-w-[220px] xl:min-w-[280px]"
+              style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}
+            >
+              <Search size={14} style={{ color: 'var(--text-subtle)' }} />
+              <input
+                type="search"
+                className="w-full bg-transparent text-sm outline-none border-0 p-0"
+                placeholder="Search"
+                aria-label="Search"
+              />
+            </label>
             {(activeStationContext || canSwitchStationContexts) && (
               <div className="hidden md:flex flex-wrap items-center justify-end gap-2 min-w-0">
                 {(activeStationContext || canSwitchStationContexts) && (
@@ -103,11 +111,11 @@ export function DashboardLayout({ children, pageTitle, actions }: Props) {
               </div>
             )}
             {actions}
+            <button type="button" className="btn ghost icon" title="Localization">
+              <Globe2 size={16} />
+            </button>
             <Link to={PATHS.NOTIFICATIONS} className="btn ghost icon" title="Notifications">
               <Bell size={16} />
-            </Link>
-            <Link to={PATHS.SETTINGS} className="btn ghost icon" title="Settings">
-              <Settings size={16} />
             </Link>
             {user && (
               <div className="relative ml-1" ref={profileMenuRef}>
