@@ -12,7 +12,6 @@ import type {
   CreateChargePointRequest,
   DashboardOverviewResponse,
   DeveloperPlatformOverviewResponse,
-  DemoUserHint,
   EnterpriseIamOverviewResponse,
   FleetOverviewResponse,
   IncidentCommandResponse,
@@ -40,30 +39,6 @@ import type {
   TeamMember,
   WebhooksModuleResponse,
 } from "@/core/types/mockApi";
-
-const FALLBACK_DEMO_USERS: DemoUserHint[] = [
-  {
-    id: "demo-super-admin",
-    name: "Platform Admin",
-    email: "admin@evzone.io",
-    password: "admin",
-    role: "SUPER_ADMIN",
-  },
-  {
-    id: "demo-finance",
-    name: "Finance Ops",
-    email: "finance@evzone.io",
-    password: "admin",
-    role: "FINANCE",
-  },
-  {
-    id: "demo-station-manager",
-    name: "Station Manager",
-    email: "manager@evzone.io",
-    password: "admin",
-    role: "STATION_MANAGER",
-  },
-];
 
 function asArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
@@ -1853,14 +1828,6 @@ function isAuthorizationFailure(error: unknown) {
     message.includes("status 403") ||
     message.includes("session expired")
   );
-}
-
-export function useDemoUsers() {
-  return useQuery<DemoUserHint[]>({
-    queryKey: ["auth", "demo-users"],
-    // Backend has no public demo-users endpoint; keep frontend login hints local.
-    queryFn: async () => FALLBACK_DEMO_USERS,
-  });
 }
 
 export function useDashboardOverview(options?: { enabled?: boolean }) {

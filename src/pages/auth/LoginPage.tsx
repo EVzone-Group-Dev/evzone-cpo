@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom'
 import { getRoleHomePath } from '@/core/auth/access'
 import { useAuthStore } from '@/core/auth/authStore'
 import { fetchJson } from '@/core/api/fetchJson'
-import { useDemoUsers } from '@/core/hooks/usePlatformData'
 import type {
   LoginResponse,
   PasskeyLoginOptionsResponse,
@@ -58,8 +57,8 @@ export function LoginPage() {
   const [loginMode, setLoginMode] = useState<LoginMode>(
     passkeySupported ? 'passkey' : 'password',
   )
-  const [email, setEmail] = useState('admin@evzone.io')
-  const [password, setPassword] = useState('admin')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [twoFactorToken, setTwoFactorToken] = useState('')
   const [recoveryCode, setRecoveryCode] = useState('')
   const [passwordMfaMethod, setPasswordMfaMethod] =
@@ -70,7 +69,6 @@ export function LoginPage() {
   const { setUser } = useAuthStore()
   const { branding } = useBranding()
   const navigate = useNavigate()
-  const { data: demoUsers = [] } = useDemoUsers()
   const logoUrl = branding.branding.logoUrl || LOGO_PATHS.cpms
 
   const applySuccessfulAuth = (auth: LoginResponse) => {
@@ -359,58 +357,33 @@ export function LoginPage() {
           </form>
         </div>
 
-        <div
-          className="mt-4 card-glass text-[11px]"
-          style={{ padding: '0.75rem 1rem', borderRadius: 10 }}
-        >
-          <p className="font-bold mb-1" style={{ color: 'var(--text-muted)' }}>
-            Demo Accounts
-          </p>
-          {demoUsers.map((userHint) => (
-            <button
-              key={userHint.email}
-              type="button"
-              className="block w-full text-left hover:underline"
-              style={{ color: 'var(--accent)', lineHeight: 1.8 }}
-              onClick={() => {
-                setEmail(userHint.email)
-                setPassword(userHint.password)
-                setLoginMode('password')
-              }}
-            >
-              {userHint.name} — {userHint.email}
-            </button>
-          ))}
-          {demoUsers.length === 0 && (
-            <p style={{ color: 'var(--text-subtle)' }}>
-              Loading demo accounts...
-            </p>
-          )}
-          {(branding.legal.termsUrl || branding.legal.privacyUrl) && (
-            <div className="mt-2 pt-2 border-t border-[var(--border)] flex items-center gap-2">
-              {branding.legal.termsUrl && (
-                <a
-                  href={branding.legal.termsUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="hover:underline"
-                >
-                  Terms
-                </a>
-              )}
-              {branding.legal.privacyUrl && (
-                <a
-                  href={branding.legal.privacyUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="hover:underline"
-                >
-                  Privacy
-                </a>
-              )}
-            </div>
-          )}
-        </div>
+        {(branding.legal.termsUrl || branding.legal.privacyUrl) && (
+          <div
+            className="mt-4 flex items-center justify-center gap-3 text-xs"
+            style={{ color: 'var(--text-muted)' }}
+          >
+            {branding.legal.termsUrl && (
+              <a
+                href={branding.legal.termsUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="hover:underline"
+              >
+                Terms
+              </a>
+            )}
+            {branding.legal.privacyUrl && (
+              <a
+                href={branding.legal.privacyUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="hover:underline"
+              >
+                Privacy
+              </a>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
