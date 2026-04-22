@@ -276,6 +276,56 @@ describe('canAccessPolicy', () => {
       ),
     ).toBe(true)
   })
+
+  it('blocks tenant-only policies for platform sessions without impersonation', () => {
+    expect(
+      canAccessPolicy(
+        {
+          role: 'SUPER_ADMIN',
+          sessionScopeType: 'platform',
+          actingAsTenant: false,
+          accessProfile: buildAccessProfile({
+            canonicalRole: 'PLATFORM_SUPER_ADMIN',
+            permissions: ['stations.read'],
+            scope: {
+              type: 'platform',
+              tenantId: null,
+              stationId: null,
+              stationIds: [],
+              providerId: null,
+              isTemporary: false,
+            },
+          }),
+        },
+        'stationsRead',
+      ),
+    ).toBe(false)
+  })
+
+  it('keeps platform-control policies available without tenant impersonation', () => {
+    expect(
+      canAccessPolicy(
+        {
+          role: 'SUPER_ADMIN',
+          sessionScopeType: 'platform',
+          actingAsTenant: false,
+          accessProfile: buildAccessProfile({
+            canonicalRole: 'PLATFORM_SUPER_ADMIN',
+            permissions: ['platform.tenants.read'],
+            scope: {
+              type: 'platform',
+              tenantId: null,
+              stationId: null,
+              stationIds: [],
+              providerId: null,
+              isTemporary: false,
+            },
+          }),
+        },
+        'dashboardSuperAdmin',
+      ),
+    ).toBe(true)
+  })
 })
 
 describe('normalizeAuthenticatedUser', () => {

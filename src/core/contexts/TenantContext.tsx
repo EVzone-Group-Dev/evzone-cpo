@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchJson } from '@/core/api/fetchJson'
 import { useAuthStore } from '@/core/auth/authStore'
 import { TenantContext } from '@/core/contexts/tenantSessionContext'
@@ -26,6 +26,10 @@ const DEFAULT_CURRENCY = 'USD'
 const DEFAULT_LANGUAGE = 'English'
 const DEFAULT_TIME_ZONE = 'UTC'
 const EMPTY_STATION_CONTEXTS: StationContextSummary[] = []
+
+function isAuthDependentQueryKey(queryKey: readonly unknown[]) {
+  return queryKey[0] !== 'geography'
+}
 
 function isPlatformSessionWithoutTenantContext(user: CPOUser | null) {
   if (!user) {
@@ -380,6 +384,7 @@ function buildTenantContextFromUser(user: CPOUser | null, requestedTenantId: str
 }
 
 export function TenantProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient()
   const user = useAuthStore((state) => state.user)
   const activeTenantId = useAuthStore((state) => state.activeTenantId)
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
@@ -530,6 +535,15 @@ export function TenantProvider({ children }: { children: ReactNode }) {
     replaceUser(refreshedUser)
   }, [replaceUser])
 
+  const resetAuthDependentState = useCallback(async () => {
+    await queryClient.cancelQueries({
+      predicate: (query) => isAuthDependentQueryKey(query.queryKey),
+    })
+    queryClient.removeQueries({
+      predicate: (query) => isAuthDependentQueryKey(query.queryKey),
+    })
+  }, [queryClient])
+
   useEffect(() => {
     const synchronizedTenantId = user?.activeTenantId ?? contextData?.activeTenant?.id ?? null
     if (synchronizedTenantId !== activeTenantId) {
@@ -557,6 +571,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
       if (!canSwitchViaBackend) {
         setActiveTenantId(tenantId)
+        await resetAuthDependentState()
         return
       }
 
@@ -581,13 +596,16 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         } else {
           setActiveTenantId(tenantId ?? null)
         }
+
+        await resetAuthDependentState()
+        await refreshCurrentUser()
       } catch (error) {
         console.error('Failed to switch organization context.', error)
       } finally {
         setIsSwitchingTenant(false)
       }
     })()
-  }, [activeTenantId, replaceUser, setActiveTenantId, setTokens, token, user?.accessProfile?.scope.type, user?.actingAsTenant, user?.memberships, user?.sessionScopeType])
+  }, [activeTenantId, refreshCurrentUser, replaceUser, resetAuthDependentState, setActiveTenantId, setTokens, token, user?.accessProfile?.scope.type, user?.actingAsTenant, user?.memberships, user?.sessionScopeType])
 
   const handleStationContextSwitch = useCallback((assignmentId: string) => {
     void (async () => {

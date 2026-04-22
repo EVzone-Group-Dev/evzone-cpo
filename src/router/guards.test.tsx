@@ -89,6 +89,14 @@ describe('RequireAuth', () => {
           canonicalRole: 'TENANT_ADMIN',
           roleFamily: 'tenant',
           permissions: ['finance.billing.read'],
+          scope: {
+            type: 'tenant',
+            tenantId: 'org-1',
+            stationId: null,
+            stationIds: [],
+            providerId: null,
+            isTemporary: false,
+          },
         }),
       },
     })
@@ -194,5 +202,43 @@ describe('RequireAuth', () => {
 
     expect(await screen.findByText('Provider Roaming Home')).toBeInTheDocument()
     expect(screen.queryByText('Charge Points')).not.toBeInTheDocument()
+  })
+
+  it('redirects platform sessions without impersonation away from tenant-only routes', async () => {
+    mockAuthState({
+      isAuthenticated: true,
+      user: {
+        ...buildUser('SUPER_ADMIN'),
+        sessionScopeType: 'platform',
+        actingAsTenant: false,
+        accessProfile: buildAccessProfile({
+          canonicalRole: 'PLATFORM_SUPER_ADMIN',
+          permissions: ['stations.read'],
+          scope: {
+            type: 'platform',
+            tenantId: null,
+            stationId: null,
+            stationIds: [],
+            providerId: null,
+            isTemporary: false,
+          },
+        }),
+      },
+    })
+
+    render(
+      <MemoryRouter initialEntries={[PATHS.STATIONS]}>
+        <Routes>
+          <Route
+            path={PATHS.STATIONS}
+            element={<RequireAuth policy="stationsRead"><div>Stations</div></RequireAuth>}
+          />
+          <Route path={PATHS.DASHBOARD_SUPER_ADMIN} element={<div>Super Admin Home</div>} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByText('Super Admin Home')).toBeInTheDocument()
+    expect(screen.queryByText('Stations')).not.toBeInTheDocument()
   })
 })

@@ -395,6 +395,47 @@ const FLEET_SCOPE_ALLOWED_POLICIES = new Set<AccessPolicyKey>([
   "notificationsRead",
 ]);
 
+const TENANT_CONTEXT_REQUIRED_POLICIES = new Set<AccessPolicyKey>([
+  "tenancyContext",
+  "dashboardCpoAdmin",
+  "dashboardStationManager",
+  "dashboardFinance",
+  "dashboardOperator",
+  "dashboardTechnician",
+  "siteDashboard",
+  "stationsRead",
+  "stationsWrite",
+  "chargePointsRead",
+  "chargePointsWrite",
+  "swapStationsRead",
+  "sessionsRead",
+  "reservationsRead",
+  "fleetRead",
+  "swapSessionsRead",
+  "swapLifecycleWrite",
+  "swapDispatchWrite",
+  "incidentsRead",
+  "alertsRead",
+  "smartChargingRead",
+  "loadPoliciesRead",
+  "derOrchestrationRead",
+  "smartChargingWrite",
+  "loadPoliciesWrite",
+  "batteryInventoryRead",
+  "pncRead",
+  "roamingRead",
+  "tariffsRead",
+  "billingRead",
+  "payoutsRead",
+  "settlementRead",
+  "teamRead",
+  "reportsRead",
+]);
+
+function policyRequiresTenantContext(policy: AccessPolicyKey) {
+  return TENANT_CONTEXT_REQUIRED_POLICIES.has(policy);
+}
+
 function isCPORole(role: string): role is CPORole {
   return (CPO_ROLE_VALUES as readonly string[]).includes(role);
 }
@@ -904,7 +945,10 @@ export function canAccessPolicy(
     return false;
   }
 
-  if (policy === "tenancyContext" && isPlatformSessionWithoutTenant(user)) {
+  if (
+    policyRequiresTenantContext(policy) &&
+    isPlatformSessionWithoutTenant(user)
+  ) {
     return false;
   }
 

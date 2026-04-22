@@ -20,14 +20,22 @@ export interface AuthState {
   setLoading: (v: boolean) => void
 }
 
-function isPlatformSessionWithoutTenantContext(
+export function isPlatformSessionWithoutTenantContext(
   user: Partial<CPOUser | AuthenticatedApiUser> | null | undefined,
 ) {
   if (!user) {
     return false
   }
 
-  const scopeType = user.sessionScopeType ?? user.accessProfile?.scope.type ?? null
+  if (user.sessionScopeType === 'platform') {
+    return user.actingAsTenant !== true
+  }
+
+  if (user.sessionScopeType === 'tenant') {
+    return false
+  }
+
+  const scopeType = user.accessProfile?.scope.type ?? null
   if (scopeType !== 'platform') {
     return false
   }
@@ -43,7 +51,7 @@ function isPlatformSessionWithoutTenantContext(
   return !hasTenantSelection
 }
 
-function resolveTenantIdFromUser(user: CPOUser | AuthenticatedApiUser) {
+export function resolveTenantIdFromUser(user: CPOUser | AuthenticatedApiUser) {
   if (isPlatformSessionWithoutTenantContext(user)) {
     return null
   }
@@ -51,10 +59,12 @@ function resolveTenantIdFromUser(user: CPOUser | AuthenticatedApiUser) {
   return user.selectedTenantId ?? user.activeTenantId ?? user.tenantId ?? null
 }
 
-function mergeAuthUser(currentUser: CPOUser | null, incomingUser: CPOUser | AuthenticatedApiUser) {
+export function mergeAuthUser(currentUser: CPOUser | null, incomingUser: CPOUser | AuthenticatedApiUser) {
   if (!currentUser) {
     return incomingUser
   }
+
+  const incomingIsPlatformWithoutTenant = isPlatformSessionWithoutTenantContext(incomingUser)
 
   const mergedUser = {
     ...currentUser,
@@ -63,27 +73,31 @@ function mergeAuthUser(currentUser: CPOUser | null, incomingUser: CPOUser | Auth
       incomingUser.selectedTenantId
       ?? incomingUser.activeTenantId
       ?? incomingUser.tenantId
-      ?? currentUser.selectedTenantId
-      ?? currentUser.activeTenantId
-      ?? currentUser.tenantId
+      ?? (incomingIsPlatformWithoutTenant ? null : currentUser.selectedTenantId)
+      ?? (incomingIsPlatformWithoutTenant ? null : currentUser.activeTenantId)
+      ?? (incomingIsPlatformWithoutTenant ? null : currentUser.tenantId)
       ?? null,
     orgId:
       incomingUser.orgId
       ?? incomingUser.selectedTenantId
       ?? incomingUser.activeTenantId
       ?? incomingUser.tenantId
-      ?? currentUser.orgId
-      ?? currentUser.selectedTenantId
-      ?? currentUser.activeTenantId
-      ?? currentUser.tenantId
+      ?? (incomingIsPlatformWithoutTenant ? null : currentUser.orgId)
+      ?? (incomingIsPlatformWithoutTenant ? null : currentUser.selectedTenantId)
+      ?? (incomingIsPlatformWithoutTenant ? null : currentUser.activeTenantId)
+      ?? (incomingIsPlatformWithoutTenant ? null : currentUser.tenantId)
       ?? null,
     selectedTenantId:
       incomingUser.selectedTenantId
       ?? incomingUser.activeTenantId
       ?? incomingUser.tenantId
-      ?? currentUser.selectedTenantId
-      ?? currentUser.activeTenantId
-      ?? currentUser.tenantId
+      ?? (incomingIsPlatformWithoutTenant ? null : currentUser.selectedTenantId)
+      ?? (incomingIsPlatformWithoutTenant ? null : currentUser.activeTenantId)
+      ?? (incomingIsPlatformWithoutTenant ? null : currentUser.tenantId)
+      ?? null,
+    selectedTenantName:
+      incomingUser.selectedTenantName
+      ?? (incomingIsPlatformWithoutTenant ? null : currentUser.selectedTenantName)
       ?? null,
     accessProfile: incomingUser.accessProfile ?? currentUser.accessProfile ?? null,
     memberships: incomingUser.memberships ?? currentUser.memberships,
@@ -94,16 +108,43 @@ function mergeAuthUser(currentUser: CPOUser | null, incomingUser: CPOUser | Auth
     createdAt: incomingUser.createdAt ?? currentUser.createdAt,
   }
 
-  if (isPlatformSessionWithoutTenantContext(mergedUser)) {
+  if (incomingIsPlatformWithoutTenant || isPlatformSessionWithoutTenantContext(mergedUser)) {
     return {
       ...mergedUser,
       activeTenantId: null,
+      tenantId: undefined,
       orgId: null,
       selectedTenantId: null,
+      selectedTenantName: null,
     }
   }
 
   return mergedUser
+}
+
+export function sanitizePersistedUser(user: CPOUser | null) {
+  if (!user) {
+    return null
+  }
+
+  if (isPlatformSessionWithoutTenantContext(user)) {
+    return {
+      ...user,
+      activeTenantId: null,
+      tenantId: undefined,
+      orgId: null,
+      selectedTenantId: null,
+      selectedTenantName: null,
+      actingAsTenant: false,
+      sessionScopeType: 'platform' as const,
+    }
+  }
+
+  return {
+    ...user,
+    selectedTenantId: user.actingAsTenant ? user.selectedTenantId ?? null : null,
+    selectedTenantName: user.actingAsTenant ? user.selectedTenantName ?? null : null,
+  }
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -163,18 +204,26 @@ export const useAuthStore = create<AuthState>()(
           ...(persistedState as Partial<AuthState>),
         }
 
+        const normalizedUser = hydratedState.user
+          ? normalizeAuthenticatedUser(hydratedState.user as CPOUser | AuthenticatedApiUser)
+          : null
+
         return {
           ...hydratedState,
-          user: hydratedState.user ? normalizeAuthenticatedUser(hydratedState.user as CPOUser | AuthenticatedApiUser) : null,
+          user: sanitizePersistedUser(normalizedUser),
         }
       },
-      partialize: (s) => ({
-        activeTenantId: isPlatformSessionWithoutTenantContext(s.user) ? null : s.activeTenantId,
-        user: s.user,
-        token: s.token,
-        refreshToken: s.refreshToken,
-        isAuthenticated: s.isAuthenticated,
-      }),
+      partialize: (s) => {
+        const persistedUser = sanitizePersistedUser(s.user)
+
+        return {
+          activeTenantId: isPlatformSessionWithoutTenantContext(persistedUser) ? null : s.activeTenantId,
+          user: persistedUser,
+          token: s.token,
+          refreshToken: s.refreshToken,
+          isAuthenticated: s.isAuthenticated,
+        }
+      },
     },
   ),
 )
