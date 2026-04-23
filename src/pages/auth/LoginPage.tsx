@@ -10,11 +10,11 @@ import type {
   PasskeyLoginVerifyRequest,
 } from '@/core/types/mockApi'
 import { useBranding } from '@/core/branding/useBranding'
-import { LOGO_PATHS } from '@/utils/assets'
-import { Eye, EyeOff, KeyRound, Lock, Mail, ShieldCheck, Zap } from 'lucide-react'
+import { Eye, EyeOff, KeyRound, Lock, Mail, ShieldCheck } from 'lucide-react'
 
 type LoadingMode = 'passkey' | 'password'
 type PasswordMfaMethod = 'totp' | 'recovery'
+const DEFAULT_LOGIN_LOGO_PATH = '/assets/logos/evzone-charging-landscape.png'
 
 function browserSupportsPasskeys(): boolean {
   return (
@@ -67,7 +67,7 @@ export function LoginPage() {
   const { setUser } = useAuthStore()
   const { branding } = useBranding()
   const navigate = useNavigate()
-  const logoUrl = branding.branding.logoUrl || LOGO_PATHS.cpms
+  const logoUrl = branding.branding.logoUrl || DEFAULT_LOGIN_LOGO_PATH
 
   const applySuccessfulAuth = (auth: LoginResponse): void => {
     const bearerToken = auth.accessToken ?? auth.token
@@ -196,22 +196,13 @@ export function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#f4f6f8] px-4 py-8">
-      <div className="w-full max-w-sm rounded-[24px] border border-slate-200 bg-white px-6 py-8 shadow-[0_24px_60px_-40px_rgba(15,23,42,0.55)] sm:px-8">
+      <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          {branding.branding.logoUrl ? (
-            <img
-              src={logoUrl}
-              alt={shortBrandName}
-              className="mx-auto mb-5 h-14 object-contain"
-            />
-          ) : (
-            <div
-              className="mx-auto mb-5 inline-flex h-14 w-14 items-center justify-center rounded-2xl"
-              style={{ background: 'var(--accent)' }}
-            >
-              <Zap size={28} color="var(--accent-ink)" />
-            </div>
-          )}
+          <img
+            src={logoUrl}
+            alt={shortBrandName}
+            className="mx-auto mb-5 h-auto w-full max-w-[340px] object-contain"
+          />
           <h1 className="text-[2rem] font-extrabold leading-tight text-slate-900">
             Sign into {shortBrandName} Hub
           </h1>
@@ -244,20 +235,10 @@ export function LoginPage() {
           </div>
 
           <div>
-            <div className="mb-2 flex items-center justify-between">
+            <div className="mb-2">
               <label htmlFor="login-password" className="block text-sm font-semibold text-slate-700">
                 Password
               </label>
-              {forgotPasswordHref ? (
-                <a
-                  href={forgotPasswordHref}
-                  className="text-xs font-semibold text-amber-500 transition hover:text-amber-600"
-                >
-                  Forgot?
-                </a>
-              ) : (
-                <span className="text-xs font-semibold text-slate-400">Forgot?</span>
-              )}
             </div>
             <div className="relative">
               <Lock
@@ -281,6 +262,18 @@ export function LoginPage() {
               >
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
+            </div>
+            <div className="mt-2 flex justify-end">
+              {forgotPasswordHref ? (
+                <a
+                  href={forgotPasswordHref}
+                  className="text-xs font-semibold text-amber-500 transition hover:text-amber-600"
+                >
+                  Forgot Password
+                </a>
+              ) : (
+                <span className="text-xs font-semibold text-slate-400">Forgot Password</span>
+              )}
             </div>
           </div>
 
