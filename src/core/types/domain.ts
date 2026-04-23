@@ -358,6 +358,8 @@ export interface CPOUser {
   createdAt?: string
   mfaEnabled?: boolean
   mfaRequired?: boolean
+  twoFactorEnabled?: boolean
+  mfaSetupRequired?: boolean
   providerId?: string | null
   region?: string | null
   zoneId?: string | null

@@ -1,15 +1,17 @@
 import type { ReactNode } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import {
   canAccessPolicy,
   getRoleHomePath,
   getTemporaryAccessWindowLabel,
   isTemporaryAccessExpired,
   isTenantActivationPendingForUser,
+  requiresMfaSetup,
   type AccessPolicyKey,
 } from '@/core/auth/access'
 import { useAuthStore } from '@/core/auth/authStore'
 import type { CPOUser } from '@/core/types/domain'
+import { PATHS } from '@/router/paths'
 
 function TemporaryAccessExpiredNotice({ user }: { user: CPOUser | null }) {
   const stationLabel = user?.activeStationContext?.stationName ?? user?.activeStationContext?.stationId ?? 'your assigned station'
@@ -42,10 +44,28 @@ function TenantAccountNotActivatedNotice() {
   )
 }
 
-export function RequireAuth({ children, policy }: { children: ReactNode; policy?: AccessPolicyKey }) {
+export function RequireAuth({
+  children,
+  policy,
+  allowMfaSetupBypass = false,
+}: {
+  children: ReactNode
+  policy?: AccessPolicyKey
+  allowMfaSetupBypass?: boolean
+}) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const user = useAuthStore((state) => state.user)
+  const location = useLocation()
   if (!isAuthenticated) return <Navigate to="/login" replace />
+  if (requiresMfaSetup(user) && !allowMfaSetupBypass) {
+    return (
+      <Navigate
+        to={PATHS.MFA_SETUP}
+        replace
+        state={{ from: location.pathname }}
+      />
+    )
+  }
   if (isTenantActivationPendingForUser(user)) {
     return <TenantAccountNotActivatedNotice />
   }
@@ -61,6 +81,12 @@ export function RequireAuth({ children, policy }: { children: ReactNode; policy?
 export function RequireGuest({ children }: { children: ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated)
   const user = useAuthStore((state) => state.user)
-  if (isAuthenticated) return <Navigate to={getRoleHomePath(user)} replace />
+  if (isAuthenticated) {
+    if (requiresMfaSetup(user)) {
+      return <Navigate to={PATHS.MFA_SETUP} replace />
+    }
+
+    return <Navigate to={getRoleHomePath(user)} replace />
+  }
   return <>{children}</>
 }

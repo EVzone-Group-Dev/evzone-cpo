@@ -127,7 +127,7 @@ function authorize(request: Request, policy: AccessPolicyKey): AccessResult {
 }
 
 function loginResolver(request: Request) {
-  return request.json().then(({ email, password }) => {
+  return request.json().then(({ email, password, otpCode, otpChannel }) => {
     const auth = authenticateDemoUser(email, password);
     if (!auth) {
       if (isDemoLoginBlockedByCredentials(email, password)) {
@@ -141,6 +141,67 @@ function loginResolver(request: Request) {
         { status: 401 },
       );
     }
+
+    auth.user.mfaSetupRequired = Boolean(
+      auth.user.mfaSetupRequired
+      ?? (!auth.user.mfaRequired && !auth.user.twoFactorEnabled),
+    );
+
+    const otpBackedMfa =
+      auth.user.mfaRequired === true && auth.user.twoFactorEnabled !== true;
+    if (otpBackedMfa) {
+      const providedOtpCode =
+        typeof otpCode === "string" ? otpCode.trim() : "";
+      const requestedChannel: "email" | "sms" =
+        otpChannel === "sms" ? "sms" : "email";
+
+      if (!providedOtpCode) {
+        if (requestedChannel === "email" && !auth.user.email) {
+          return HttpResponse.json(
+            { message: "Email OTP is unavailable for this account." },
+            { status: 400 },
+          );
+        }
+
+        if (requestedChannel === "sms" && !auth.user.phone) {
+          return HttpResponse.json(
+            { message: "SMS OTP is unavailable for this account." },
+            { status: 400 },
+          );
+        }
+
+        demoMfaSetupOtpChallenges.set(auth.user.id, {
+          code: "123456",
+          channel: requestedChannel,
+          expiresAtMs: Date.now() + 5 * 60 * 1000,
+        });
+
+        return HttpResponse.json(
+          {
+            message: `OTP verification is required. A code has been sent to your ${requestedChannel}.`,
+          },
+          { status: 401 },
+        );
+      }
+
+      const activeChallenge = demoMfaSetupOtpChallenges.get(auth.user.id);
+      if (!activeChallenge || activeChallenge.expiresAtMs < Date.now()) {
+        return HttpResponse.json(
+          { message: "OTP Expired" },
+          { status: 401 },
+        );
+      }
+
+      if (activeChallenge.code !== providedOtpCode) {
+        return HttpResponse.json(
+          { message: "Invalid OTP" },
+          { status: 401 },
+        );
+      }
+
+      demoMfaSetupOtpChallenges.delete(auth.user.id);
+    }
+
     return HttpResponse.json(auth);
   });
 }
@@ -149,6 +210,10 @@ const demoPasskeyLoginChallenges = new Map<
   string,
   { email: string; expiresAtMs: number }
 >();
+const demoMfaSetupOtpChallenges = new Map<
+  string,
+  { code: string; channel: "email" | "sms"; expiresAtMs: number }
+>();
 
 function createDemoPasskeyChallengeId() {
   return `demo-passkey-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -156,6 +221,24 @@ function createDemoPasskeyChallengeId() {
 
 function createDemoWebAuthnChallenge() {
   return `demo-webauthn-${Math.random().toString(36).slice(2, 14)}`;
+}
+
+function maskOtpDestination(
+  channel: "email" | "sms",
+  destination: string,
+): string {
+  const value = destination.trim();
+
+  if (channel === "email") {
+    const [localPartRaw, domainRaw] = value.split("@");
+    const localPart = localPartRaw || "";
+    const domain = domainRaw || "";
+    const visibleLocal = localPart.slice(0, 2);
+    return domain ? `${visibleLocal}***@${domain}` : `${visibleLocal}***`;
+  }
+
+  const digits = value.replace(/\D/g, "");
+  return digits.length > 4 ? `***${digits.slice(-4)}` : `***${digits}`;
 }
 
 const REFERENCE_COUNTRIES = [
@@ -321,6 +404,240 @@ export const handlers = [
 
   http.post("/api/v1/auth/login", ({ request }) => loginResolver(request)),
   http.post("/api/auth/login", ({ request }) => loginResolver(request)),
+  http.post("/api/v1/auth/mfa/setup/otp/send", async ({ request }) => {
+    const access = getRequestAccess(request);
+    if (!access) {
+      return unauthorized();
+    }
+
+    const body = await readJsonBody<{ channel?: "email" | "sms" }>(request);
+    const requestedChannel = body.channel === "sms" ? "sms" : "email";
+
+    if (requestedChannel === "email" && !access.user.email) {
+      return HttpResponse.json(
+        { message: "Email OTP is unavailable for this account." },
+        { status: 400 },
+      );
+    }
+
+    if (requestedChannel === "sms" && !access.user.phone) {
+      return HttpResponse.json(
+        { message: "SMS OTP is unavailable for this account." },
+        { status: 400 },
+      );
+    }
+
+    demoMfaSetupOtpChallenges.set(access.user.id, {
+      code: "123456",
+      channel: requestedChannel,
+      expiresAtMs: Date.now() + 5 * 60 * 1000,
+    });
+
+    const destination =
+      requestedChannel === "email" ? access.user.email ?? "" : access.user.phone ?? "";
+
+    return HttpResponse.json({
+      success: true,
+      channel: requestedChannel,
+      destination: maskOtpDestination(requestedChannel, destination),
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+    });
+  }),
+  http.post("/api/auth/mfa/setup/otp/send", async ({ request }) => {
+    const access = getRequestAccess(request);
+    if (!access) {
+      return unauthorized();
+    }
+
+    const body = await readJsonBody<{ channel?: "email" | "sms" }>(request);
+    const requestedChannel = body.channel === "sms" ? "sms" : "email";
+
+    if (requestedChannel === "email" && !access.user.email) {
+      return HttpResponse.json(
+        { message: "Email OTP is unavailable for this account." },
+        { status: 400 },
+      );
+    }
+
+    if (requestedChannel === "sms" && !access.user.phone) {
+      return HttpResponse.json(
+        { message: "SMS OTP is unavailable for this account." },
+        { status: 400 },
+      );
+    }
+
+    demoMfaSetupOtpChallenges.set(access.user.id, {
+      code: "123456",
+      channel: requestedChannel,
+      expiresAtMs: Date.now() + 5 * 60 * 1000,
+    });
+
+    const destination =
+      requestedChannel === "email" ? access.user.email ?? "" : access.user.phone ?? "";
+
+    return HttpResponse.json({
+      success: true,
+      channel: requestedChannel,
+      destination: maskOtpDestination(requestedChannel, destination),
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+    });
+  }),
+  http.post("/api/v1/auth/mfa/setup/otp/verify", async ({ request }) => {
+    const access = getRequestAccess(request);
+    if (!access) {
+      return unauthorized();
+    }
+
+    const body = await readJsonBody<{ code?: string }>(request);
+    const code = body.code?.trim() ?? "";
+    if (!code) {
+      return HttpResponse.json({ message: "OTP code is required." }, { status: 400 });
+    }
+
+    const challenge = demoMfaSetupOtpChallenges.get(access.user.id);
+    if (!challenge || challenge.expiresAtMs < Date.now()) {
+      return HttpResponse.json({ message: "OTP Expired" }, { status: 401 });
+    }
+
+    if (challenge.code !== code) {
+      return HttpResponse.json({ message: "Invalid OTP" }, { status: 401 });
+    }
+
+    demoMfaSetupOtpChallenges.delete(access.user.id);
+    updateDemoUserMfaRequirement(access, true, {
+      mfaSetupRequired: false,
+      twoFactorEnabled: false,
+    });
+
+    return HttpResponse.json({
+      success: true,
+      message: "OTP-based MFA is now enabled",
+    });
+  }),
+  http.post("/api/auth/mfa/setup/otp/verify", async ({ request }) => {
+    const access = getRequestAccess(request);
+    if (!access) {
+      return unauthorized();
+    }
+
+    const body = await readJsonBody<{ code?: string }>(request);
+    const code = body.code?.trim() ?? "";
+    if (!code) {
+      return HttpResponse.json({ message: "OTP code is required." }, { status: 400 });
+    }
+
+    const challenge = demoMfaSetupOtpChallenges.get(access.user.id);
+    if (!challenge || challenge.expiresAtMs < Date.now()) {
+      return HttpResponse.json({ message: "OTP Expired" }, { status: 401 });
+    }
+
+    if (challenge.code !== code) {
+      return HttpResponse.json({ message: "Invalid OTP" }, { status: 401 });
+    }
+
+    demoMfaSetupOtpChallenges.delete(access.user.id);
+    updateDemoUserMfaRequirement(access, true, {
+      mfaSetupRequired: false,
+      twoFactorEnabled: false,
+    });
+
+    return HttpResponse.json({
+      success: true,
+      message: "OTP-based MFA is now enabled",
+    });
+  }),
+  http.post("/api/v1/auth/2fa/generate", async ({ request }) => {
+    const access = getRequestAccess(request);
+    if (!access) {
+      return unauthorized();
+    }
+
+    const body = await readJsonBody<{ currentPassword?: string }>(request);
+    const currentPassword = body.currentPassword?.trim() ?? "";
+    if (!currentPassword || currentPassword !== access.demoUser.password) {
+      return HttpResponse.json(
+        { message: "Invalid current password" },
+        { status: 401 },
+      );
+    }
+
+    return HttpResponse.json({
+      qrCodeUrl:
+        "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNjAiIGhlaWdodD0iMTYwIj48cmVjdCB3aWR0aD0iMTYwIiBoZWlnaHQ9IjE2MCIgZmlsbD0iI2Y4ZmFmYyIvPjx0ZXh0IHg9IjgwIiB5PSI4MCIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzMzNDI1NSI+REVNTyBRUjwvdGV4dD48L3N2Zz4=",
+      secret: "DEMO-2FA-SECRET",
+    });
+  }),
+  http.post("/api/auth/2fa/generate", async ({ request }) => {
+    const access = getRequestAccess(request);
+    if (!access) {
+      return unauthorized();
+    }
+
+    const body = await readJsonBody<{ currentPassword?: string }>(request);
+    const currentPassword = body.currentPassword?.trim() ?? "";
+    if (!currentPassword || currentPassword !== access.demoUser.password) {
+      return HttpResponse.json(
+        { message: "Invalid current password" },
+        { status: 401 },
+      );
+    }
+
+    return HttpResponse.json({
+      qrCodeUrl:
+        "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNjAiIGhlaWdodD0iMTYwIj48cmVjdCB3aWR0aD0iMTYwIiBoZWlnaHQ9IjE2MCIgZmlsbD0iI2Y4ZmFmYyIvPjx0ZXh0IHg9IjgwIiB5PSI4MCIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzMzNDI1NSI+REVNTyBRUjwvdGV4dD48L3N2Zz4=",
+      secret: "DEMO-2FA-SECRET",
+    });
+  }),
+  http.post("/api/v1/auth/2fa/verify", async ({ request }) => {
+    const access = getRequestAccess(request);
+    if (!access) {
+      return unauthorized();
+    }
+
+    const body = await readJsonBody<{ token?: string }>(request);
+    const token = body.token?.trim() ?? "";
+    if (token !== "123456") {
+      return HttpResponse.json(
+        { message: "Invalid 2FA token" },
+        { status: 400 },
+      );
+    }
+
+    updateDemoUserMfaRequirement(access, true, {
+      mfaSetupRequired: false,
+      twoFactorEnabled: true,
+    });
+
+    return HttpResponse.json({
+      success: true,
+      message: "2FA enabled successfully",
+    });
+  }),
+  http.post("/api/auth/2fa/verify", async ({ request }) => {
+    const access = getRequestAccess(request);
+    if (!access) {
+      return unauthorized();
+    }
+
+    const body = await readJsonBody<{ token?: string }>(request);
+    const token = body.token?.trim() ?? "";
+    if (token !== "123456") {
+      return HttpResponse.json(
+        { message: "Invalid 2FA token" },
+        { status: 400 },
+      );
+    }
+
+    updateDemoUserMfaRequirement(access, true, {
+      mfaSetupRequired: false,
+      twoFactorEnabled: true,
+    });
+
+    return HttpResponse.json({
+      success: true,
+      message: "2FA enabled successfully",
+    });
+  }),
 
   http.post("/api/v1/auth/mfa/passkeys/login/options", async ({ request }) => {
     const body = await readJsonBody<{ email?: string }>(request);

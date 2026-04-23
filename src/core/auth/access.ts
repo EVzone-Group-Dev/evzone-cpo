@@ -199,6 +199,9 @@ type AccessAwareUser =
       | "actingAsTenant"
       | "selectedTenantId"
       | "tenantActivated"
+      | "mfaRequired"
+      | "twoFactorEnabled"
+      | "mfaSetupRequired"
     >
   | {
       role?: string | null;
@@ -208,6 +211,9 @@ type AccessAwareUser =
       actingAsTenant?: boolean;
       selectedTenantId?: string | null;
       tenantActivated?: boolean;
+      mfaRequired?: boolean;
+      twoFactorEnabled?: boolean;
+      mfaSetupRequired?: boolean;
       activeStationContext?: {
         stationId?: string | null;
         stationName?: string | null;
@@ -751,6 +757,8 @@ export function normalizeAuthenticatedUser<
     legacyRole,
     assignedStationIds,
     createdAt: user.createdAt ?? "",
+    twoFactorEnabled:
+      "twoFactorEnabled" in user ? Boolean(user.twoFactorEnabled) : false,
     mfaEnabled:
       user.mfaEnabled ??
       ("mfaRequired" in user && typeof user.mfaRequired === "boolean"
@@ -761,6 +769,10 @@ export function normalizeAuthenticatedUser<
       "mfaRequired" in user && typeof user.mfaRequired === "boolean"
         ? user.mfaRequired
         : Boolean(user.mfaEnabled),
+    mfaSetupRequired:
+      "mfaSetupRequired" in user && typeof user.mfaSetupRequired === "boolean"
+        ? user.mfaSetupRequired
+        : false,
     tenantId: normalizedTenantId ?? undefined,
     orgId: normalizedOrganizationId,
     activeTenantId: normalizedActiveTenantId,
@@ -790,6 +802,14 @@ export function normalizeAuthenticatedUser<
 export function getResolvedUserRole(user?: AccessAwareUser) {
   if (!user) return null;
   return normalizeUserRole(user.role ?? null, user.accessProfile ?? null);
+}
+
+export function requiresMfaSetup(user?: AccessAwareUser): boolean {
+  if (!user) {
+    return false;
+  }
+
+  return user.mfaSetupRequired === true;
 }
 
 export function getCanonicalUserRole(user?: AccessAwareUser) {

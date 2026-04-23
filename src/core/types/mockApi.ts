@@ -40,6 +40,7 @@ export type AuthenticatedApiUser = Omit<CPOUser, "role"> & {
   role: string;
   twoFactorEnabled?: boolean;
   mfaRequired?: boolean;
+  mfaSetupRequired?: boolean;
   accessProfile?: AccessProfile | null;
 };
 

@@ -1,7 +1,7 @@
 import { startAuthentication } from '@simplewebauthn/browser'
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getRoleHomePath } from '@/core/auth/access'
+import { getRoleHomePath, requiresMfaSetup } from '@/core/auth/access'
 import { useAuthStore } from '@/core/auth/authStore'
 import { fetchJson } from '@/core/api/fetchJson'
 import type {
@@ -10,10 +10,12 @@ import type {
   PasskeyLoginVerifyRequest,
 } from '@/core/types/mockApi'
 import { useBranding } from '@/core/branding/useBranding'
+import { PATHS } from '@/router/paths'
 import { Eye, EyeOff, KeyRound, Lock, Mail, ShieldCheck } from 'lucide-react'
 
 type LoadingMode = 'passkey' | 'password'
-type PasswordMfaMethod = 'totp' | 'recovery'
+type PasswordMfaMethod = 'otp' | 'totp' | 'recovery'
+type OtpChannel = 'email' | 'sms'
 const DEFAULT_LOGIN_LOGO_PATH = '/assets/logos/evzone-charging-landscape.png'
 
 function browserSupportsPasskeys(): boolean {
@@ -36,6 +38,10 @@ function messageIndicatesPasskey(message: string): boolean {
   return message.toLowerCase().includes('passkey verification is required')
 }
 
+function messageIndicatesOtpStep(message: string): boolean {
+  return message.toLowerCase().includes('otp verification is required')
+}
+
 function extractErrorMessage(error: unknown): string {
   if (error instanceof Error) {
     if (error.message.includes('NotAllowedError')) {
@@ -56,9 +62,12 @@ export function LoginPage() {
   const passkeySupported = browserSupportsPasskeys()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [otpCode, setOtpCode] = useState('')
+  const [otpChannel, setOtpChannel] = useState<OtpChannel>('email')
   const [showPassword, setShowPassword] = useState(false)
   const [twoFactorToken, setTwoFactorToken] = useState('')
   const [recoveryCode, setRecoveryCode] = useState('')
+  const [otpMethodAvailable, setOtpMethodAvailable] = useState(false)
   const [passwordMfaMethod, setPasswordMfaMethod] =
     useState<PasswordMfaMethod>('totp')
   const [showPasswordMfaFields, setShowPasswordMfaFields] = useState(false)
@@ -76,7 +85,10 @@ export function LoginPage() {
     }
 
     setUser(auth.user, bearerToken, auth.refreshToken ?? null)
-    navigate(getRoleHomePath(auth.user), { replace: true })
+    navigate(
+      requiresMfaSetup(auth.user) ? PATHS.MFA_SETUP : getRoleHomePath(auth.user),
+      { replace: true },
+    )
   }
 
   const handlePasswordLogin = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
@@ -88,6 +100,8 @@ export function LoginPage() {
       const payload: {
         email: string
         password: string
+        otpCode?: string
+        otpChannel?: OtpChannel
         twoFactorToken?: string
         recoveryCode?: string
       } = {
@@ -96,6 +110,13 @@ export function LoginPage() {
       }
 
       if (showPasswordMfaFields) {
+        if (passwordMfaMethod === 'otp') {
+          payload.otpChannel = otpChannel
+          if (otpCode.trim().length > 0) {
+            payload.otpCode = otpCode.trim()
+          }
+        }
+
         if (passwordMfaMethod === 'totp' && twoFactorToken.trim().length > 0) {
           payload.twoFactorToken = twoFactorToken.trim()
         }
@@ -119,7 +140,16 @@ export function LoginPage() {
       applySuccessfulAuth(auth)
     } catch (err) {
       const message = extractErrorMessage(err)
+      if (messageIndicatesOtpStep(message)) {
+        setOtpMethodAvailable(true)
+        setPasswordMfaMethod('otp')
+        setShowPasswordMfaFields(true)
+      }
       if (messageIndicatesMfaStep(message)) {
+        setOtpMethodAvailable(false)
+        if (passwordMfaMethod === 'otp') {
+          setPasswordMfaMethod('totp')
+        }
         setShowPasswordMfaFields(true)
       }
       if (messageIndicatesPasskey(message) && passkeySupported) {
@@ -284,6 +314,15 @@ export function LoginPage() {
                 Additional verification is required
               </div>
               <div className="flex gap-2">
+                {otpMethodAvailable && (
+                  <button
+                    type="button"
+                    className={`btn ${passwordMfaMethod === 'otp' ? 'primary' : 'secondary'} h-8 text-xs`}
+                    onClick={() => setPasswordMfaMethod('otp')}
+                  >
+                    OTP code
+                  </button>
+                )}
                 <button
                   type="button"
                   className={`btn ${passwordMfaMethod === 'totp' ? 'primary' : 'secondary'} h-8 text-xs`}
@@ -300,7 +339,41 @@ export function LoginPage() {
                 </button>
               </div>
 
-              {passwordMfaMethod === 'totp' ? (
+              {passwordMfaMethod === 'otp' ? (
+                <div className="space-y-2">
+                  <div>
+                    <label htmlFor="login-otp-channel" className="mb-1 block text-xs font-semibold text-slate-600">
+                      OTP Delivery Channel
+                    </label>
+                    <select
+                      id="login-otp-channel"
+                      className="input"
+                      value={otpChannel}
+                      onChange={(event) => setOtpChannel(event.target.value as OtpChannel)}
+                    >
+                      <option value="email">Email</option>
+                      <option value="sms">SMS</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="login-otp-code" className="mb-1 block text-xs font-semibold text-slate-600">
+                      OTP Code
+                    </label>
+                    <input
+                      id="login-otp-code"
+                      type="text"
+                      className="input"
+                      value={otpCode}
+                      onChange={(event) => setOtpCode(event.target.value)}
+                      placeholder="123456"
+                      inputMode="numeric"
+                    />
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Submit login once to request a code, then submit again with the code.
+                  </p>
+                </div>
+              ) : passwordMfaMethod === 'totp' ? (
                 <div>
                   <label htmlFor="login-otp" className="mb-1 block text-xs font-semibold text-slate-600">
                     Authenticator Code

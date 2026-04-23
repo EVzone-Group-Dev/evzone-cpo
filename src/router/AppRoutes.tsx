@@ -9,6 +9,11 @@ import { PATHS } from "./paths";
 const LoginPage = lazy(() =>
   import("@/pages/auth/LoginPage").then((m) => ({ default: m.LoginPage })),
 );
+const MfaSetupPage = lazy(() =>
+  import("@/pages/auth/MfaSetupPage").then((m) => ({
+    default: m.MfaSetupPage,
+  })),
+);
 const DashboardPage = lazy(() =>
   import("@/pages/dashboard/DashboardPage").then((m) => ({
     default: m.DashboardPage,
@@ -268,6 +273,14 @@ export function AppRoutes() {
             <RequireGuest>
               <LoginPage />
             </RequireGuest>
+          }
+        />
+        <Route
+          path={PATHS.MFA_SETUP}
+          element={
+            <RequireAuth allowMfaSetupBypass>
+              <MfaSetupPage />
+            </RequireAuth>
           }
         />
 

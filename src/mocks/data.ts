@@ -4898,12 +4898,21 @@ export function updateDemoUserProfile(
 export function updateDemoUserMfaRequirement(
   access: ResolvedDemoAccess | null,
   required: boolean,
+  options?: {
+    mfaSetupRequired?: boolean
+    twoFactorEnabled?: boolean
+  },
 ) {
   if (!access) {
     return null
   }
 
   access.demoUser.user.mfaEnabled = required
+  access.demoUser.user.mfaRequired = required
+  access.demoUser.user.mfaSetupRequired = options?.mfaSetupRequired ?? false
+  if (typeof options?.twoFactorEnabled === 'boolean') {
+    access.demoUser.user.twoFactorEnabled = options.twoFactorEnabled
+  }
 
   return buildDemoUserSession(
     access.demoUser,

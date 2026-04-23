@@ -105,6 +105,9 @@ export function mergeAuthUser(currentUser: CPOUser | null, incomingUser: CPOUser
     activeStationContext: incomingUser.activeStationContext ?? currentUser.activeStationContext ?? null,
     assignedStationIds: incomingUser.assignedStationIds ?? currentUser.assignedStationIds,
     mfaEnabled: incomingUser.mfaEnabled ?? currentUser.mfaEnabled,
+    mfaRequired: incomingUser.mfaRequired ?? currentUser.mfaRequired,
+    twoFactorEnabled: incomingUser.twoFactorEnabled ?? currentUser.twoFactorEnabled,
+    mfaSetupRequired: incomingUser.mfaSetupRequired ?? currentUser.mfaSetupRequired,
     createdAt: incomingUser.createdAt ?? currentUser.createdAt,
   }
 

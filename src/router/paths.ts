@@ -1,6 +1,7 @@
 export const PATHS = {
   HOME: "/",
   LOGIN: "/login",
+  MFA_SETUP: "/auth/mfa-setup",
   DASHBOARD: "/dashboard",
   DASHBOARD_SUPER_ADMIN: "/dashboard/super-admin",
   DASHBOARD_CPO_ADMIN: "/dashboard/cpo-admin",
