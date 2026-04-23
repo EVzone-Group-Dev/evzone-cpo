@@ -11,9 +11,9 @@ import type {
 } from '@/core/types/mockApi'
 import { useBranding } from '@/core/branding/useBranding'
 import { LOGO_PATHS } from '@/utils/assets'
-import { ShieldCheck, Zap } from 'lucide-react'
+import { Eye, EyeOff, KeyRound, Lock, Mail, ShieldCheck, Zap } from 'lucide-react'
 
-type LoginMode = 'passkey' | 'password'
+type LoadingMode = 'passkey' | 'password'
 type PasswordMfaMethod = 'totp' | 'recovery'
 
 function browserSupportsPasskeys(): boolean {
@@ -54,24 +54,22 @@ function extractErrorMessage(error: unknown): string {
 
 export function LoginPage() {
   const passkeySupported = browserSupportsPasskeys()
-  const [loginMode, setLoginMode] = useState<LoginMode>(
-    passkeySupported ? 'passkey' : 'password',
-  )
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [twoFactorToken, setTwoFactorToken] = useState('')
   const [recoveryCode, setRecoveryCode] = useState('')
   const [passwordMfaMethod, setPasswordMfaMethod] =
     useState<PasswordMfaMethod>('totp')
   const [showPasswordMfaFields, setShowPasswordMfaFields] = useState(false)
   const [error, setError] = useState('')
-  const [loadingMode, setLoadingMode] = useState<LoginMode | null>(null)
+  const [loadingMode, setLoadingMode] = useState<LoadingMode | null>(null)
   const { setUser } = useAuthStore()
   const { branding } = useBranding()
   const navigate = useNavigate()
   const logoUrl = branding.branding.logoUrl || LOGO_PATHS.cpms
 
-  const applySuccessfulAuth = (auth: LoginResponse) => {
+  const applySuccessfulAuth = (auth: LoginResponse): void => {
     const bearerToken = auth.accessToken ?? auth.token
     if (!bearerToken) {
       throw new Error('Login response missing access token.')
@@ -81,7 +79,7 @@ export function LoginPage() {
     navigate(getRoleHomePath(auth.user), { replace: true })
   }
 
-  const handlePasswordLogin = async (e: FormEvent) => {
+  const handlePasswordLogin = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault()
     setError('')
     setLoadingMode('password')
@@ -125,16 +123,16 @@ export function LoginPage() {
         setShowPasswordMfaFields(true)
       }
       if (messageIndicatesPasskey(message) && passkeySupported) {
-        setLoginMode('passkey')
+        setError('Passkey verification is required. Use "Sign in with Passkey".')
+      } else {
+        setError(message)
       }
-      setError(message)
     } finally {
       setLoadingMode(null)
     }
   }
 
-  const handlePasskeyLogin = async (e: FormEvent) => {
-    e.preventDefault()
+  const handlePasskeyLogin = async (): Promise<void> => {
     setError('')
     setLoadingMode('passkey')
 
@@ -187,181 +185,211 @@ export function LoginPage() {
     }
   }
 
-  return (
-    <div
-      className="min-h-screen flex items-center justify-center p-4"
-      style={{ background: 'var(--bg)' }}
-    >
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div
-          className="absolute -top-40 -left-40 w-96 h-96 rounded-full opacity-5"
-          style={{
-            background: 'radial-gradient(circle, var(--accent), transparent)',
-          }}
-        />
-        <div
-          className="absolute -bottom-40 -right-40 w-96 h-96 rounded-full opacity-5"
-          style={{ background: 'radial-gradient(circle, var(--info), transparent)' }}
-        />
-      </div>
+  const shortBrandName = branding.branding.shortName?.trim() || branding.branding.appName
+  const supportEmail = branding.support.email?.trim() ?? ''
+  const forgotPasswordHref =
+    supportEmail.length > 0
+      ? `mailto:${supportEmail}?subject=${encodeURIComponent('Password reset request')}`
+      : null
+  const submittingPassword = loadingMode === 'password'
+  const submittingPasskey = loadingMode === 'passkey'
 
-      <div className="w-full max-w-sm relative">
-        <div className="text-center mb-8">
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-[#f4f6f8] px-4 py-8">
+      <div className="w-full max-w-sm rounded-[24px] border border-slate-200 bg-white px-6 py-8 shadow-[0_24px_60px_-40px_rgba(15,23,42,0.55)] sm:px-8">
+        <div className="mb-8 text-center">
           {branding.branding.logoUrl ? (
             <img
               src={logoUrl}
-              alt={branding.branding.shortName}
-              className="h-14 mx-auto mb-4 object-contain"
+              alt={shortBrandName}
+              className="mx-auto mb-5 h-14 object-contain"
             />
           ) : (
             <div
-              className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4"
+              className="mx-auto mb-5 inline-flex h-14 w-14 items-center justify-center rounded-2xl"
               style={{ background: 'var(--accent)' }}
             >
               <Zap size={28} color="var(--accent-ink)" />
             </div>
           )}
-          <h1 className="text-2xl font-extrabold" style={{ color: 'var(--text)' }}>
-            {branding.branding.appName}
+          <h1 className="text-[2rem] font-extrabold leading-tight text-slate-900">
+            Sign into {shortBrandName} Hub
           </h1>
-          <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
-            {branding.support.email
-              ? `Support: ${branding.support.email}`
-              : 'Charge Point Operator Platform'}
+          <p className="mt-1 text-sm text-slate-500">
+            Manage your charging stations anywhere
           </p>
         </div>
 
-        <div className="card space-y-4">
-          <div className="rounded-xl border border-border/70 bg-bg-muted/35 p-1">
-            <div className="grid grid-cols-2 gap-1">
-              <button
-                type="button"
-                className={`btn ${loginMode === 'passkey' ? 'primary' : 'secondary'} h-9 text-xs`}
-                onClick={() => setLoginMode('passkey')}
-                disabled={!passkeySupported}
-              >
-                Passkey
-              </button>
-              <button
-                type="button"
-                className={`btn ${loginMode === 'password' ? 'primary' : 'secondary'} h-9 text-xs`}
-                onClick={() => setLoginMode('password')}
-              >
-                Password + MFA
-              </button>
-            </div>
-          </div>
-
-          <form
-            onSubmit={loginMode === 'passkey' ? handlePasskeyLogin : handlePasswordLogin}
-            className="space-y-4"
-          >
-            <div>
-              <label className="form-label">Email Address</label>
+        <form onSubmit={handlePasswordLogin} className="space-y-4">
+          <div>
+            <label htmlFor="login-email" className="mb-2 block text-sm font-semibold text-slate-700">
+              Email
+            </label>
+            <div className="relative">
+              <Mail
+                size={16}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              />
               <input
+                id="login-email"
                 type="email"
-                className="input"
+                className="input h-11 rounded-xl border-slate-300 bg-slate-100/90 pl-10 text-sm text-slate-700 placeholder:text-slate-400 focus:border-emerald-400 focus:bg-white"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
+                placeholder="example@gmail.com"
                 required
                 autoFocus
               />
             </div>
+          </div>
 
-            {loginMode === 'password' && (
-              <>
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <label htmlFor="login-password" className="block text-sm font-semibold text-slate-700">
+                Password
+              </label>
+              {forgotPasswordHref ? (
+                <a
+                  href={forgotPasswordHref}
+                  className="text-xs font-semibold text-amber-500 transition hover:text-amber-600"
+                >
+                  Forgot?
+                </a>
+              ) : (
+                <span className="text-xs font-semibold text-slate-400">Forgot?</span>
+              )}
+            </div>
+            <div className="relative">
+              <Lock
+                size={16}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              />
+              <input
+                id="login-password"
+                type={showPassword ? 'text' : 'password'}
+                className="input h-11 rounded-xl border-slate-300 bg-slate-100/90 pl-10 pr-11 text-sm text-slate-700 placeholder:text-slate-400 focus:border-emerald-400 focus:bg-white"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="********"
+                required
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-600"
+                onClick={() => setShowPassword((current) => !current)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+          </div>
+
+          {showPasswordMfaFields && (
+            <div className="space-y-3 rounded-xl border border-emerald-200 bg-emerald-50/70 p-3">
+              <div className="flex items-center gap-2 text-xs font-semibold text-emerald-700">
+                <ShieldCheck size={14} />
+                Additional verification is required
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className={`btn ${passwordMfaMethod === 'totp' ? 'primary' : 'secondary'} h-8 text-xs`}
+                  onClick={() => setPasswordMfaMethod('totp')}
+                >
+                  Authenticator code
+                </button>
+                <button
+                  type="button"
+                  className={`btn ${passwordMfaMethod === 'recovery' ? 'primary' : 'secondary'} h-8 text-xs`}
+                  onClick={() => setPasswordMfaMethod('recovery')}
+                >
+                  Recovery code
+                </button>
+              </div>
+
+              {passwordMfaMethod === 'totp' ? (
                 <div>
-                  <label className="form-label">Password</label>
+                  <label htmlFor="login-otp" className="mb-1 block text-xs font-semibold text-slate-600">
+                    Authenticator Code
+                  </label>
                   <input
-                    type="password"
+                    id="login-otp"
+                    type="text"
                     className="input"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    required
+                    value={twoFactorToken}
+                    onChange={(event) => setTwoFactorToken(event.target.value)}
+                    placeholder="123456"
+                    inputMode="numeric"
                   />
                 </div>
+              ) : (
+                <div>
+                  <label
+                    htmlFor="login-recovery-code"
+                    className="mb-1 block text-xs font-semibold text-slate-600"
+                  >
+                    Recovery Code
+                  </label>
+                  <input
+                    id="login-recovery-code"
+                    type="text"
+                    className="input"
+                    value={recoveryCode}
+                    onChange={(event) => setRecoveryCode(event.target.value)}
+                    placeholder="ABCDE-12345"
+                  />
+                </div>
+              )}
+            </div>
+          )}
 
-                {showPasswordMfaFields && (
-                  <div className="space-y-3 rounded-xl border border-border/70 bg-bg-muted/25 p-3">
-                    <div className="flex items-center gap-2 text-xs text-subtle">
-                      <ShieldCheck size={14} />
-                      Additional verification is required
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        className={`btn ${passwordMfaMethod === 'totp' ? 'primary' : 'secondary'} h-8 text-xs`}
-                        onClick={() => setPasswordMfaMethod('totp')}
-                      >
-                        Authenticator code
-                      </button>
-                      <button
-                        type="button"
-                        className={`btn ${passwordMfaMethod === 'recovery' ? 'primary' : 'secondary'} h-8 text-xs`}
-                        onClick={() => setPasswordMfaMethod('recovery')}
-                      >
-                        Recovery code
-                      </button>
-                    </div>
+          {error && <div className="alert danger text-sm">{error}</div>}
 
-                    {passwordMfaMethod === 'totp' ? (
-                      <div>
-                        <label className="form-label">Authenticator Code</label>
-                        <input
-                          type="text"
-                          className="input"
-                          value={twoFactorToken}
-                          onChange={(event) => setTwoFactorToken(event.target.value)}
-                          placeholder="123456"
-                          inputMode="numeric"
-                        />
-                      </div>
-                    ) : (
-                      <div>
-                        <label className="form-label">Recovery Code</label>
-                        <input
-                          type="text"
-                          className="input"
-                          value={recoveryCode}
-                          onChange={(event) => setRecoveryCode(event.target.value)}
-                          placeholder="ABCDE-12345"
-                        />
-                      </div>
-                    )}
-                  </div>
-                )}
+          <button
+            type="submit"
+            className="mt-1 h-11 w-full rounded-xl text-sm font-semibold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
+            style={{
+              background: 'linear-gradient(135deg, #14C78B 0%, #12C197 100%)',
+              boxShadow: '0 12px 20px -14px rgba(20, 199, 139, 0.95)',
+            }}
+            disabled={loadingMode !== null}
+          >
+            {submittingPassword ? 'Signing in...' : 'Login'}
+          </button>
+
+          <div className="flex items-center gap-3 py-1">
+            <span className="h-px flex-1 bg-slate-200" />
+            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-400">OR</span>
+            <span className="h-px flex-1 bg-slate-200" />
+          </div>
+
+          <button
+            type="button"
+            className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+            onClick={() => {
+              void handlePasskeyLogin()
+            }}
+            disabled={loadingMode !== null || !passkeySupported}
+          >
+            {submittingPasskey ? (
+              'Verifying passkey...'
+            ) : (
+              <>
+                <KeyRound size={16} />
+                Sign in with Passkey
               </>
             )}
+          </button>
 
-            {error && <div className="alert danger text-sm">{error}</div>}
-
-            <button
-              type="submit"
-              className="btn primary w-full"
-              disabled={loadingMode !== null}
-            >
-              {loadingMode === 'passkey'
-                ? 'Verifying passkey...'
-                : loadingMode === 'password'
-                  ? 'Signing in...'
-                  : loginMode === 'passkey'
-                    ? 'Sign in with passkey'
-                    : 'Sign in with password'}
-            </button>
-
-            {loginMode === 'passkey' && !passkeySupported && (
-              <div className="text-xs text-warning">
-                Passkeys are not available in this browser. Use Password + MFA.
-              </div>
-            )}
-          </form>
-        </div>
+          {!passkeySupported && (
+            <div className="text-xs font-medium text-amber-600">
+              Passkeys are not available in this browser. Use email and password instead.
+            </div>
+          )}
+        </form>
 
         {(branding.legal.termsUrl || branding.legal.privacyUrl) && (
-          <div
-            className="mt-4 flex items-center justify-center gap-3 text-xs"
-            style={{ color: 'var(--text-muted)' }}
-          >
+          <div className="mt-6 flex items-center justify-center gap-3 text-xs text-slate-500">
             {branding.legal.termsUrl && (
               <a
                 href={branding.legal.termsUrl}
