@@ -9,7 +9,7 @@ import { useBranding } from '@/core/branding/useBranding'
 import { Bell, Globe2, LogOut, Menu, Search, Settings } from 'lucide-react'
 import { PATHS } from '@/router/paths'
 import { LOGO_PATHS } from '@/utils/assets'
-import { LocalizationModal } from '@/components/layout/LocalizationModal'
+import { LocalizationPopover } from '@/components/layout/LocalizationPopover'
 
 interface Props {
   children: ReactNode
@@ -36,7 +36,7 @@ export function DashboardLayout({ children, pageTitle, actions }: Props) {
   const temporaryAccessLabel = getTemporaryAccessWindowLabel(user)
   const hasTemporaryScope = isTemporaryScopeUser(user)
   const { branding } = useBranding()
-  const [isLocalizationModalOpen, setIsLocalizationModalOpen] = useState(false)
+  const [isLocalizationOpen, setIsLocalizationOpen] = useState(false)
   const headerLogoUrl = branding.branding.logoUrl || branding.branding.logoIconUrl || LOGO_PATHS.cpms
 
   useEffect(() => {
@@ -130,14 +130,20 @@ export function DashboardLayout({ children, pageTitle, actions }: Props) {
               </div>
             )}
             {actions}
-            <button 
-              type="button" 
-              className="btn ghost icon" 
-              title={t('common.localization')}
-              onClick={() => setIsLocalizationModalOpen(true)}
-            >
-              <Globe2 size={16} />
-            </button>
+            <div className="relative">
+              <button 
+                type="button" 
+                className={`btn icon ${isLocalizationOpen ? 'bg-[var(--accent-dim)] text-[var(--accent)] border-[var(--accent)]' : 'ghost'}`}
+                title={t('common.localization')}
+                onClick={() => setIsLocalizationOpen(!isLocalizationOpen)}
+              >
+                <Globe2 size={16} />
+              </button>
+              <LocalizationPopover 
+                isOpen={isLocalizationOpen} 
+                onClose={() => setIsLocalizationOpen(false)} 
+              />
+            </div>
             <Link to={PATHS.NOTIFICATIONS} className="btn ghost icon" title={t('common.notifications')}>
               <Bell size={16} />
             </Link>
@@ -239,10 +245,6 @@ export function DashboardLayout({ children, pageTitle, actions }: Props) {
           </main>
         </div>
       </div>
-      <LocalizationModal 
-        isOpen={isLocalizationModalOpen} 
-        onClose={() => setIsLocalizationModalOpen(false)} 
-      />
     </div>
   )
 }
