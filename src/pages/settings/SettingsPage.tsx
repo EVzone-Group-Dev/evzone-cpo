@@ -53,10 +53,10 @@ function SettingToggle({
   onChange: (next: boolean) => void
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 py-4 first:pt-0 last:pb-0">
-      <div>
-        <label htmlFor={id} className="text-sm font-semibold text-[var(--text)]">{label}</label>
-        <div className="text-[11px] text-[var(--text-subtle)] mt-0.5">{description}</div>
+    <div className="flex items-start justify-between gap-4 py-5 first:pt-0 last:pb-0">
+      <div className="flex-1 min-w-0">
+        <label htmlFor={id} className="text-sm font-bold text-[var(--text)]">{label}</label>
+        <div className="text-[11px] text-[var(--text-subtle)] mt-1 leading-relaxed">{description}</div>
       </div>
       <button
         id={id}
@@ -64,10 +64,10 @@ function SettingToggle({
         aria-checked={checked}
         aria-label={label}
         onClick={() => onChange(!checked)}
-        className={`relative inline-flex h-5 w-9 shrink-0 items-center justify-start rounded-full border transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${checked ? 'border-[var(--accent)] bg-[var(--accent)]' : 'border-[var(--border)] bg-[var(--bg-muted)]'}`}
+        className={`relative inline-flex h-6 w-11 shrink-0 items-center justify-start rounded-full border transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${checked ? 'border-[var(--accent)] bg-[var(--accent)] shadow-[0_0_15px_rgba(63,185,80,0.2)]' : 'border-[var(--border)] bg-[var(--bg-muted)]'}`}
       >
         <span
-          className={`inline-flex h-4 w-4 items-center justify-center rounded-full transition-transform duration-200 ${checked ? 'translate-x-4 bg-white shadow-sm' : 'translate-x-0.5 bg-[var(--text-subtle)]'}`}
+          className={`inline-flex h-5 w-5 items-center justify-center rounded-full transition-all duration-300 ease-out ${checked ? 'translate-x-5 bg-white shadow-md' : 'translate-x-0.5 bg-[var(--text-subtle)]/60'}`}
         />
       </button>
     </div>
@@ -76,13 +76,13 @@ function SettingToggle({
 
 function SectionHeader({ icon: Icon, title, description }: { icon: any, title: string, description?: string }) {
   return (
-    <div className="flex items-center gap-3 mb-6">
-      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--accent-dim)] text-[var(--accent)]">
-        <Icon size={18} />
+    <div className="flex items-center gap-4 mb-8">
+      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--accent-dim)] to-transparent border border-[var(--accent)]/10 text-[var(--accent)] shadow-sm">
+        <Icon size={20} />
       </div>
-      <div>
-        <h3 className="text-base font-bold text-[var(--text)]">{title}</h3>
-        {description && <p className="text-xs text-[var(--text-subtle)]">{description}</p>}
+      <div className="min-w-0 flex-1">
+        <h3 className="text-lg font-black tracking-tight text-[var(--text)]">{title}</h3>
+        {description && <p className="text-xs text-[var(--text-subtle)] font-medium">{description}</p>}
       </div>
     </div>
   )
@@ -223,93 +223,94 @@ export function SettingsPage() {
 
   return (
     <DashboardLayout pageTitle="Settings">
-      <div className="max-w-6xl mx-auto space-y-8 pb-20">
+      <div className="max-w-6xl mx-auto space-y-12 pb-24">
         {/* Modern Header - No Card Border */}
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between px-2">
-          <div className="flex items-center gap-5">
-            <div className="relative">
-              <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-[var(--accent)] to-[var(--accent-dim)] flex items-center justify-center text-xl font-bold text-white shadow-xl shadow-accent/20">
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between px-4 sm:px-6 py-4">
+          {/* Background Glow */}
+          <div className="absolute top-1/2 left-0 -translate-y-1/2 -translate-x-1/2 w-[400px] h-[400px] bg-accent/5 rounded-full blur-[100px] pointer-events-none" />
+          
+          <div className="relative flex items-center gap-6">
+            <div className="relative group">
+              <div className="h-20 w-20 rounded-[28px] bg-gradient-to-br from-[var(--accent)] to-[var(--accent-dim)] flex items-center justify-center text-2xl font-black text-white shadow-2xl shadow-accent/30 group-hover:scale-105 transition-transform duration-500">
                 {initials}
               </div>
-              <div className="absolute -bottom-1 -right-1 h-6 w-6 rounded-lg bg-[var(--bg-card)] border border-[var(--border)] flex items-center justify-center text-[var(--accent)] shadow-sm">
-                <Sparkles size={12} />
+              <div className="absolute -bottom-1 -right-1 h-7 w-7 rounded-xl bg-[var(--bg-card)] border border-[var(--border)] flex items-center justify-center text-[var(--accent)] shadow-lg animate-bounce-subtle">
+                <Sparkles size={14} />
               </div>
             </div>
             <div>
-              <h1 className="text-2xl font-black tracking-tight text-[var(--text)]">{t('settings.workspaceSettings')}</h1>
-              <p className="text-sm text-[var(--text-subtle)] mt-1 max-w-md">
+              <h1 className="text-3xl font-black tracking-tighter text-[var(--text)] bg-clip-text text-transparent bg-gradient-to-r from-[var(--text)] to-[var(--text-subtle)]">{t('settings.workspaceSettings')}</h1>
+              <p className="text-sm text-[var(--text-subtle)] mt-1.5 max-w-md font-medium leading-relaxed">
                 {t('settings.workspaceDescription')}
               </p>
             </div>
           </div>
           
-          <div className="flex flex-col items-start lg:items-end gap-3">
-            <div className="flex items-center gap-2">
+          <div className="relative flex flex-col items-start lg:items-end gap-3">
+            <div className="flex items-center gap-3">
               <div className="text-right hidden sm:block">
-                <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-subtle)]">Status</div>
-                <div className="text-xs font-semibold text-[var(--accent)]">{lastSavedAt ? t('settings.lastSaved', { time: lastSavedAt }) : t('settings.noSaved')}</div>
+                <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-subtle)] opacity-70">Cloud Sync</div>
+                <div className="text-xs font-bold text-[var(--accent)]">{lastSavedAt ? t('settings.lastSaved', { time: lastSavedAt }) : t('settings.noSaved')}</div>
               </div>
               <button
-                className={`btn h-11 px-6 ${hasUnsavedChanges ? 'primary' : 'secondary shadow-sm'} transition-all duration-300 font-bold flex items-center gap-2 rounded-xl`}
+                className={`btn h-12 px-8 ${hasUnsavedChanges ? 'primary shadow-[0_10px_25px_-5px_rgba(63,185,80,0.4)]' : 'secondary bg-[var(--bg-card)] border-[var(--border)] shadow-sm hover:shadow-md'} transition-all duration-500 font-black flex items-center gap-2 rounded-2xl active:scale-95`}
                 onClick={handleSaveChanges}
                 disabled={!hasUnsavedChanges || isSaving}
               >
-                <Save size={16} />
+                <Save size={18} />
                 {isSaving ? t('common.saving') : hasUnsavedChanges ? t('common.save') : t('common.saved')}
               </button>
             </div>
-            {saveError && <p className="text-xs text-danger font-medium">{saveError}</p>}
+            {saveError && <p className="text-[11px] text-danger font-bold uppercase tracking-wide">{saveError}</p>}
           </div>
         </div>
 
-        <div className="grid gap-12 lg:grid-cols-[1fr_320px]">
-          <div className="space-y-16">
+        <div className="grid gap-12 lg:grid-cols-[1fr_340px] px-2">
+          <div className="space-y-20">
             {/* Profile Section */}
-            <section>
+            <section className="animate-in fade-in slide-in-from-bottom-4 duration-700">
               <SectionHeader icon={UserCog} title={t('settings.profile')} description="Identity and organization credentials" />
-              <div className="grid gap-6 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <label htmlFor="settings-name" className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-subtle)] px-1">{t('settings.displayName')}</label>
+              <div className="grid gap-8 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label htmlFor="settings-name" className="text-[10px] font-black uppercase tracking-[0.15em] text-[var(--text-subtle)] px-2">{t('settings.displayName')}</label>
                   <input
                     id="settings-name"
-                    className="input h-11 rounded-xl bg-[var(--bg-card)] border-[var(--border)] focus:border-[var(--accent)] transition-all"
+                    className="input h-12 rounded-2xl bg-[var(--bg-muted)]/20 border-[var(--border)]/60 focus:bg-[var(--bg-card)] focus:shadow-xl focus:shadow-accent/5 transition-all duration-300 px-5 text-sm font-semibold"
                     value={draft.name}
                     onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))}
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <label htmlFor="settings-email" className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-subtle)] px-1">{t('settings.workEmail')}</label>
+                <div className="space-y-2">
+                  <label htmlFor="settings-email" className="text-[10px] font-black uppercase tracking-[0.15em] text-[var(--text-subtle)] px-2">{t('settings.workEmail')}</label>
                   <input
                     id="settings-email"
                     type="email"
-                    className="input h-11 rounded-xl bg-[var(--bg-card)] border-[var(--border)] focus:border-[var(--accent)] transition-all"
+                    className="input h-12 rounded-2xl bg-[var(--bg-muted)]/20 border-[var(--border)]/60 focus:bg-[var(--bg-card)] focus:shadow-xl focus:shadow-accent/5 transition-all duration-300 px-5 text-sm font-semibold"
                     value={draft.email}
                     onChange={(event) => setDraft((current) => ({ ...current, email: event.target.value }))}
                   />
                 </div>
               </div>
               
-              <div className="mt-8 grid gap-4 sm:grid-cols-3">
-                <div className="p-4 rounded-2xl bg-[var(--bg-muted)]/30 border border-[var(--border)]/50">
-                  <div className="text-[9px] font-bold uppercase tracking-widest text-[var(--text-subtle)] mb-1">{t('settings.role')}</div>
-                  <div className="text-sm font-semibold truncate">{getUserRoleLabel(user)}</div>
-                </div>
-                <div className="p-4 rounded-2xl bg-[var(--bg-muted)]/30 border border-[var(--border)]/50">
-                  <div className="text-[9px] font-bold uppercase tracking-widest text-[var(--text-subtle)] mb-1">{t('settings.tenant')}</div>
-                  <div className="text-sm font-semibold truncate">{tenantDisplayName}</div>
-                </div>
-                <div className="p-4 rounded-2xl bg-[var(--bg-muted)]/30 border border-[var(--border)]/50">
-                  <div className="text-[9px] font-bold uppercase tracking-widest text-[var(--text-subtle)] mb-1">{t('settings.scopeType')}</div>
-                  <div className="text-sm font-semibold truncate capitalize">{scopeType ?? 'tenant'}</div>
-                </div>
+              <div className="mt-10 grid gap-5 sm:grid-cols-3">
+                {[
+                  { label: t('settings.role'), value: getUserRoleLabel(user) },
+                  { label: t('settings.tenant'), value: tenantDisplayName },
+                  { label: t('settings.scopeType'), value: scopeType ?? 'tenant' }
+                ].map((stat, i) => (
+                  <div key={i} className="p-5 rounded-3xl bg-gradient-to-br from-[var(--bg-card)] to-[var(--bg-muted)]/30 border border-[var(--border)]/40 shadow-sm hover:shadow-md transition-shadow duration-300">
+                    <div className="text-[9px] font-black uppercase tracking-[0.2em] text-[var(--text-subtle)] mb-1.5 opacity-60">{stat.label}</div>
+                    <div className="text-sm font-bold text-[var(--text)] truncate leading-tight">{stat.value}</div>
+                  </div>
+                ))}
               </div>
             </section>
 
             {/* Security Section */}
-            <section>
+            <section className="animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
               <SectionHeader icon={ShieldCheck} title={t('settings.security')} description="Protect your account and session integrity" />
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] divide-y divide-[var(--border)]/50 overflow-hidden shadow-sm">
-                <div className="px-6">
+              <div className="rounded-[32px] border border-[var(--border)]/60 bg-[var(--bg-card)]/50 backdrop-blur-xl divide-y divide-[var(--border)]/40 overflow-hidden shadow-2xl shadow-black/5">
+                <div className="px-8 py-2">
                   <SettingToggle
                     id="settings-mfa"
                     label={t('settings.mfa')}
@@ -318,7 +319,7 @@ export function SettingsPage() {
                     onChange={(next) => setDraft((current) => ({ ...current, mfaEnabled: next }))}
                   />
                 </div>
-                <div className="px-6">
+                <div className="px-8 py-2">
                   <SettingToggle
                     id="settings-access-alerts"
                     label={t('settings.accessAlerts')}
@@ -327,30 +328,34 @@ export function SettingsPage() {
                     onChange={(next) => setDraft((current) => ({ ...current, recentAccessAlerts: next }))}
                   />
                 </div>
-                <div className="px-6 py-5 flex items-center justify-between gap-4">
-                  <div>
-                    <label htmlFor="settings-timeout" className="text-sm font-semibold text-[var(--text)]">{t('settings.sessionTimeout')}</label>
-                    <div className="text-[11px] text-[var(--text-subtle)] mt-0.5">Auto-logout after inactivity</div>
+                <div className="px-8 py-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[var(--bg-muted)]/20">
+                  <div className="flex-1">
+                    <label htmlFor="settings-timeout" className="text-sm font-bold text-[var(--text)]">{t('settings.sessionTimeout')}</label>
+                    <div className="text-[11px] text-[var(--text-subtle)] mt-1 font-medium italic opacity-80">Auto-logout after inactivity for security</div>
                   </div>
-                  <select
-                    id="settings-timeout"
-                    className="input sm w-40 h-10 rounded-lg bg-[var(--bg-muted)]/50 border-[var(--border)]"
-                    value={draft.sessionTimeout}
-                    onChange={(event) => setDraft((current) => ({ ...current, sessionTimeout: event.target.value as SessionTimeout }))}
-                  >
-                    <option value="15 minutes">15 minutes</option>
-                    <option value="30 minutes">30 minutes</option>
-                    <option value="1 hour">1 hour</option>
-                  </select>
+                  <div className="relative group">
+                    <select
+                      id="settings-timeout"
+                      className="input w-full sm:w-48 h-11 rounded-xl bg-[var(--bg-card)] border-[var(--border)] shadow-sm font-bold text-xs pl-4 pr-10 appearance-none focus:ring-2 focus:ring-accent/20 transition-all"
+                      value={draft.sessionTimeout}
+                      onChange={(event) => setDraft((current) => ({ ...current, sessionTimeout: event.target.value as SessionTimeout }))}
+                    >
+                      <option value="15 minutes">15 minutes</option>
+                      <option value="30 minutes">30 minutes</option>
+                      <option value="1 hour">1 hour</option>
+                    </select>
+                    <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 rotate-90 text-[var(--text-subtle)] pointer-events-none group-hover:text-accent transition-colors" size={16} />
+                  </div>
                 </div>
               </div>
             </section>
 
+            {/* Notifications & Interface */}
             <div className="grid gap-12 sm:grid-cols-2">
-              <section>
-                <SectionHeader icon={BellRing} title={t('settings.notifications')} description="Manage your automated report delivery" />
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] divide-y divide-[var(--border)]/50 overflow-hidden shadow-sm">
-                  <div className="px-6">
+              <section className="animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200">
+                <SectionHeader icon={BellRing} title={t('settings.notifications')} description="Manage automated report delivery" />
+                <div className="rounded-3xl border border-[var(--border)]/60 bg-[var(--bg-card)] divide-y divide-[var(--border)]/40 overflow-hidden shadow-xl shadow-black/5">
+                  <div className="px-7">
                     <SettingToggle
                       id="settings-digest"
                       label={t('settings.dailyDigest')}
@@ -359,7 +364,7 @@ export function SettingsPage() {
                       onChange={(next) => setDraft((current) => ({ ...current, dailyDigest: next }))}
                     />
                   </div>
-                  <div className="px-6">
+                  <div className="px-7">
                     <SettingToggle
                       id="settings-weekly"
                       label={t('settings.weeklyReport')}
@@ -371,28 +376,28 @@ export function SettingsPage() {
                 </div>
               </section>
 
-              <section>
-                <SectionHeader icon={LayoutGrid} title={t('settings.interface')} description="Personalize your dashboard experience" />
-                <div className="p-6 rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] shadow-sm space-y-5 h-[calc(100%-60px)]">
-                  <div className="space-y-1.5">
-                    <label htmlFor="settings-theme" className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-subtle)] px-1">{t('settings.theme')}</label>
-                    <select id="settings-theme" className="input h-10 rounded-lg bg-[var(--bg-muted)]/50" value={themeMode} onChange={(event) => setThemeMode(event.target.value as 'system' | 'light' | 'dark')}>
-                      <option value="system">System</option>
-                      <option value="light">Light</option>
-                      <option value="dark">Dark</option>
+              <section className="animate-in fade-in slide-in-from-bottom-4 duration-700 delay-300">
+                <SectionHeader icon={LayoutGrid} title={t('settings.interface')} description="Personalize your experience" />
+                <div className="p-8 rounded-[32px] border border-[var(--border)]/60 bg-[var(--bg-card)] shadow-xl shadow-black/5 space-y-6 h-[calc(100%-76px)]">
+                  <div className="space-y-2">
+                    <label htmlFor="settings-theme" className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-subtle)] px-2">{t('settings.theme')}</label>
+                    <select id="settings-theme" className="input h-11 rounded-xl bg-[var(--bg-muted)]/30 border-[var(--border)]/60 font-bold text-xs px-4 focus:bg-[var(--bg-card)] transition-all" value={themeMode} onChange={(event) => setThemeMode(event.target.value as 'system' | 'light' | 'dark')}>
+                      <option value="system">System Default</option>
+                      <option value="light">Light Aesthetic</option>
+                      <option value="dark">Dark Mode</option>
                     </select>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <label htmlFor="settings-density" className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-subtle)] px-1">{t('settings.screenDensity')}</label>
-                      <select id="settings-density" className="input h-10 rounded-lg bg-[var(--bg-muted)]/50" value={draft.screenDensity} onChange={(event) => setDraft((current) => ({ ...current, screenDensity: event.target.value as ScreenDensity }))}>
+                  <div className="grid grid-cols-2 gap-5">
+                    <div className="space-y-2">
+                      <label htmlFor="settings-density" className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-subtle)] px-2">{t('settings.screenDensity')}</label>
+                      <select id="settings-density" className="input h-11 rounded-xl bg-[var(--bg-muted)]/30 border-[var(--border)]/60 font-bold text-xs px-4" value={draft.screenDensity} onChange={(event) => setDraft((current) => ({ ...current, screenDensity: event.target.value as ScreenDensity }))}>
                         <option value="Comfortable">Comfortable</option>
                         <option value="Compact">Compact</option>
                       </select>
                     </div>
-                    <div className="space-y-1.5">
-                      <label htmlFor="settings-language" className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-subtle)] px-1">{t('settings.language')}</label>
-                      <select id="settings-language" className="input h-10 rounded-lg bg-[var(--bg-muted)]/50" value={draft.language} onChange={(event) => setDraft((current) => ({ ...current, language: event.target.value }))}>
+                    <div className="space-y-2">
+                      <label htmlFor="settings-language" className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-subtle)] px-2">{t('settings.language')}</label>
+                      <select id="settings-language" className="input h-11 rounded-xl bg-[var(--bg-muted)]/30 border-[var(--border)]/60 font-bold text-xs px-4" value={draft.language} onChange={(event) => setDraft((current) => ({ ...current, language: event.target.value }))}>
                         {languageOptions.map((language) => <option key={language} value={language}>{language}</option>)}
                       </select>
                     </div>
@@ -402,103 +407,92 @@ export function SettingsPage() {
             </div>
 
             {/* Provisioning */}
-            <section>
+            <section className="animate-in fade-in slide-in-from-bottom-4 duration-700 delay-400">
               <SectionHeader icon={Building2} title={t('settings.provisioning')} description="Geographical and operational placement" />
-              <div className="p-8 rounded-3xl border border-[var(--border)] bg-[var(--bg-card)] shadow-sm grid gap-8 sm:grid-cols-3">
-                <div className="space-y-2">
-                  <label htmlFor="settings-tenant-country" className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-subtle)]">{t('settings.country')}</label>
-                  <select id="settings-tenant-country" className="input h-11 rounded-xl" value={draft.tenantCountryCode} onChange={(e) => setDraft(c => ({ ...c, tenantCountryCode: e.target.value, tenantStateCode: '', tenantCity: '' }))}>
-                    <option value="">Select country</option>
-                    {countryOptions.map(c => <option key={c.code2} value={c.code2}>{c.name}</option>)}
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label htmlFor="settings-tenant-state" className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-subtle)]">{t('settings.state')}</label>
-                  {tenantStates.length > 0 ? (
-                    <select id="settings-tenant-state" className="input h-11 rounded-xl" value={draft.tenantStateCode} onChange={e => setDraft(c => ({ ...c, tenantStateCode: e.target.value, tenantCity: '' }))} disabled={!draft.tenantCountryCode || isTenantStatesLoading}>
-                      <option value="">{isTenantStatesLoading ? 'Loading...' : 'Select state'}</option>
-                      {tenantStates.map(s => <option key={s.code} value={s.code}>{s.name}</option>)}
-                    </select>
-                  ) : (
-                    <input id="settings-tenant-state" className="input h-11 rounded-xl" value={draft.tenantStateCode} onChange={e => setDraft(c => ({ ...c, tenantStateCode: e.target.value }))} placeholder={draft.tenantCountryCode ? 'Type state' : 'Select country'} disabled={!draft.tenantCountryCode} />
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <label htmlFor="settings-tenant-city" className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-subtle)]">{t('settings.city')}</label>
-                  {tenantCities.length > 0 ? (
-                    <select id="settings-tenant-city" className="input h-11 rounded-xl" value={draft.tenantCity} onChange={e => setDraft(c => ({ ...c, tenantCity: e.target.value }))} disabled={!draft.tenantCountryCode || Boolean(tenantStates.length > 0 && !draft.tenantStateCode) || isTenantCitiesLoading}>
-                      <option value="">{isTenantCitiesLoading ? 'Loading...' : 'Select city'}</option>
-                      {tenantCities.map(ci => <option key={ci.name} value={ci.name}>{ci.name}</option>)}
-                    </select>
-                  ) : (
-                    <input id="settings-tenant-city" className="input h-11 rounded-xl" value={draft.tenantCity} onChange={e => setDraft(c => ({ ...c, tenantCity: e.target.value }))} placeholder={draft.tenantCountryCode ? 'Type city' : 'Select country'} disabled={!draft.tenantCountryCode} />
-                  )}
-                </div>
+              <div className="p-10 rounded-[40px] border border-[var(--border)]/60 bg-[var(--bg-card)]/40 shadow-2xl shadow-black/5 grid gap-10 sm:grid-cols-3">
+                {[
+                  { id: 'settings-tenant-country', label: t('settings.country'), value: draft.tenantCountryCode, options: countryOptions, key: 'code2', onChange: (v: string) => setDraft(c => ({ ...c, tenantCountryCode: v, tenantStateCode: '', tenantCity: '' })) },
+                  { id: 'settings-tenant-state', label: t('settings.state'), value: draft.tenantStateCode, options: tenantStates, key: 'code', loading: isTenantStatesLoading, placeholder: 'Select state', type: tenantStates.length > 0 ? 'select' : 'input', onChange: (v: string) => setDraft(c => ({ ...c, tenantStateCode: v, tenantCity: '' })) },
+                  { id: 'settings-tenant-city', label: t('settings.city'), value: draft.tenantCity, options: tenantCities, key: 'name', loading: isTenantCitiesLoading, placeholder: 'Select city', type: tenantCities.length > 0 ? 'select' : 'input', onChange: (v: string) => setDraft(c => ({ ...c, tenantCity: v })) }
+                ].map((field, i) => (
+                  <div key={i} className="space-y-2.5">
+                    <label htmlFor={field.id} className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-subtle)] px-2">{field.label}</label>
+                    {field.type === 'select' ? (
+                      <select id={field.id} className="input h-12 rounded-2xl bg-[var(--bg-muted)]/20 border-[var(--border)]/60 font-bold text-[13px] px-5 transition-all" value={field.value} onChange={(e) => field.onChange(e.target.value)} disabled={field.id !== 'settings-tenant-country' && (!draft.tenantCountryCode || field.loading)}>
+                        <option value="">{field.loading ? 'Loading...' : field.placeholder || 'Select...'}</option>
+                        {field.options?.map((opt: any) => <option key={opt[field.key || '']} value={opt[field.key || '']}>{opt.name}</option>)}
+                      </select>
+                    ) : (
+                      <input id={field.id} className="input h-12 rounded-2xl bg-[var(--bg-muted)]/20 border-[var(--border)]/60 font-bold text-[13px] px-5" value={field.value} onChange={(e) => field.onChange(e.target.value)} placeholder={draft.tenantCountryCode ? field.placeholder : 'Select country first'} disabled={!draft.tenantCountryCode} />
+                    )}
+                  </div>
+                ))}
               </div>
-              <p className="mt-4 text-xs text-[var(--text-subtle)] flex items-center gap-2 italic">
-                <Globe2 size={12} /> {t('settings.geographyNotes')}
-              </p>
+              <div className="mt-6 px-6 py-4 rounded-2xl bg-[var(--bg-muted)]/10 border border-dashed border-[var(--border)]/60 text-[11px] text-[var(--text-subtle)] flex items-center gap-3 font-medium">
+                <Globe2 size={16} className="text-accent/60" /> {t('settings.geographyNotes')}
+              </div>
             </section>
           </div>
 
           {/* Right Sidebar - Sticky & Clean */}
-          <div className="space-y-8">
-            <div className="sticky top-6 space-y-8">
-              <div className="p-6 rounded-2xl bg-[var(--bg-muted)]/20 border border-[var(--border)]/60">
-                <div className="flex items-center gap-2 mb-6 text-[var(--accent)]">
-                  <SlidersHorizontal size={16} />
-                  <span className="text-[11px] font-black uppercase tracking-widest">{t('settings.scope')}</span>
+          <div className="space-y-10 animate-in fade-in slide-in-from-right-4 duration-1000">
+            <div className="sticky top-8 space-y-10">
+              <div className="p-8 rounded-[32px] bg-gradient-to-br from-[var(--bg-muted)]/40 to-transparent border border-[var(--border)]/50 shadow-sm relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-accent/10 transition-colors duration-700" />
+                <div className="flex items-center gap-3 mb-8 text-[var(--accent)]">
+                  <SlidersHorizontal size={18} />
+                  <span className="text-[11px] font-black uppercase tracking-[0.25em]">{t('settings.scope')}</span>
                 </div>
-                <div className="space-y-6">
+                <div className="space-y-7 relative">
                   {[
                     { label: t('settings.activeTenant'), value: activeTenant?.name ?? 'Platform' },
                     { label: t('settings.activeStation'), value: activeStationDisplayName },
                     { label: t('settings.region'), value: activeTenant?.region ?? '-' },
                     { label: t('settings.coverage'), value: dataScopeLabel },
                   ].map((item, idx) => (
-                    <div key={idx} className="group">
-                      <div className="text-[9px] font-bold uppercase tracking-widest text-[var(--text-subtle)] mb-1 group-hover:text-[var(--accent)] transition-colors">{item.label}</div>
-                      <div className="text-sm font-semibold leading-snug">{item.value}</div>
+                    <div key={idx} className="group/item">
+                      <div className="text-[9px] font-black uppercase tracking-[0.2em] text-[var(--text-subtle)] mb-1.5 opacity-60 group-hover/item:text-[var(--accent)] transition-colors duration-300">{item.label}</div>
+                      <div className="text-[13px] font-bold leading-tight tracking-tight">{item.value}</div>
                     </div>
                   ))}
                   {hasTemporaryScope && (
-                    <div className="pt-4 border-t border-[var(--border)]/50">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="h-2 w-2 rounded-full bg-[var(--warning)] animate-pulse" />
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-[var(--text-subtle)]">{t('settings.temporaryAccess')}</span>
+                    <div className="pt-6 border-t border-[var(--border)]/40">
+                      <div className="flex items-center gap-2.5 mb-2.5">
+                        <div className="h-2 w-2 rounded-full bg-[var(--warning)] shadow-[0_0_8px_rgba(187,128,9,0.5)] animate-pulse" />
+                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[var(--text-subtle)]">{t('settings.temporaryAccess')}</span>
                       </div>
-                      <div className="text-sm font-semibold text-[var(--warning)]">{temporaryAccessStateLabel}</div>
-                      <div className="text-[10px] text-[var(--text-subtle)] mt-1">{temporaryAccessWindowLabel}</div>
+                      <div className="text-sm font-black text-[var(--warning)]">{temporaryAccessStateLabel}</div>
+                      <div className="text-[10px] text-[var(--text-subtle)] mt-1.5 font-bold opacity-70 tracking-tight">{temporaryAccessWindowLabel}</div>
                     </div>
                   )}
                 </div>
               </div>
 
-              <div className="p-6 rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] shadow-sm">
-                <div className="flex items-center gap-2 mb-4 text-[var(--accent)]">
-                  <Sparkles size={16} />
-                  <span className="text-[11px] font-black uppercase tracking-widest">{t('settings.health')}</span>
+              <div className="p-8 rounded-[32px] bg-[var(--bg-card)]/60 backdrop-blur-xl border border-[var(--border)]/60 shadow-2xl shadow-black/5">
+                <div className="flex items-center gap-3 mb-6 text-[var(--accent)]">
+                  <Sparkles size={18} />
+                  <span className="text-[11px] font-black uppercase tracking-[0.25em]">{t('settings.health')}</span>
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {[
                     { label: t('settings.profileCompleteness'), value: `${profileCompleteness}%`, color: profileCompleteness > 80 ? 'text-ok' : 'text-warning' },
                     { label: t('settings.securityPosture'), value: draft.mfaEnabled ? t('settings.hardened') : t('settings.needsMfa'), color: draft.mfaEnabled ? 'text-ok' : 'text-warning' },
                     { label: t('settings.routingHealth'), value: t('settings.operational'), color: 'text-info' },
                   ].map((item, idx) => (
-                    <div key={idx} className="flex items-center justify-between py-2 border-b border-[var(--border)]/30 last:border-0">
-                      <span className="text-xs text-[var(--text-subtle)]">{item.label}</span>
-                      <span className={`text-xs font-bold ${item.color}`}>{item.value}</span>
+                    <div key={idx} className="flex items-center justify-between py-3 border-b border-[var(--border)]/30 last:border-0 hover:translate-x-1 transition-transform duration-300">
+                      <span className="text-xs font-bold text-[var(--text-subtle)] opacity-80">{item.label}</span>
+                      <span className={`text-[13px] font-black ${item.color}`}>{item.value}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="p-6 rounded-2xl bg-[var(--accent)]/[0.03] border border-[var(--accent)]/10">
-                <div className="flex items-center gap-2 mb-3 text-[var(--accent)]">
-                  <Lock size={16} />
-                  <span className="text-[11px] font-black uppercase tracking-widest">{t('settings.policy')}</span>
+              <div className="p-8 rounded-[32px] bg-gradient-to-br from-[var(--accent)]/[0.05] to-transparent border border-[var(--accent)]/10">
+                <div className="flex items-center gap-3 mb-4 text-[var(--accent)]">
+                  <Lock size={18} />
+                  <span className="text-[11px] font-black uppercase tracking-[0.25em]">{t('settings.policy')}</span>
                 </div>
-                <p className="text-[11px] leading-relaxed text-[var(--text-subtle)]">
+                <p className="text-[11px] leading-relaxed text-[var(--text-subtle)] font-medium opacity-80 italic">
                   {t('settings.policyNotes')}
                 </p>
               </div>
