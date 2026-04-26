@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { getTemporaryAccessState, getTemporaryAccessWindowLabel, getUserRoleLabel, isTemporaryScopeUser } from '@/core/auth/access'
 import { useAuthStore } from '@/core/auth/authStore'
@@ -8,6 +9,7 @@ import { useBranding } from '@/core/branding/useBranding'
 import { Bell, Globe2, LogOut, Menu, Search, Settings } from 'lucide-react'
 import { PATHS } from '@/router/paths'
 import { LOGO_PATHS } from '@/utils/assets'
+import { LocalizationModal } from '@/components/layout/LocalizationModal'
 
 interface Props {
   children: ReactNode
@@ -16,6 +18,7 @@ interface Props {
 }
 
 export function DashboardLayout({ children, pageTitle, actions }: Props) {
+  const { t } = useTranslation()
   const location = useLocation()
   const { user, logout } = useAuthStore()
   const {
@@ -33,6 +36,7 @@ export function DashboardLayout({ children, pageTitle, actions }: Props) {
   const temporaryAccessLabel = getTemporaryAccessWindowLabel(user)
   const hasTemporaryScope = isTemporaryScopeUser(user)
   const { branding } = useBranding()
+  const [isLocalizationModalOpen, setIsLocalizationModalOpen] = useState(false)
   const headerLogoUrl = branding.branding.logoUrl || branding.branding.logoIconUrl || LOGO_PATHS.cpms
 
   useEffect(() => {
@@ -88,8 +92,8 @@ export function DashboardLayout({ children, pageTitle, actions }: Props) {
               <input
                 type="search"
                 className="w-full bg-transparent text-sm outline-none border-0 p-0"
-                placeholder="Search"
-                aria-label="Search"
+                placeholder={t('common.search')}
+                aria-label={t('common.search')}
               />
             </label>
             {(activeStationContext || canSwitchStationContexts) && (
@@ -97,9 +101,9 @@ export function DashboardLayout({ children, pageTitle, actions }: Props) {
                 {(activeStationContext || canSwitchStationContexts) && (
                   <div className="flex items-center gap-3 rounded-xl border px-3 py-2 min-w-0" style={{ borderColor: 'var(--border)', background: 'var(--bg)' }}>
                     <div className="text-right leading-tight shrink-0">
-                      <div className="text-[10px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-subtle)' }}>Station Context</div>
+                      <div className="text-[10px] uppercase tracking-[0.18em]" style={{ color: 'var(--text-subtle)' }}>{t('dashboard.stationContext')}</div>
                       <div className="text-xs font-semibold" style={{ color: 'var(--text)' }}>
-                        {activeStationContext?.stationName ?? 'Assigned stations'}
+                        {activeStationContext?.stationName ?? t('dashboard.assignedStations')}
                       </div>
                     </div>
                     {canSwitchStationContexts ? (
@@ -126,10 +130,15 @@ export function DashboardLayout({ children, pageTitle, actions }: Props) {
               </div>
             )}
             {actions}
-            <button type="button" className="btn ghost icon" title="Localization">
+            <button 
+              type="button" 
+              className="btn ghost icon" 
+              title={t('common.localization')}
+              onClick={() => setIsLocalizationModalOpen(true)}
+            >
               <Globe2 size={16} />
             </button>
-            <Link to={PATHS.NOTIFICATIONS} className="btn ghost icon" title="Notifications">
+            <Link to={PATHS.NOTIFICATIONS} className="btn ghost icon" title={t('common.notifications')}>
               <Bell size={16} />
             </Link>
             {user && (
@@ -162,7 +171,7 @@ export function DashboardLayout({ children, pageTitle, actions }: Props) {
                         onClick={() => setIsProfileMenuOpen(false)}
                       >
                         <Settings size={16} />
-                        <span>Account Settings</span>
+                        <span>{t('nav.items.accountSettings')}</span>
                       </Link>
                       <button
                         onClick={() => {
@@ -172,7 +181,7 @@ export function DashboardLayout({ children, pageTitle, actions }: Props) {
                         className="nav-item w-full text-left"
                       >
                         <LogOut size={16} />
-                        <span>Sign out</span>
+                        <span>{t('common.signOut')}</span>
                       </button>
                     </div>
                   </div>
@@ -230,6 +239,10 @@ export function DashboardLayout({ children, pageTitle, actions }: Props) {
           </main>
         </div>
       </div>
+      <LocalizationModal 
+        isOpen={isLocalizationModalOpen} 
+        onClose={() => setIsLocalizationModalOpen(false)} 
+      />
     </div>
   )
 }

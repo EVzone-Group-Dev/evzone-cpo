@@ -37,6 +37,7 @@ export function MfaSetupPage() {
 
   const [otpChannel, setOtpChannel] = useState<OtpChannel>('email')
   const [otpCode, setOtpCode] = useState('')
+  const [setupPhone, setSetupPhone] = useState(user?.phone || '')
   const [otpSending, setOtpSending] = useState(false)
   const [otpVerifying, setOtpVerifying] = useState(false)
 
@@ -55,11 +56,10 @@ export function MfaSetupPage() {
     if (hasEmail) {
       channels.push('email')
     }
-    if (hasPhone) {
-      channels.push('sms')
-    }
+    // Always allow SMS option so user can provide a phone number if missing
+    channels.push('sms')
     return channels
-  }, [hasEmail, hasPhone])
+  }, [hasEmail])
 
   if (!user) {
     return <Navigate to={PATHS.LOGIN} replace />
@@ -85,10 +85,11 @@ export function MfaSetupPage() {
         throw new Error('No email or phone is available for OTP delivery on this account.')
       }
 
-      const resolvedChannel =
-        availableOtpChannels.includes(otpChannel)
-          ? otpChannel
-          : availableOtpChannels[0]
+      const resolvedChannel = otpChannel
+
+      if (resolvedChannel === 'sms' && !setupPhone.trim()) {
+        throw new Error('Please enter a phone number for SMS delivery.')
+      }
 
       const response = await fetchJson<OtpSetupSendResponse>(
         '/api/v1/auth/mfa/setup/otp/send',
@@ -97,7 +98,10 @@ export function MfaSetupPage() {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ channel: resolvedChannel }),
+          body: JSON.stringify({ 
+            channel: resolvedChannel,
+            phone: resolvedChannel === 'sms' ? setupPhone : undefined 
+          }),
         },
       )
 
@@ -274,12 +278,28 @@ export function MfaSetupPage() {
                 disabled={availableOtpChannels.length === 0}
               >
                 <option value="email" disabled={!hasEmail}>Email</option>
-                <option value="sms" disabled={!hasPhone}>SMS</option>
+                <option value="sms">SMS</option>
               </select>
-              {!hasPhone && (
-                <p className="mt-1 text-xs text-slate-500">
-                  SMS delivery requires a phone number on your account.
-                </p>
+
+              {otpChannel === 'sms' && (
+                <div className="mt-3">
+                  <label htmlFor="setup-phone" className="mb-1 block text-xs font-semibold text-slate-700">
+                    Phone Number
+                  </label>
+                  <input
+                    id="setup-phone"
+                    type="tel"
+                    className="input"
+                    value={setupPhone}
+                    onChange={(event) => setSetupPhone(event.target.value)}
+                    placeholder="+1234567890"
+                  />
+                  {!hasPhone && (
+                    <p className="mt-1 text-xs text-slate-500">
+                      Enter your phone number to receive the OTP via SMS.
+                    </p>
+                  )}
+                </div>
               )}
             </div>
 

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { fetchJson } from '@/core/api/fetchJson'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { getTemporaryAccessState, getTemporaryAccessWindowLabel, getUserRoleLabel, getUserScopeType, isTemporaryScopeUser } from '@/core/auth/access'
@@ -75,6 +76,7 @@ function SettingToggle({
 
 export function SettingsPage() {
   const { user, replaceUser } = useAuthStore()
+  const { i18n, t } = useTranslation()
   const { resolvedTheme, setThemeMode, themeMode } = useTheme()
   const {
     activeStationContext,
@@ -172,7 +174,7 @@ export function SettingsPage() {
     ? user.assignedStationIds.join(', ')
     : user?.accessProfile?.scope.stationIds.length
       ? user.accessProfile.scope.stationIds.join(', ')
-      : 'All tenant stations'
+      : t('dashboard.assignedStations')
   const tenantDisplayName = useMemo(
     () =>
       resolveDisplayLabel({
@@ -197,12 +199,18 @@ export function SettingsPage() {
           ?? user?.activeStationName
           ?? null,
         secondary: null,
-        fallback: 'All assigned stations',
+        fallback: t('dashboard.assignedStations'),
       }),
-    [activeStationContext?.stationName, user?.activeStationName, user?.displayStationName],
+    [activeStationContext?.stationName, user?.activeStationName, user?.displayStationName, t],
   )
   const scopeType = getUserScopeType(user)
-  const temporaryAccessState = getTemporaryAccessState(user)
+  const temporaryAccessStateLabel = useMemo(() => {
+    const state = getTemporaryAccessState(user)
+    if (state === 'active') return t('settings.operational')
+    if (state === 'expired') return 'Expired'
+    if (state === 'upcoming') return 'Upcoming'
+    return '-'
+  }, [user, t])
   const temporaryAccessWindowLabel = getTemporaryAccessWindowLabel(user)
   const hasTemporaryScope = isTemporaryScopeUser(user)
   const selectedTenantCountryName = useMemo(
@@ -350,6 +358,11 @@ export function SettingsPage() {
       }
 
       saveSettingsDraft(user?.id ?? null, nextDraft)
+      
+      if (nextDraft.language) {
+        i18n.changeLanguage(nextDraft.language)
+      }
+
       setDraft(nextDraft)
       setBaseline(nextDraft)
       setLastSavedAt(new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }))
@@ -371,12 +384,12 @@ export function SettingsPage() {
                 {initials}
               </div>
               <div>
-                <div className="text-xl font-bold leading-tight">Workspace Settings</div>
+                <div className="text-xl font-bold leading-tight">{t('settings.workspaceSettings')}</div>
                 <div className="text-sm text-subtle mt-1">
-                  Manage account identity, security posture, alerts, and tenant controls from one place.
+                  {t('settings.workspaceDescription')}
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2 text-[10px] uppercase tracking-wide">
-                  <span className="pill active"><Sparkles size={10} /> Premium UX</span>
+                  <span className="pill active"><Sparkles size={10} /> {t('settings.premiumUx')}</span>
                   <span className="pill pending"><Globe2 size={10} /> {activeTenant?.region ?? 'Region pending'}</span>
                   <span className="pill maintenance"><Building2 size={10} /> {activeTenant?.scopeLabel ?? 'Scope pending'}</span>
                 </div>
@@ -389,10 +402,10 @@ export function SettingsPage() {
                 disabled={!hasUnsavedChanges || isSaving}
               >
                 <Save size={14} />
-                {isSaving ? 'Saving changes...' : hasUnsavedChanges ? 'Save changes' : 'All changes saved'}
+                {isSaving ? t('common.saving') : hasUnsavedChanges ? t('common.save') : t('common.saved')}
               </button>
               <div className="text-xs text-subtle">
-                {lastSavedAt ? `Last saved at ${lastSavedAt}` : 'No saved updates in this session'}
+                {lastSavedAt ? t('settings.lastSaved', { time: lastSavedAt }) : t('settings.noSaved')}
               </div>
               {saveError && (
                 <div className="text-xs text-danger max-w-sm text-left lg:text-right">
@@ -407,10 +420,10 @@ export function SettingsPage() {
           <div className="space-y-6">
             <div className="grid gap-6 lg:grid-cols-2">
               <div className="card">
-                <div className="section-title"><UserCog size={16} className="text-accent" />Profile & Identity</div>
+                <div className="section-title"><UserCog size={16} className="text-accent" />{t('settings.profile')}</div>
                 <div className="space-y-3">
                   <div>
-                    <label htmlFor="settings-name" className="form-label">Display Name</label>
+                    <label htmlFor="settings-name" className="form-label">{t('settings.displayName')}</label>
                     <input
                       id="settings-name"
                       className="input"
@@ -419,7 +432,7 @@ export function SettingsPage() {
                     />
                   </div>
                   <div>
-                    <label htmlFor="settings-email" className="form-label">Work Email</label>
+                    <label htmlFor="settings-email" className="form-label">{t('settings.workEmail')}</label>
                     <input
                       id="settings-email"
                       type="email"
@@ -430,26 +443,26 @@ export function SettingsPage() {
                   </div>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
-                      <div className="form-label">Role</div>
+                      <div className="form-label">{t('settings.role')}</div>
                       <div className="rounded-lg border border-border/70 bg-bg-muted/35 px-3 py-2 text-sm">{getUserRoleLabel(user)}</div>
                     </div>
                     <div>
-                      <div className="form-label">Tenant</div>
+                      <div className="form-label">{t('settings.tenant')}</div>
                       <div className="rounded-lg border border-border/70 bg-bg-muted/35 px-3 py-2 text-sm">{tenantDisplayName}</div>
                     </div>
                   </div>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div>
-                      <div className="form-label">Scope Type</div>
+                      <div className="form-label">{t('settings.scopeType')}</div>
                       <div className="rounded-lg border border-border/70 bg-bg-muted/35 px-3 py-2 text-sm">{scopeType ?? 'tenant'}</div>
                     </div>
                     <div>
-                      <div className="form-label">Memberships</div>
+                      <div className="form-label">{t('settings.memberships')}</div>
                       <div className="rounded-lg border border-border/70 bg-bg-muted/35 px-3 py-2 text-sm">{user?.memberships?.length ?? 0}</div>
                     </div>
                   </div>
                   <div>
-                    <div className="form-label">Assigned Stations</div>
+                    <div className="form-label">{t('settings.assignedStations')}</div>
                     <div className="rounded-lg border border-border/70 bg-bg-muted/35 px-3 py-2 text-sm">
                       {assignedStations}
                     </div>
@@ -458,24 +471,24 @@ export function SettingsPage() {
               </div>
 
               <div className="card">
-                <div className="section-title"><ShieldCheck size={16} className="text-accent" />Security & Access</div>
+                <div className="section-title"><ShieldCheck size={16} className="text-accent" />{t('settings.security')}</div>
                 <div className="space-y-3">
                   <SettingToggle
                     id="settings-mfa"
-                    label="Multi-factor authentication"
-                    description="Require an additional verification challenge during login."
+                    label={t('settings.mfa')}
+                    description={t('settings.mfaDescription')}
                     checked={draft.mfaEnabled}
                     onChange={(next) => setDraft((current) => ({ ...current, mfaEnabled: next }))}
                   />
                   <SettingToggle
                     id="settings-access-alerts"
-                    label="Access anomaly alerts"
-                    description="Notify account owners on unusual geolocation or device access."
+                    label={t('settings.accessAlerts')}
+                    description={t('settings.accessAlertsDescription')}
                     checked={draft.recentAccessAlerts}
                     onChange={(next) => setDraft((current) => ({ ...current, recentAccessAlerts: next }))}
                   />
                   <div>
-                    <label htmlFor="settings-timeout" className="form-label">Session Timeout</label>
+                    <label htmlFor="settings-timeout" className="form-label">{t('settings.sessionTimeout')}</label>
                     <select
                       id="settings-timeout"
                       className="input"
@@ -488,26 +501,26 @@ export function SettingsPage() {
                     </select>
                   </div>
                   <div className="rounded-lg border border-border/70 bg-bg-muted/35 px-3 py-3 text-xs text-subtle">
-                    Security baseline follows tenant policy and will enforce stronger controls for elevated roles.
+                    {t('settings.securityBaseline')}
                   </div>
                 </div>
               </div>
             </div>
 
             <div className="card">
-              <div className="section-title"><BellRing size={16} className="text-accent" />Notification Controls</div>
+              <div className="section-title"><BellRing size={16} className="text-accent" />{t('settings.notifications')}</div>
               <div className="grid gap-3 lg:grid-cols-2">
                 <SettingToggle
                   id="settings-digest"
-                  label="Daily operational digest"
-                  description="Receive system summary with incidents, uptime, and charging throughput."
+                  label={t('settings.dailyDigest')}
+                  description={t('settings.dailyDigestDescription')}
                   checked={draft.dailyDigest}
                   onChange={(next) => setDraft((current) => ({ ...current, dailyDigest: next }))}
                 />
                 <SettingToggle
                   id="settings-weekly"
-                  label="Weekly executive report"
-                  description="Send weekly tenant-wide trends and settlement highlights."
+                  label={t('settings.weeklyReport')}
+                  description={t('settings.weeklyReportDescription')}
                   checked={draft.weeklyOpsReport}
                   onChange={(next) => setDraft((current) => ({ ...current, weeklyOpsReport: next }))}
                 />
@@ -515,10 +528,10 @@ export function SettingsPage() {
             </div>
 
             <div className="card">
-              <div className="section-title"><LayoutGrid size={16} className="text-accent" />Interface Preferences</div>
+              <div className="section-title"><LayoutGrid size={16} className="text-accent" />{t('settings.interface')}</div>
               <div className="grid gap-3 md:grid-cols-4">
                 <div>
-                  <label htmlFor="settings-theme" className="form-label">Theme</label>
+                  <label htmlFor="settings-theme" className="form-label">{t('settings.theme')}</label>
                   <select
                     id="settings-theme"
                     className="input"
@@ -534,7 +547,7 @@ export function SettingsPage() {
                   </div>
                 </div>
                 <div>
-                  <label htmlFor="settings-density" className="form-label">Screen Density</label>
+                  <label htmlFor="settings-density" className="form-label">{t('settings.screenDensity')}</label>
                   <select
                     id="settings-density"
                     className="input"
@@ -546,7 +559,7 @@ export function SettingsPage() {
                   </select>
                 </div>
                 <div>
-                  <label htmlFor="settings-language" className="form-label">Language</label>
+                  <label htmlFor="settings-language" className="form-label">{t('settings.language')}</label>
                   <select
                     id="settings-language"
                     className="input"
@@ -559,7 +572,7 @@ export function SettingsPage() {
                   </select>
                 </div>
                 <div>
-                  <label htmlFor="settings-currency" className="form-label">Currency</label>
+                  <label htmlFor="settings-currency" className="form-label">{t('settings.currency')}</label>
                   <select
                     id="settings-currency"
                     className="input"
@@ -575,10 +588,10 @@ export function SettingsPage() {
             </div>
 
             <div className="card">
-              <div className="section-title"><Building2 size={16} className="text-accent" />Tenant Provisioning</div>
+              <div className="section-title"><Building2 size={16} className="text-accent" />{t('settings.provisioning')}</div>
               <div className="grid gap-3 md:grid-cols-3">
                 <div>
-                  <label htmlFor="settings-tenant-country" className="form-label">Country</label>
+                  <label htmlFor="settings-tenant-country" className="form-label">{t('settings.country')}</label>
                   <select
                     id="settings-tenant-country"
                     className="input"
@@ -600,7 +613,7 @@ export function SettingsPage() {
                   </select>
                 </div>
                 <div>
-                  <label htmlFor="settings-tenant-state" className="form-label">State / Province</label>
+                  <label htmlFor="settings-tenant-state" className="form-label">{t('settings.state')}</label>
                   {tenantStates.length > 0 ? (
                     <select
                       id="settings-tenant-state"
@@ -633,7 +646,7 @@ export function SettingsPage() {
                   )}
                 </div>
                 <div>
-                  <label htmlFor="settings-tenant-city" className="form-label">City</label>
+                  <label htmlFor="settings-tenant-city" className="form-label">{t('settings.city')}</label>
                   {tenantCities.length > 0 ? (
                     <select
                       id="settings-tenant-city"
@@ -666,55 +679,54 @@ export function SettingsPage() {
                 </div>
               </div>
               <div className="text-xs text-subtle mt-3">
-                Country, state, and city options are loaded from geography reference APIs.
+                {t('settings.geographyNotes')}
               </div>
             </div>
           </div>
 
           <div className="space-y-6">
             <div className="card">
-              <div className="section-title"><Building2 size={16} className="text-accent" />Tenant Scope</div>
+              <div className="section-title"><Building2 size={16} className="text-accent" />{t('settings.scope')}</div>
               <div className="space-y-3 text-sm">
-                <div><div className="form-label">Active Tenant</div><div>{activeTenant?.name ?? 'Platform'}</div></div>
-                <div><div className="form-label">Scope</div><div>{activeTenant?.scopeLabel ?? '-'}</div></div>
-                <div><div className="form-label">Active Station</div><div>{activeStationDisplayName}</div></div>
-                <div><div className="form-label">Region</div><div>{activeTenant?.region ?? '-'}</div></div>
-                <div><div className="form-label">Provisioning Country</div><div>{selectedTenantCountryName}</div></div>
-                <div><div className="form-label">Provisioning State</div><div>{selectedTenantStateName}</div></div>
-                <div><div className="form-label">Provisioning City</div><div>{draft.tenantCity || '-'}</div></div>
-                <div><div className="form-label">Coverage</div><div>{dataScopeLabel}</div></div>
-                {hasTemporaryScope && <div><div className="form-label">Temporary Access</div><div>{temporaryAccessState}</div></div>}
-                {hasTemporaryScope && <div><div className="form-label">Access Window</div><div>{temporaryAccessWindowLabel}</div></div>}
-                <div><div className="form-label">Station Contexts</div><div>{availableStationContexts.length}</div></div>
-                <div><div className="form-label">Available Tenants</div><div>{availableTenants.length}</div></div>
+                <div><div className="form-label">{t('settings.activeTenant')}</div><div>{activeTenant?.name ?? 'Platform'}</div></div>
+                <div><div className="form-label">{t('settings.scope')}</div><div>{activeTenant?.scopeLabel ?? '-'}</div></div>
+                <div><div className="form-label">{t('settings.activeStation')}</div><div>{activeStationDisplayName}</div></div>
+                <div><div className="form-label">{t('settings.region')}</div><div>{activeTenant?.region ?? '-'}</div></div>
+                <div><div className="form-label">{t('settings.country')}</div><div>{selectedTenantCountryName}</div></div>
+                <div><div className="form-label">{t('settings.state')}</div><div>{selectedTenantStateName}</div></div>
+                <div><div className="form-label">{t('settings.city')}</div><div>{draft.tenantCity || '-'}</div></div>
+                <div><div className="form-label">{t('settings.coverage')}</div><div>{dataScopeLabel}</div></div>
+                {hasTemporaryScope && <div><div className="form-label">{t('settings.temporaryAccess')}</div><div>{temporaryAccessStateLabel}</div></div>}
+                {hasTemporaryScope && <div><div className="form-label">{t('settings.accessWindow')}</div><div>{temporaryAccessWindowLabel}</div></div>}
+                <div><div className="form-label">{t('settings.stationContexts')}</div><div>{availableStationContexts.length}</div></div>
+                <div><div className="form-label">{t('settings.availableTenants')}</div><div>{availableTenants.length}</div></div>
               </div>
             </div>
 
             <div className="card">
-              <div className="section-title"><SlidersHorizontal size={16} className="text-accent" />Configuration Health</div>
+              <div className="section-title"><SlidersHorizontal size={16} className="text-accent" />{t('settings.health')}</div>
               <div className="space-y-2 text-sm">
                 <div className="flex items-center justify-between rounded-lg border border-border/70 bg-bg-muted/35 px-3 py-2">
-                  <span className="text-subtle">Profile completeness</span>
+                  <span className="text-subtle">{t('settings.profileCompleteness')}</span>
                   <span className="text-ok font-semibold">92%</span>
                 </div>
                 <div className="flex items-center justify-between rounded-lg border border-border/70 bg-bg-muted/35 px-3 py-2">
-                  <span className="text-subtle">Security posture</span>
+                  <span className="text-subtle">{t('settings.securityPosture')}</span>
                   <span className={draft.mfaEnabled ? 'text-ok font-semibold' : 'text-warning font-semibold'}>
-                    {draft.mfaEnabled ? 'Hardened' : 'Needs MFA'}
+                    {draft.mfaEnabled ? t('settings.hardened') : t('settings.needsMfa')}
                   </span>
                 </div>
                 <div className="flex items-center justify-between rounded-lg border border-border/70 bg-bg-muted/35 px-3 py-2">
-                  <span className="text-subtle">Notification routing</span>
-                  <span className="text-info font-semibold">Operational</span>
+                  <span className="text-subtle">{t('settings.routingHealth')}</span>
+                  <span className="text-info font-semibold">{t('settings.operational')}</span>
                 </div>
               </div>
             </div>
 
             <div className="card border-accent/20 bg-accent/5">
-              <div className="section-title"><Lock size={16} className="text-accent" />Policy Notes</div>
+              <div className="section-title"><Lock size={16} className="text-accent" />{t('settings.policy')}</div>
               <p className="text-xs text-subtle leading-relaxed">
-                Tenant governance, role restrictions, and scope isolation remain policy-driven. Profile changes sync through the PATCH endpoint,
-                while workspace preferences stay local to this browser.
+                {t('settings.policyNotes')}
               </p>
             </div>
           </div>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   canAccessPolicy,
   getUserRoleLabel,
@@ -39,7 +40,7 @@ import {
 } from "lucide-react";
 
 interface NavGroup {
-  label: string;
+  labelKey: string;
   items: NavItem[];
 }
 
@@ -47,17 +48,17 @@ interface NavItem {
   policy: AccessPolicyKey;
   featureFlag?: "pnc_v1" | "enterprise_sso_v1";
   tenantCpoTypes?: readonly TenantCpoType[];
-  label: string;
+  labelKey: string;
   icon: React.ReactNode;
   path: string;
 }
 
 const NAV: NavGroup[] = [
   {
-    label: "Overview",
+    labelKey: "nav.groups.overview",
     items: [
       {
-        label: "Dashboard",
+        labelKey: "nav.items.dashboard",
         icon: <LayoutDashboard size={16} />,
         path: PATHS.DASHBOARD,
         policy: "dashboardHome",
@@ -65,23 +66,23 @@ const NAV: NavGroup[] = [
     ],
   },
   {
-    label: "Infrastructure",
+    labelKey: "nav.groups.infrastructure",
     items: [
       {
-        label: "Stations",
+        labelKey: "nav.items.stations",
         icon: <Cpu size={16} />,
         path: PATHS.STATIONS,
         policy: "stationsRead",
       },
       {
-        label: "Charge Points",
+        labelKey: "nav.items.chargePoints",
         icon: <Gauge size={16} />,
         path: PATHS.CHARGE_POINTS,
         policy: "chargePointsRead",
         tenantCpoTypes: ["CHARGE", "HYBRID"],
       },
       {
-        label: "Swap Stations",
+        labelKey: "nav.items.swapStations",
         icon: <RefreshCw size={16} />,
         path: PATHS.SWAP_STATIONS,
         policy: "swapStationsRead",
@@ -90,43 +91,43 @@ const NAV: NavGroup[] = [
     ],
   },
   {
-    label: "Operations",
+    labelKey: "nav.groups.operations",
     items: [
       {
-        label: "Sessions",
+        labelKey: "nav.items.sessions",
         icon: <Activity size={16} />,
         path: PATHS.SESSIONS,
         policy: "sessionsRead",
         tenantCpoTypes: ["CHARGE", "HYBRID"],
       },
       {
-        label: "Reservations",
+        labelKey: "nav.items.reservations",
         icon: <BookOpen size={16} />,
         path: PATHS.RESERVATIONS,
         policy: "reservationsRead",
         tenantCpoTypes: ["CHARGE", "HYBRID"],
       },
       {
-        label: "Fleet",
+        labelKey: "nav.items.fleet",
         icon: <Users size={16} />,
         path: PATHS.FLEET,
         policy: "fleetRead",
       },
       {
-        label: "Swap Sessions",
+        labelKey: "nav.items.swapSessions",
         icon: <RefreshCw size={16} />,
         path: PATHS.SWAP_SESSIONS,
         policy: "swapSessionsRead",
         tenantCpoTypes: ["SWAP", "HYBRID"],
       },
       {
-        label: "Incidents",
+        labelKey: "nav.items.incidents",
         icon: <AlertTriangle size={16} />,
         path: PATHS.INCIDENTS,
         policy: "incidentsRead",
       },
       {
-        label: "Alerts",
+        labelKey: "nav.items.alerts",
         icon: <Bell size={16} />,
         path: PATHS.ALERTS,
         policy: "alertsRead",
@@ -134,31 +135,31 @@ const NAV: NavGroup[] = [
     ],
   },
   {
-    label: "Energy",
+    labelKey: "nav.groups.energy",
     items: [
       {
-        label: "Smart Charging",
+        labelKey: "nav.items.smartCharging",
         icon: <Gauge size={16} />,
         path: PATHS.SMART_CHARGING,
         policy: "smartChargingRead",
         tenantCpoTypes: ["CHARGE", "HYBRID"],
       },
       {
-        label: "Load Policy",
+        labelKey: "nav.items.loadPolicy",
         icon: <TrendingUp size={16} />,
         path: PATHS.LOAD_POLICY,
         policy: "loadPoliciesRead",
         tenantCpoTypes: ["CHARGE", "HYBRID"],
       },
       {
-        label: "DER Orchestration",
+        labelKey: "nav.items.derOrchestration",
         icon: <Activity size={16} />,
         path: PATHS.DER_ORCHESTRATION,
         policy: "derOrchestrationRead",
         tenantCpoTypes: ["CHARGE", "HYBRID"],
       },
       {
-        label: "Battery Inventory",
+        labelKey: "nav.items.batteryInventory",
         icon: <Package size={16} />,
         path: PATHS.BATTERY_INVENTORY,
         policy: "batteryInventoryRead",
@@ -167,28 +168,28 @@ const NAV: NavGroup[] = [
     ],
   },
   {
-    label: "Roaming (OCPI)",
+    labelKey: "nav.groups.roaming",
     items: [
       {
-        label: "Partners",
+        labelKey: "nav.items.partners",
         icon: <Network size={16} />,
         path: PATHS.OCPI_PARTNERS,
         policy: "roamingRead",
       },
       {
-        label: "Sessions",
+        labelKey: "nav.items.sessions",
         icon: <Activity size={16} />,
         path: PATHS.OCPI_SESSIONS,
         policy: "roamingRead",
       },
       {
-        label: "Commands",
+        labelKey: "nav.items.sessions",
         icon: <RefreshCw size={16} />,
         path: PATHS.OCPI_COMMANDS,
         policy: "roamingRead",
       },
       {
-        label: "CDR Ledger",
+        labelKey: "nav.items.cdrLedger",
         icon: <BookOpen size={16} />,
         path: PATHS.OCPI_CDRS,
         policy: "roamingRead",
@@ -196,28 +197,28 @@ const NAV: NavGroup[] = [
     ],
   },
   {
-    label: "Finance",
+    labelKey: "nav.groups.finance",
     items: [
       {
-        label: "Tariffs",
+        labelKey: "nav.items.tariffs",
         icon: <DollarSign size={16} />,
         path: PATHS.TARIFFS,
         policy: "tariffsRead",
       },
       {
-        label: "Billing",
+        labelKey: "nav.items.billing",
         icon: <FileText size={16} />,
         path: PATHS.BILLING,
         policy: "billingRead",
       },
       {
-        label: "Payouts",
+        labelKey: "nav.items.payouts",
         icon: <TrendingUp size={16} />,
         path: PATHS.PAYOUTS,
         policy: "payoutsRead",
       },
       {
-        label: "Settlement",
+        labelKey: "nav.items.settlement",
         icon: <ShieldCheck size={16} />,
         path: PATHS.SETTLEMENT,
         policy: "settlementRead",
@@ -225,52 +226,52 @@ const NAV: NavGroup[] = [
     ],
   },
   {
-    label: "Platform",
+    labelKey: "nav.groups.platform",
     items: [
       {
-        label: "Reports",
+        labelKey: "nav.items.reports",
         icon: <BarChart3 size={16} />,
         path: PATHS.REPORTS,
         policy: "reportsRead",
       },
       {
-        label: "Team",
+        labelKey: "nav.items.team",
         icon: <Users size={16} />,
         path: PATHS.TEAM,
         policy: "teamRead",
       },
       {
-        label: "Audit Logs",
+        labelKey: "nav.items.auditLogs",
         icon: <FileText size={16} />,
         path: PATHS.AUDIT_LOGS,
         policy: "auditLogsRead",
       },
       {
-        label: "Webhooks",
+        labelKey: "nav.items.webhooks",
         icon: <Webhook size={16} />,
         path: PATHS.WEBHOOKS,
         policy: "platformAdminRead",
       },
       {
-        label: "Integrations",
+        labelKey: "nav.items.integrations",
         icon: <Puzzle size={16} />,
         path: PATHS.INTEGRATIONS,
         policy: "platformAdminRead",
       },
       {
-        label: "Protocols",
+        labelKey: "nav.items.protocols",
         icon: <Globe2 size={16} />,
         path: PATHS.PROTOCOLS,
         policy: "platformAdminRead",
       },
       {
-        label: "Tier Pricing",
+        labelKey: "nav.items.tierPricing",
         icon: <DollarSign size={16} />,
         path: PATHS.TIER_PRICING,
         policy: "tierPricingAdmin",
       },
       {
-        label: "Plug & Charge",
+        labelKey: "nav.items.plugAndCharge",
         icon: <ShieldCheck size={16} />,
         path: PATHS.PLUG_AND_CHARGE,
         policy: "pncRead",
@@ -278,19 +279,19 @@ const NAV: NavGroup[] = [
         tenantCpoTypes: ["CHARGE", "HYBRID"],
       },
       {
-        label: "Vendor Baseline",
+        labelKey: "nav.items.vendorBaseline",
         icon: <Puzzle size={16} />,
         path: PATHS.VENDOR_BASELINE,
         policy: "platformAdminRead",
       },
       {
-        label: "Developer APIs",
+        labelKey: "nav.items.developerApis",
         icon: <BookOpen size={16} />,
         path: PATHS.DEVELOPER_PLATFORM,
         policy: "developerPlatformRead",
       },
       {
-        label: "Enterprise IAM",
+        labelKey: "nav.items.enterpriseIam",
         icon: <Users size={16} />,
         path: PATHS.ENTERPRISE_IAM,
         policy: "enterpriseIamRead",
@@ -306,6 +307,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ mode = "desktop", onRequestClose }: SidebarProps) {
+  const { t } = useTranslation();
   const location = useLocation();
   const { user, logout } = useAuthStore();
   const { activeTenant } = useTenant();
@@ -329,7 +331,7 @@ export function Sidebar({ mode = "desktop", onRequestClose }: SidebarProps) {
           }}
           className="btn ghost icon absolute right-2 top-2 z-10"
           style={{ flexShrink: 0 }}
-          title="Close navigation"
+          title={t("common.cancel")}
           aria-label="Close navigation"
         >
           <X size={14} />
@@ -371,27 +373,28 @@ export function Sidebar({ mode = "desktop", onRequestClose }: SidebarProps) {
           if (visibleItems.length === 0) return null;
 
           return (
-            <div key={group.label}>
+            <div key={group.labelKey}>
               {!isCollapsed && (
-                <div className="nav-group-label">{group.label}</div>
+                <div className="nav-group-label">{t(group.labelKey)}</div>
               )}
               {visibleItems.map((item) => {
                 const isActive =
                   location.pathname === item.path ||
                   location.pathname.startsWith(item.path + "/");
+                const label = t(item.labelKey);
                 return (
                   <Link
                     key={item.path}
                     to={item.path}
                     className={`nav-item ${isActive ? "active" : ""}`}
-                    title={isCollapsed ? item.label : undefined}
+                    title={isCollapsed ? label : undefined}
                     onClick={() => {
                       setIsProfileMenuOpen(false);
                       onRequestClose?.();
                     }}
                   >
                     <span className="flex-shrink-0">{item.icon}</span>
-                    {!isCollapsed && <span>{item.label}</span>}
+                    {!isCollapsed && <span>{label}</span>}
                   </Link>
                 );
               })}
@@ -442,7 +445,7 @@ export function Sidebar({ mode = "desktop", onRequestClose }: SidebarProps) {
                     }}
                   >
                     <Settings size={16} />
-                    <span>Account Settings</span>
+                    <span>{t("nav.items.accountSettings")}</span>
                   </Link>
                 )}
                 <button
@@ -453,7 +456,7 @@ export function Sidebar({ mode = "desktop", onRequestClose }: SidebarProps) {
                   className="nav-item w-full text-left"
                 >
                   <LogOut size={16} />
-                  <span>Sign out</span>
+                  <span>{t("common.signOut")}</span>
                 </button>
               </div>
             )}
