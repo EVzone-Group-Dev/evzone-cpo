@@ -169,8 +169,8 @@ export function SettingsPage() {
   const temporaryAccessWindowLabel = getTemporaryAccessWindowLabel(user)
   const hasTemporaryScope = isTemporaryScopeUser(user)
   
-  const selectedTenantCountryName = useMemo(() => countryOptions.find((country) => country.code2 === draft.tenantCountryCode)?.name ?? draft.tenantCountryCode || '-', [countryOptions, draft.tenantCountryCode])
-  const selectedTenantStateName = useMemo(() => tenantStates.find((state) => state.code === draft.tenantStateCode)?.name ?? draft.tenantStateCode || '-', [draft.tenantStateCode, tenantStates])
+  const selectedTenantCountryName = useMemo(() => (countryOptions.find((country) => country.code2 === draft.tenantCountryCode)?.name ?? draft.tenantCountryCode) || '-', [countryOptions, draft.tenantCountryCode])
+  const selectedTenantStateName = useMemo(() => (tenantStates.find((state) => state.code === draft.tenantStateCode)?.name ?? draft.tenantStateCode) || '-', [draft.tenantStateCode, tenantStates])
 
   const hasUnsavedChanges = JSON.stringify(draft) !== JSON.stringify(baseline)
 
