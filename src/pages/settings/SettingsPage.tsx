@@ -172,6 +172,12 @@ export function SettingsPage() {
   const selectedTenantCountryName = useMemo(() => (countryOptions.find((country) => country.code2 === draft.tenantCountryCode)?.name ?? draft.tenantCountryCode) || '-', [countryOptions, draft.tenantCountryCode])
   const selectedTenantStateName = useMemo(() => (tenantStates.find((state) => state.code === draft.tenantStateCode)?.name ?? draft.tenantStateCode) || '-', [draft.tenantStateCode, tenantStates])
 
+  const profileCompleteness = useMemo(() => {
+    const fields = [draft.name, draft.email, draft.tenantCountryCode, draft.tenantStateCode, draft.tenantCity]
+    const filled = fields.filter(f => f && f.trim().length > 0).length
+    return Math.round((filled / fields.length) * 100)
+  }, [draft])
+
   const hasUnsavedChanges = JSON.stringify(draft) !== JSON.stringify(baseline)
 
   useEffect(() => {
@@ -340,12 +346,11 @@ export function SettingsPage() {
               </div>
             </section>
 
-            {/* Notifications & Interface */}
             <div className="grid gap-12 sm:grid-cols-2">
               <section>
-                <SectionHeader icon={BellRing} title={t('settings.notifications')} />
-                <div className="space-y-2">
-                  <div className="p-5 rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] shadow-sm">
+                <SectionHeader icon={BellRing} title={t('settings.notifications')} description="Manage your automated report delivery" />
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] divide-y divide-[var(--border)]/50 overflow-hidden shadow-sm">
+                  <div className="px-6">
                     <SettingToggle
                       id="settings-digest"
                       label={t('settings.dailyDigest')}
@@ -353,7 +358,8 @@ export function SettingsPage() {
                       checked={draft.dailyDigest}
                       onChange={(next) => setDraft((current) => ({ ...current, dailyDigest: next }))}
                     />
-                    <div className="my-4 h-px bg-[var(--border)]/50" />
+                  </div>
+                  <div className="px-6">
                     <SettingToggle
                       id="settings-weekly"
                       label={t('settings.weeklyReport')}
@@ -366,10 +372,10 @@ export function SettingsPage() {
               </section>
 
               <section>
-                <SectionHeader icon={LayoutGrid} title={t('settings.interface')} />
-                <div className="p-6 rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] shadow-sm space-y-5">
+                <SectionHeader icon={LayoutGrid} title={t('settings.interface')} description="Personalize your dashboard experience" />
+                <div className="p-6 rounded-2xl border border-[var(--border)] bg-[var(--bg-card)] shadow-sm space-y-5 h-[calc(100%-60px)]">
                   <div className="space-y-1.5">
-                    <label htmlFor="settings-theme" className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-subtle)]">{t('settings.theme')}</label>
+                    <label htmlFor="settings-theme" className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-subtle)] px-1">{t('settings.theme')}</label>
                     <select id="settings-theme" className="input h-10 rounded-lg bg-[var(--bg-muted)]/50" value={themeMode} onChange={(event) => setThemeMode(event.target.value as 'system' | 'light' | 'dark')}>
                       <option value="system">System</option>
                       <option value="light">Light</option>
@@ -378,14 +384,14 @@ export function SettingsPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label htmlFor="settings-density" className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-subtle)]">{t('settings.screenDensity')}</label>
+                      <label htmlFor="settings-density" className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-subtle)] px-1">{t('settings.screenDensity')}</label>
                       <select id="settings-density" className="input h-10 rounded-lg bg-[var(--bg-muted)]/50" value={draft.screenDensity} onChange={(event) => setDraft((current) => ({ ...current, screenDensity: event.target.value as ScreenDensity }))}>
                         <option value="Comfortable">Comfortable</option>
                         <option value="Compact">Compact</option>
                       </select>
                     </div>
                     <div className="space-y-1.5">
-                      <label htmlFor="settings-language" className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-subtle)]">{t('settings.language')}</label>
+                      <label htmlFor="settings-language" className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-subtle)] px-1">{t('settings.language')}</label>
                       <select id="settings-language" className="input h-10 rounded-lg bg-[var(--bg-muted)]/50" value={draft.language} onChange={(event) => setDraft((current) => ({ ...current, language: event.target.value }))}>
                         {languageOptions.map((language) => <option key={language} value={language}>{language}</option>)}
                       </select>
@@ -475,7 +481,7 @@ export function SettingsPage() {
                 </div>
                 <div className="space-y-3">
                   {[
-                    { label: t('settings.profileCompleteness'), value: '92%', color: 'text-ok' },
+                    { label: t('settings.profileCompleteness'), value: `${profileCompleteness}%`, color: profileCompleteness > 80 ? 'text-ok' : 'text-warning' },
                     { label: t('settings.securityPosture'), value: draft.mfaEnabled ? t('settings.hardened') : t('settings.needsMfa'), color: draft.mfaEnabled ? 'text-ok' : 'text-warning' },
                     { label: t('settings.routingHealth'), value: t('settings.operational'), color: 'text-info' },
                   ].map((item, idx) => (
