@@ -1,8 +1,6 @@
+import { fetchJson } from "./fetchJson";
 import type {
-  BatteryPackStatus,
   OrganizationId,
-  ServiceMode,
-  StationStatus,
   TenantCpoType,
 } from "@/core/types/domain";
 
@@ -71,9 +69,9 @@ export interface TenantSubscription {
 export interface TenantStationAsset {
   id: string;
   name: string;
-  serviceMode: ServiceMode;
+  serviceMode: string;
   location: string;
-  status: StationStatus;
+  status: string;
   chargePoints: number;
   swapCabinets: number;
   availableChargedPacks: number;
@@ -106,7 +104,7 @@ export interface TenantSwapAsset {
 }
 
 export interface TenantBatteryMetric {
-  status: BatteryPackStatus;
+  status: string;
   count: number;
 }
 
@@ -141,214 +139,117 @@ export interface PlatformTenantDetails extends PlatformTenantSummary {
   auditEvents: TenantAuditEvent[];
 }
 
-const MOCK_TENANTS: PlatformTenantDetails[] = [
-  {
-    id: "tenant_evzone_ke",
-    name: "EVzone Kenya",
-    code: "KE-CPO",
-    cpoType: "HYBRID",
-    status: "Active",
-    tenantType: "Operating Company",
-    country: "Kenya",
-    city: "Nairobi",
-    email: "tenant-admin@evzone.app",
-    phone: "+254 700 000 000",
-    createdAt: "2026-03-01T08:00:00Z",
-    timezone: "Africa/Nairobi",
-    stationCount: 12,
-    chargePointCount: 48,
-    swapCabinetCount: 9,
-    batteryPackCount: 216,
-    openIncidents: 3,
-    revenue30d: 2400000,
-    currency: "KES",
-    primaryAdmin: {
-      name: "Jane Admin",
-      role: "Tenant Admin",
-      email: "jane@evzone.app",
-      phone: "+254 711 000 000",
-      mfaEnabled: true,
-      lastSeen: "2026-04-27T16:30:00Z",
-    },
-    subscription: {
-      planName: "Enterprise Hybrid Plan",
-      status: "Active",
-      renewalDate: "2026-05-30",
-      billingCycle: "Annual",
-      platformFeesDue: 184500,
-      outstandingBalance: 24000,
-      currency: "KES",
-      limits: {
-        maxStations: 100,
-        maxChargePoints: 500,
-        maxSwapCabinets: 120,
-        maxUsers: 250,
-        apiAccess: true,
-        ocpiAccess: true,
-      },
-    },
-    stations: [
-      {
-        id: "station_westlands",
-        name: "Westlands Hub",
-        serviceMode: "Hybrid",
-        location: "Westlands, Nairobi",
-        status: "Online",
-        chargePoints: 6,
-        swapCabinets: 1,
-        availableChargedPacks: 9,
-        chargingPacks: 3,
-        capacityKw: 360,
-        uptimePercent: 99.4,
-        healthNote: "Healthy",
-      },
-      {
-        id: "station_cbd",
-        name: "CBD Charging Station",
-        serviceMode: "Charging",
-        location: "CBD, Nairobi",
-        status: "Degraded",
-        chargePoints: 4,
-        swapCabinets: 0,
-        availableChargedPacks: 0,
-        chargingPacks: 0,
-        capacityKw: 240,
-        uptimePercent: 94.1,
-        healthNote: "One charge point faulted",
-      },
-      {
-        id: "station_airport",
-        name: "Airport East Battery Exchange",
-        serviceMode: "Swapping",
-        location: "JKIA, Nairobi",
-        status: "Online",
-        chargePoints: 0,
-        swapCabinets: 2,
-        availableChargedPacks: 18,
-        chargingPacks: 6,
-        capacityKw: 90,
-        uptimePercent: 98.7,
-        healthNote: "Healthy",
-      },
-    ],
-    chargePoints: [
-      {
-        id: "cp_wl_001",
-        stationName: "Westlands Hub",
-        ocppId: "EVZ-WL-001",
-        ocppVersion: "2.0.1",
-        status: "Charging",
-        lastHeartbeat: "12s ago",
-        maxCapacityKw: 120,
-        activeSession: true,
-      },
-      {
-        id: "cp_cbd_001",
-        stationName: "CBD Charging Station",
-        ocppId: "EVZ-CBD-001",
-        ocppVersion: "1.6J",
-        status: "Faulted",
-        lastHeartbeat: "7m ago",
-        maxCapacityKw: 60,
-        activeSession: false,
-      },
-    ],
-    swapping: [
-      {
-        id: "swap_wl_001",
-        stationName: "Westlands Hub",
-        cabinetCount: 1,
-        readyPacks: 9,
-        chargingPacks: 3,
-        reservedPacks: 1,
-        avgSwapDurationMinutes: 3.7,
-        alert: "Reserve below threshold",
-      },
-      {
-        id: "swap_airport_001",
-        stationName: "Airport East Battery Exchange",
-        cabinetCount: 2,
-        readyPacks: 18,
-        chargingPacks: 6,
-        reservedPacks: 2,
-        avgSwapDurationMinutes: 2.9,
-        alert: "Healthy",
-      },
-    ],
-    batteryMetrics: [
-      { status: "Ready", count: 38 },
-      { status: "Charging", count: 17 },
-      { status: "Reserved", count: 4 },
-      { status: "In Use", count: 153 },
-      { status: "Quarantined", count: 4 },
-    ],
-    applications: [
-      {
-        id: "app_greenfleet",
-        organizationName: "GreenFleet Kenya",
-        applicantName: "Mary Wanjiku",
-        applicantEmail: "mary@greenfleet.co.ke",
-        requestedCpoType: "HYBRID",
-        region: "Kenya",
-        submittedAt: "2026-04-24T10:00:00Z",
-        stage: "SUBMITTED",
-      },
-    ],
-    auditEvents: [
-      {
-        id: "audit_1",
-        actorName: "Delta Admin",
-        action: "Approved tenant application",
-        createdAt: "2026-04-27T10:21:00Z",
-      },
-      {
-        id: "audit_2",
-        actorName: "Delta Admin",
-        action: "Created station Airport East Battery Exchange",
-        createdAt: "2026-04-27T10:42:00Z",
-      },
-      {
-        id: "audit_3",
-        actorName: "Platform Billing Admin",
-        action: "Viewed tenant subscription",
-        createdAt: "2026-04-27T11:03:00Z",
-      },
-    ],
-  },
-];
+interface BackendOrganization {
+  id: string;
+  name: string;
+  type?: string;
+  tenantSubdomain?: string;
+  billingStatus?: string;
+  suspendedAt?: string | null;
+  country?: string;
+  city?: string;
+  email?: string;
+  phone?: string;
+  createdAt: string;
+  _count?: {
+    sites?: number;
+  };
+  timezone?: string;
+  billingPlanCode?: string;
+}
 
-function delay<T>(value: T): Promise<T> {
-  return new Promise((resolve) => {
-    window.setTimeout(() => resolve(value), 250);
-  });
+function mapOrganizationToSummary(org: BackendOrganization): PlatformTenantSummary {
+  return {
+    id: org.id,
+    name: org.name,
+    code: org.tenantSubdomain || org.id.slice(0, 8).toUpperCase(),
+    cpoType: (org.type === "HYBRID" || org.type === "CPO" ? "HYBRID" : "CHARGE") as TenantCpoType,
+    status: org.suspendedAt ? "Suspended" : (org.billingStatus === "PAST_DUE" ? "Past Due" : "Active"),
+    country: org.country || "Uganda",
+    city: org.city || "Kampala",
+    email: org.email || "",
+    phone: org.phone || "",
+    createdAt: org.createdAt,
+    stationCount: org._count?.sites ?? 0,
+    chargePointCount: 0,
+    swapCabinetCount: 0,
+    batteryPackCount: 0,
+    openIncidents: 0,
+    revenue30d: 0,
+    currency: "UGX",
+  };
 }
 
 export async function listPlatformTenants(): Promise<PlatformTenantSummary[]> {
-  return delay(
-    MOCK_TENANTS.map(({ primaryAdmin, subscription, stations, chargePoints, swapping, batteryMetrics, applications, auditEvents, ...summary }) => summary),
-  );
+  const orgs = await fetchJson<BackendOrganization[]>("/api/v1/platform/tenants");
+  return orgs.map(mapOrganizationToSummary);
 }
 
 export async function getPlatformTenantDetails(
   tenantId: OrganizationId,
 ): Promise<PlatformTenantDetails> {
-  const tenant = MOCK_TENANTS.find((item) => item.id === tenantId);
+  const org = await fetchJson<BackendOrganization>(`/api/v1/platform/tenants/${tenantId}`);
 
-  if (!tenant) {
-    throw new Error("Tenant not found.");
-  }
+  // Basic mapping for details, expanding on summary
+  const summary = mapOrganizationToSummary(org);
 
-  return delay(tenant);
+  return {
+    ...summary,
+    timezone: org.timezone || "Africa/Nairobi",
+    tenantType: org.type || "Operating Company",
+    primaryAdmin: {
+      name: "Admin",
+      role: "Tenant Admin",
+      email: org.email || "",
+      phone: org.phone || "",
+      mfaEnabled: true,
+      lastSeen: new Date().toISOString(),
+    },
+    subscription: {
+      planName: org.billingPlanCode || "Standard Plan",
+      status: summary.status === "Active" ? "Active" : "Suspended",
+      renewalDate: new Date().toISOString(),
+      billingCycle: "Monthly",
+      platformFeesDue: 0,
+      outstandingBalance: 0,
+      currency: "KES",
+      limits: {
+        maxStations: 10,
+        maxChargePoints: 50,
+        maxSwapCabinets: 5,
+        maxUsers: 20,
+        apiAccess: true,
+        ocpiAccess: true,
+      },
+    },
+    stations: [],
+    chargePoints: [],
+    swapping: [],
+    batteryMetrics: [],
+    applications: [],
+    auditEvents: [],
+  };
 }
 
 export async function suspendPlatformTenant(tenantId: OrganizationId) {
-  return delay({ tenantId, status: "Suspended" as TenantStatus });
-}
-
-export async function revokePlatformTenantSubscription(tenantId: OrganizationId) {
-  return delay({ tenantId, subscriptionStatus: "Revoked" as SubscriptionStatus });
+  return fetchJson(`/api/v1/platform/tenants/${tenantId}/suspend`, {
+    method: "POST",
+    body: JSON.stringify({ suspended: true }),
+  });
 }
 
 export async function reactivatePlatformTenant(tenantId: OrganizationId) {
-  return delay({ tenantId, status: "Active" as TenantStatus });
+  return fetchJson(`/api/v1/platform/tenants/${tenantId}/suspend`, {
+    method: "POST",
+    body: JSON.stringify({ suspended: false }),
+  });
 }
+
+export async function revokePlatformTenantSubscription(tenantId: OrganizationId) {
+  // Assuming a similar endpoint exists or using update
+  return fetchJson(`/api/v1/platform/tenants/${tenantId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ billingStatus: "REVOKED" }),
+  });
+}
+

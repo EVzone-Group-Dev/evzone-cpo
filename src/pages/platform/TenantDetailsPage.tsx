@@ -220,431 +220,526 @@ export function TenantDetailsPage() {
 
   return (
     <DashboardLayout pageTitle="Tenant Details">
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[280px_1fr]">
-        <aside className="space-y-4">
-          <div className="card text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[var(--accent-dim)] text-xl font-bold text-[var(--accent-ink)]">
-              {tenant.name.slice(0, 2).toUpperCase()}
+      <div className="space-y-6">
+        {/* Top KPI Row - Prominent and Premium */}
+        <div className="kpi-row">
+          <div className="kpi-card">
+            <div className="flex items-center justify-between">
+              <div className="label">Stations</div>
+              <Cpu size={16} className="text-accent" />
             </div>
-
-            <div className="mt-3 text-lg font-bold text-[var(--text)]">
-              {tenant.name}
+            <div className="value">{tenant.stationCount}</div>
+            <div className="delta-up">Active across {tenant.city}</div>
+          </div>
+          <div className="kpi-card">
+            <div className="flex items-center justify-between">
+              <div className="label">Charge Points</div>
+              <Zap size={16} className="text-warning" />
             </div>
-            <div className="text-sm text-subtle">{tenant.tenantType}</div>
-
-            <div className="mt-3 flex flex-wrap justify-center gap-2">
-              <span className={`pill ${statusClass(tenant.status)}`}>
-                {tenant.status}
-              </span>
-              <span className="pill active">{tenant.cpoType}</span>
+            <div className="value">{tenant.chargePointCount}</div>
+            <div className="delta-up">OCPP Connected</div>
+          </div>
+          <div className="kpi-card">
+            <div className="flex items-center justify-between">
+              <div className="label">Swap Cabinets</div>
+              <RefreshCw size={16} className="text-info" />
             </div>
-
-            <div className="mt-5 space-y-2 text-left text-sm">
-              <div className="flex items-center gap-2">
-                <MapPin size={14} />
-                <span>
-                  {tenant.city}, {tenant.country}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Mail size={14} />
-                <span>{tenant.email}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Phone size={14} />
-                <span>{tenant.phone}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Building2 size={14} />
-                <span>Tenant Code: {tenant.code}</span>
-              </div>
+            <div className="value">{tenant.swapCabinetCount}</div>
+            <div className="text-xs text-subtle">Ready for exchange</div>
+          </div>
+          <div className="kpi-card">
+            <div className="flex items-center justify-between">
+              <div className="label">Battery Packs</div>
+              <BatteryCharging size={16} className="text-ok" />
             </div>
-
-            <div className="mt-5 flex flex-col gap-2">
-              <button className="btn">Send message</button>
-              {canWriteStations && (
-                <Link className="btn primary" to="/stations/new">
-                  Create Station
-                </Link>
-              )}
+            <div className="value">{tenant.batteryPackCount}</div>
+            <div className="delta-up">Active circulation</div>
+          </div>
+          <div className="kpi-card">
+            <div className="flex items-center justify-between">
+              <div className="label">Open Incidents</div>
+              <AlertTriangle size={16} className={tenant.openIncidents > 0 ? "text-danger" : "text-subtle"} />
+            </div>
+            <div className="value">{tenant.openIncidents}</div>
+            <div className={tenant.openIncidents > 0 ? "delta-down" : "text-xs text-subtle"}>
+              {tenant.openIncidents > 0 ? "Requires attention" : "System healthy"}
             </div>
           </div>
+          <div className="kpi-card">
+            <div className="flex items-center justify-between">
+              <div className="label">Revenue 30d</div>
+              <Power size={16} className="text-accent" />
+            </div>
+            <div className="value">
+              {formatMoney(tenant.revenue30d, tenant.currency)}
+            </div>
+            <div className="delta-up">Growth +12.5%</div>
+          </div>
+        </div>
 
-          <div className="card">
-            <div className="section-title">Subscription</div>
-            <div className="mt-3 space-y-3">
-              <div>
-                <div className="text-sm font-semibold">
-                  {tenant.subscription.planName}
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[300px_1fr]">
+          {/* Sidebar */}
+          <aside className="space-y-6">
+            <div className="card overflow-hidden border-none bg-gradient-to-br from-[var(--bg-card)] to-[var(--bg-muted)] shadow-soft">
+              <div className="flex flex-col items-center p-2 pt-6">
+                <div className="relative">
+                  <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-accent text-2xl font-black text-accent-ink shadow-lg shadow-accent/20">
+                    {tenant.name.slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full border-4 border-[var(--bg-card)] bg-ok shadow-sm" title="Tenant Online"></div>
                 </div>
-                <div className="text-xs text-subtle">
-                  Renewal: {formatDate(tenant.subscription.renewalDate)}
+
+                <h1 className="mt-4 text-center text-xl font-bold tracking-tight text-[var(--text)]">
+                  {tenant.name}
+                </h1>
+                <p className="text-xs font-semibold uppercase tracking-widest text-subtle">{tenant.tenantType}</p>
+
+                <div className="mt-4 flex flex-wrap justify-center gap-2">
+                  <span className={`pill ${statusClass(tenant.status)}`}>
+                    {tenant.status}
+                  </span>
+                  <span className="pill active">{tenant.cpoType}</span>
+                </div>
+
+                {canWriteTenants && (
+                  <div className="mt-4 flex items-center justify-center gap-6">
+                    <button
+                      className="flex items-center justify-center text-subtle hover:text-danger transition-colors"
+                      disabled={working}
+                      title="Suspend Platform Access"
+                      onClick={() => void runTenantAction("suspend")}
+                    >
+                      <AlertTriangle size={18} />
+                    </button>
+
+                    <button
+                      className="flex items-center justify-center text-subtle hover:text-accent transition-colors"
+                      disabled={working}
+                      title="Reactivate Permissions"
+                      onClick={() => void runTenantAction("reactivate")}
+                    >
+                      <ShieldCheck size={18} />
+                    </button>
+
+                    <button
+                      className="flex items-center justify-center text-subtle hover:text-danger transition-colors"
+                      disabled={working}
+                      title="Revoke Subscription"
+                      onClick={() => void runTenantAction("revoke")}
+                    >
+                      <Power size={18} />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="divider opacity-50"></div>
+
+              <div className="px-2 pb-6 space-y-4">
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-center gap-3 text-subtle">
+                    <MapPin size={16} className="shrink-0" />
+                    <span className="truncate">{tenant.city}, {tenant.country}</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-subtle">
+                    <Mail size={16} className="shrink-0" />
+                    <span className="truncate">{tenant.email}</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-subtle">
+                    <Phone size={16} className="shrink-0" />
+                    <span className="truncate">{tenant.phone}</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-subtle">
+                    <Building2 size={16} className="shrink-0" />
+                    <span className="truncate font-mono text-xs uppercase">Code: {tenant.code}</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <button className="btn secondary w-full font-bold">Send Message</button>
+                  {canWriteStations && (
+                    <Link className="btn primary w-full font-bold" to="/stations/new">
+                      Create Station
+                    </Link>
+                  )}
                 </div>
               </div>
-              <span className={`pill ${statusClass(tenant.subscription.status)}`}>
-                {tenant.subscription.status}
-              </span>
             </div>
-          </div>
+          </aside>
 
-          <div className="card">
-            <div className="section-title">Platform Fees</div>
-            <div className="mt-2 text-2xl font-bold">
-              {formatMoney(
-                tenant.subscription.platformFeesDue,
-                tenant.subscription.currency,
-              )}
-            </div>
-            <div className="text-xs text-subtle">Current billing cycle</div>
-          </div>
+          {/* Main Content Area */}
+          <main className="space-y-6">
+            {notice && <div className="alert success shadow-soft animate-in fade-in slide-in-from-top-4">{notice}</div>}
 
-          <div className="card">
-            <div className="section-title">Outstanding Balance</div>
-            <div className="mt-2 text-2xl font-bold">
-              {formatMoney(
-                tenant.subscription.outstandingBalance,
-                tenant.subscription.currency,
-              )}
-            </div>
-            <div className="text-xs text-subtle">Due balance</div>
-          </div>
+            <div className="card border-none p-0 shadow-soft overflow-hidden">
+              <div className="bg-[var(--bg-card)] px-4 pt-4">
+                <div className="flex flex-wrap gap-1">
+                  {visibleTabs.map((tab) => (
+                    <button
+                      key={tab.key}
+                      className={`relative px-4 py-3 text-sm font-bold transition-all ${
+                        activeTab === tab.key 
+                          ? "text-accent" 
+                          : "text-subtle hover:text-[var(--text)]"
+                      }`}
+                      onClick={() => setActiveTab(tab.key)}
+                    >
+                      {tab.label}
+                      {activeTab === tab.key && (
+                        <div className="absolute bottom-0 left-0 right-0 h-1 rounded-t-full bg-accent animate-in fade-in zoom-in-95 duration-300"></div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-          {canWriteTenants && (
-            <div className="card space-y-2">
-              <div className="section-title">Admin Actions</div>
-              <button
-                className="btn w-full"
-                disabled={working}
-                onClick={() => void runTenantAction("suspend")}
-              >
-                Suspend Tenant
-              </button>
-              <button
-                className="btn w-full"
-                disabled={working}
-                onClick={() => void runTenantAction("reactivate")}
-              >
-                Reactivate Tenant
-              </button>
-              <button
-                className="btn w-full"
-                disabled={working}
-                onClick={() => void runTenantAction("revoke")}
-              >
-                Revoke Subscription
-              </button>
-            </div>
-          )}
-        </aside>
+              <div className="p-6">
+                {activeTab === "profile" && (
+                  <div className="space-y-8">
+                    <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+                      <div>
+                        <h3 className="section-title border-b border-[var(--border-light)] pb-2 mb-4">Organizational Identity</h3>
+                        <div className="space-y-1">
+                          <DetailRow label="Full Legal Name" value={tenant.name} />
+                          <DetailRow label="Platform Identifier" value={<span className="font-mono text-xs bg-muted px-2 py-0.5 rounded">{tenant.code}</span>} />
+                          <DetailRow label="Provider Vertical" value={tenant.cpoType} />
+                          <DetailRow label="Primary Region" value={tenant.country} />
+                          <DetailRow label="System Timezone" value={tenant.timezone} />
+                          <DetailRow label="Onboarding Date" value={formatDate(tenant.createdAt)} />
+                        </div>
+                      </div>
 
-        <main className="space-y-4">
-          {notice && <div className="alert success">{notice}</div>}
+                      <div>
+                        <h3 className="section-title border-b border-[var(--border-light)] pb-2 mb-4">Authorized Administrative Contact</h3>
+                        <div className="space-y-1">
+                          <DetailRow label="Designated Name" value={tenant.primaryAdmin.name} />
+                          <DetailRow label="Administrative Role" value={tenant.primaryAdmin.role} />
+                          <DetailRow label="Identity Credential" value={tenant.primaryAdmin.email} />
+                          <DetailRow label="Contact Endpoint" value={tenant.primaryAdmin.phone} />
+                          <DetailRow
+                            label="MFA Status"
+                            value={
+                              <span className={`pill ${tenant.primaryAdmin.mfaEnabled ? "online" : "danger"}`}>
+                                {tenant.primaryAdmin.mfaEnabled ? "Secured" : "Unprotected"}
+                              </span>
+                            }
+                          />
+                          <DetailRow label="Last Network Activity" value={formatDateTime(tenant.primaryAdmin.lastSeen)} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
-          <div className="card">
-            <div className="flex flex-wrap gap-2 border-b border-[var(--border)] pb-3">
-              {visibleTabs.map((tab) => (
-                <button
-                  key={tab.key}
-                  className={`btn ${activeTab === tab.key ? "primary" : ""}`}
-                  onClick={() => setActiveTab(tab.key)}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
+                {activeTab === "stations" && (
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <h3 className="section-title">Infrastructure Deployment</h3>
+                      {canWriteStations && (
+                        <Link className="btn primary font-bold sm" to="/stations/new">
+                          New Deployment
+                        </Link>
+                      )}
+                    </div>
 
-            <div className="pt-4">
-              {activeTab === "profile" && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div>
-                      <div className="section-title">Tenant Information</div>
-                      <div className="mt-3 divide-y divide-[var(--border)]">
-                        <DetailRow label="Tenant Name" value={tenant.name} />
-                        <DetailRow label="Tenant Code" value={tenant.code} />
-                        <DetailRow label="CPO Type" value={tenant.cpoType} />
-                        <DetailRow label="Region" value={tenant.country} />
-                        <DetailRow label="Timezone" value={tenant.timezone} />
-                        <DetailRow label="Status" value={tenant.status} />
-                        <DetailRow
-                          label="Created"
-                          value={formatDate(tenant.createdAt)}
-                        />
+                    <div className="table-wrap border-none">
+                      <table className="table">
+                        <thead>
+                          <tr>
+                            <th>Station Detail</th>
+                            <th>Mode</th>
+                            <th>Location</th>
+                            <th>Current Status</th>
+                            <th>Infrastructure Assets</th>
+                            <th className="text-right">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {tenant.stations.length === 0 ? (
+                            <tr>
+                              <td colSpan={6} className="p-12 text-center text-subtle italic">
+                                No infrastructure assets deployed for this tenant.
+                              </td>
+                            </tr>
+                          ) : (
+                            tenant.stations.map((station) => (
+                              <tr key={station.id}>
+                                <td>
+                                  <div className="font-bold">{station.name}</div>
+                                  <div className="text-[10px] text-subtle uppercase tracking-tight">{station.id}</div>
+                                </td>
+                                <td className="font-medium">{station.serviceMode}</td>
+                                <td className="text-subtle">{station.location}</td>
+                                <td>
+                                  <span className={`pill ${statusClass(station.status)}`}>
+                                    {station.status}
+                                  </span>
+                                </td>
+                                <td>
+                                  <div className="flex flex-col gap-0.5">
+                                    <div className="text-xs font-semibold">{station.chargePoints} Charge Points</div>
+                                    <div className="text-[10px] text-subtle">
+                                      {station.swapCabinets} Cabinets · {station.availableChargedPacks} Packs Ready
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="text-right">
+                                  <Link className="btn secondary sm font-bold" to={`/stations/${station.id}`}>
+                                    Manage
+                                  </Link>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === "charging" && (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+                      <div className="card bg-muted/30 border-dashed">
+                        <div className="text-[10px] font-bold text-subtle uppercase mb-1">Energy Throughput</div>
+                        <div className="text-xl font-black">14,280 <span className="text-sm font-medium">kWh</span></div>
+                      </div>
+                      <div className="card bg-muted/30 border-dashed">
+                        <div className="text-[10px] font-bold text-subtle uppercase mb-1">Transaction Volume</div>
+                        <div className="text-xl font-black">{formatMoney(856800, tenant.currency)}</div>
+                      </div>
+                      <div className="card bg-muted/30 border-dashed">
+                        <div className="text-[10px] font-bold text-subtle uppercase mb-1">Active Sessions</div>
+                        <div className="text-xl font-black">18</div>
+                      </div>
+                      <div className="card bg-muted/30 border-dashed">
+                        <div className="text-[10px] font-bold text-subtle uppercase mb-1">Utilization</div>
+                        <div className="text-xl font-black">84%</div>
                       </div>
                     </div>
 
-                    <div>
-                      <div className="section-title">Primary Admin Contact</div>
-                      <div className="mt-3 divide-y divide-[var(--border)]">
-                        <DetailRow label="Name" value={tenant.primaryAdmin.name} />
-                        <DetailRow label="Role" value={tenant.primaryAdmin.role} />
+                    <div className="table-wrap border-none">
+                      <table className="table">
+                        <thead>
+                          <tr>
+                            <th>Charge Point</th>
+                            <th>Station Context</th>
+                            <th>Protocol Config</th>
+                            <th>Real-time Status</th>
+                            <th className="text-right">Diagnostic</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {tenant.chargePoints.length === 0 ? (
+                            <tr>
+                              <td colSpan={5} className="p-12 text-center text-subtle italic">
+                                No active charge points found.
+                              </td>
+                            </tr>
+                          ) : (
+                            tenant.chargePoints.map((cp) => (
+                              <tr key={cp.id}>
+                                <td className="font-bold">{cp.id}</td>
+                                <td className="text-subtle">{cp.stationName}</td>
+                                <td>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-mono text-xs bg-muted px-1.5 py-0.5 rounded">{cp.ocppId}</span>
+                                    <span className="text-[10px] font-bold text-subtle">v{cp.ocppVersion}</span>
+                                  </div>
+                                </td>
+                                <td>
+                                  <span className={`pill ${statusClass(cp.status)}`}>
+                                    {cp.status}
+                                  </span>
+                                  <div className="mt-1 text-[10px] text-subtle">Pulse: {cp.lastHeartbeat}</div>
+                                </td>
+                                <td className="text-right">
+                                  <Link className="btn secondary sm font-bold" to={`/charge-points/${cp.id}`}>
+                                    Details
+                                  </Link>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === "swapping" && (
+                  <div className="space-y-6">
+                    <div className="table-wrap border-none">
+                      <table className="table">
+                        <thead>
+                          <tr>
+                            <th>Swap Station</th>
+                            <th>Hardware</th>
+                            <th>Inventory Metrics</th>
+                            <th>Operational Stats</th>
+                            <th className="text-right">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {tenant.swapping.length === 0 ? (
+                            <tr>
+                              <td colSpan={5} className="p-12 text-center text-subtle italic">
+                                No battery swap infrastructure active.
+                              </td>
+                            </tr>
+                          ) : (
+                            tenant.swapping.map((swap) => (
+                              <tr key={swap.id}>
+                                <td className="font-bold">{swap.stationName}</td>
+                                <td className="text-subtle">{swap.cabinetCount} Active Cabinets</td>
+                                <td>
+                                  <div className="flex gap-2">
+                                    <div className="flex flex-col">
+                                      <span className="text-[10px] font-bold text-subtle uppercase">Ready</span>
+                                      <span className="text-sm font-black text-ok">{swap.readyPacks}</span>
+                                    </div>
+                                    <div className="flex flex-col">
+                                      <span className="text-[10px] font-bold text-subtle uppercase">Charging</span>
+                                      <span className="text-sm font-black text-info">{swap.chargingPacks}</span>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td>
+                                  <div className="text-sm font-medium">{swap.avgSwapDurationMinutes.toFixed(1)}m <span className="text-xs text-subtle font-normal">avg swap</span></div>
+                                  <div className={`text-[10px] font-bold uppercase ${swap.alert === "Healthy" ? "text-ok" : "text-warning"}`}>{swap.alert}</div>
+                                </td>
+                                <td className="text-right">
+                                  <Link className="btn secondary sm font-bold" to={`/swap-stations/${swap.id}`}>
+                                    Optimize
+                                  </Link>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === "subscription" && (
+                  <div className="grid grid-cols-1 gap-12 md:grid-cols-2">
+                    <div className="space-y-6">
+                      <div className="flex items-center gap-2 mb-2">
+                        <ShieldCheck className="text-accent" size={20} />
+                        <h3 className="section-title mb-0">Active Agreement</h3>
+                      </div>
+                      <div className="space-y-1">
+                        <DetailRow label="Plan Level" value={<span className="font-black text-accent">{tenant.subscription.planName}</span>} />
+                        <DetailRow label="Service Status" value={tenant.subscription.status} />
+                        <DetailRow label="Invoicing Period" value={tenant.subscription.billingCycle} />
+                        <DetailRow label="Next Reconciliation" value={formatDate(tenant.subscription.renewalDate)} />
                         <DetailRow
-                          label="Email"
-                          value={tenant.primaryAdmin.email}
+                          label="Consolidated Balance"
+                          value={<span className="font-black">{formatMoney(tenant.subscription.outstandingBalance, tenant.subscription.currency)}</span>}
                         />
-                        <DetailRow
-                          label="Mobile"
-                          value={tenant.primaryAdmin.phone}
-                        />
-                        <DetailRow
-                          label="MFA"
-                          value={tenant.primaryAdmin.mfaEnabled ? "Enabled" : "Disabled"}
-                        />
-                        <DetailRow
-                          label="Last Seen"
-                          value={formatDateTime(tenant.primaryAdmin.lastSeen)}
-                        />
+                      </div>
+                      <button className="btn primary w-full font-black mt-4">Manage Billing Subscription</button>
+                    </div>
+
+                    <div className="space-y-6">
+                      <div className="flex items-center gap-2 mb-2">
+                        <cpu className="text-accent" size={20} />
+                        <h3 className="section-title mb-0">Provisioned Resource Quotas</h3>
+                      </div>
+                      <div className="space-y-1">
+                        <DetailRow label="Deployment Limit (Stations)" value={tenant.subscription.limits.maxStations} />
+                        <DetailRow label="Component Limit (CPs)" value={tenant.subscription.limits.maxChargePoints} />
+                        <DetailRow label="Automation Limit (Swaps)" value={tenant.subscription.limits.maxSwapCabinets} />
+                        <DetailRow label="Seat Limit (IAM Users)" value={tenant.subscription.limits.maxUsers} />
+                        <DetailRow label="Full API Lifecycle Access" value={tenant.subscription.limits.apiAccess ? "Authorized" : "Unauthorized"} />
+                        <DetailRow label="OCPI Roaming Protocol" value={tenant.subscription.limits.ocpiAccess ? "Authorized" : "Unauthorized"} />
                       </div>
                     </div>
                   </div>
+                )}
 
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-6">
-                    <StatCard label="Stations" value={tenant.stationCount} icon={<Cpu size={14} />} />
-                    <StatCard label="Charge Points" value={tenant.chargePointCount} icon={<Zap size={14} />} />
-                    <StatCard label="Swap Cabinets" value={tenant.swapCabinetCount} icon={<RefreshCw size={14} />} />
-                    <StatCard label="Battery Packs" value={tenant.batteryPackCount} icon={<BatteryCharging size={14} />} />
-                    <StatCard label="Open Incidents" value={tenant.openIncidents} icon={<AlertTriangle size={14} />} />
-                    <StatCard
-                      label="Revenue 30d"
-                      value={formatMoney(tenant.revenue30d, tenant.currency)}
-                      icon={<Power size={14} />}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {activeTab === "stations" && (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="section-title">Tenant Stations</div>
-                    {canWriteStations && (
-                      <Link className="btn primary" to="/stations/new">
-                        Create Station
-                      </Link>
-                    )}
-                  </div>
-
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-[var(--border)] text-left text-xs uppercase tracking-wide text-subtle">
-                          <th className="px-3 py-2">Station</th>
-                          <th className="px-3 py-2">Mode</th>
-                          <th className="px-3 py-2">Location</th>
-                          <th className="px-3 py-2">Status</th>
-                          <th className="px-3 py-2">Charging Assets</th>
-                          <th className="px-3 py-2">Swap Assets</th>
-                          <th className="px-3 py-2">Health</th>
-                          <th className="px-3 py-2 text-right">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {tenant.stations.map((station) => (
-                          <tr
-                            key={station.id}
-                            className="border-b border-[var(--border)] last:border-b-0"
-                          >
-                            <td className="px-3 py-3 font-semibold">{station.name}</td>
-                            <td className="px-3 py-3">{station.serviceMode}</td>
-                            <td className="px-3 py-3">{station.location}</td>
-                            <td className="px-3 py-3">
-                              <span className={`pill ${statusClass(station.status)}`}>
-                                {station.status}
-                              </span>
-                            </td>
-                            <td className="px-3 py-3">{station.chargePoints} CPs</td>
-                            <td className="px-3 py-3">
-                              {station.swapCabinets} cabinets · {station.availableChargedPacks} ready
-                            </td>
-                            <td className="px-3 py-3">
-                              {station.uptimePercent}% · {station.healthNote}
-                            </td>
-                            <td className="px-3 py-3 text-right">
-                              <Link className="btn" to={`/stations/${station.id}`}>
-                                {canWriteStations ? "View / Edit" : "View"}
-                              </Link>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === "charging" && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-                    <StatCard label="Energy Delivered" value="14,280 kWh" icon={<Zap size={14} />} hint="Last 30 days" />
-                    <StatCard label="Charging Revenue" value={formatMoney(856800, tenant.currency)} icon={<Power size={14} />} hint="Last 30 days" />
-                    <StatCard label="Active Sessions" value={18} icon={<RefreshCw size={14} />} hint="Now" />
-                    <StatCard label="Online Charge Points" value={`${tenant.chargePointCount - 6}/${tenant.chargePointCount}`} icon={<Cpu size={14} />} />
-                  </div>
-
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-[var(--border)] text-left text-xs uppercase tracking-wide text-subtle">
-                          <th className="px-3 py-2">Charge Point</th>
-                          <th className="px-3 py-2">Station</th>
-                          <th className="px-3 py-2">OCPP ID</th>
-                          <th className="px-3 py-2">Version</th>
-                          <th className="px-3 py-2">Status</th>
-                          <th className="px-3 py-2">Heartbeat</th>
-                          <th className="px-3 py-2 text-right">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {tenant.chargePoints.map((chargePoint) => (
-                          <tr key={chargePoint.id} className="border-b border-[var(--border)] last:border-b-0">
-                            <td className="px-3 py-3 font-semibold">{chargePoint.id}</td>
-                            <td className="px-3 py-3">{chargePoint.stationName}</td>
-                            <td className="px-3 py-3">{chargePoint.ocppId}</td>
-                            <td className="px-3 py-3">{chargePoint.ocppVersion}</td>
-                            <td className="px-3 py-3">
-                              <span className={`pill ${statusClass(chargePoint.status)}`}>
-                                {chargePoint.status}
-                              </span>
-                            </td>
-                            <td className="px-3 py-3">{chargePoint.lastHeartbeat}</td>
-                            <td className="px-3 py-3 text-right">
-                              <Link className="btn" to={`/charge-points/${chargePoint.id}`}>
-                                View
-                              </Link>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === "swapping" && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-                    <StatCard label="Ready Packs" value={38} icon={<BatteryCharging size={14} />} />
-                    <StatCard label="Charging Packs" value={17} icon={<RefreshCw size={14} />} />
-                    <StatCard label="Average Swap Time" value="3m 24s" icon={<Power size={14} />} />
-                    <StatCard label="Flagged Packs" value={4} icon={<AlertTriangle size={14} />} />
-                  </div>
-
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-[var(--border)] text-left text-xs uppercase tracking-wide text-subtle">
-                          <th className="px-3 py-2">Swap Station</th>
-                          <th className="px-3 py-2">Cabinets</th>
-                          <th className="px-3 py-2">Ready Packs</th>
-                          <th className="px-3 py-2">Charging Packs</th>
-                          <th className="px-3 py-2">Avg Duration</th>
-                          <th className="px-3 py-2">Alert</th>
-                          <th className="px-3 py-2 text-right">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {tenant.swapping.map((swap) => (
-                          <tr key={swap.id} className="border-b border-[var(--border)] last:border-b-0">
-                            <td className="px-3 py-3 font-semibold">{swap.stationName}</td>
-                            <td className="px-3 py-3">{swap.cabinetCount}</td>
-                            <td className="px-3 py-3">{swap.readyPacks}</td>
-                            <td className="px-3 py-3">{swap.chargingPacks}</td>
-                            <td className="px-3 py-3">{swap.avgSwapDurationMinutes.toFixed(1)}m</td>
-                            <td className="px-3 py-3">{swap.alert}</td>
-                            <td className="px-3 py-3 text-right">
-                              <Link className="btn" to={`/swap-stations/${swap.id}`}>
-                                View
-                              </Link>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === "subscription" && (
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div>
-                    <div className="section-title">Current Plan</div>
-                    <div className="mt-3 divide-y divide-[var(--border)]">
-                      <DetailRow label="Plan" value={tenant.subscription.planName} />
-                      <DetailRow label="Status" value={tenant.subscription.status} />
-                      <DetailRow label="Billing Cycle" value={tenant.subscription.billingCycle} />
-                      <DetailRow label="Renewal" value={formatDate(tenant.subscription.renewalDate)} />
-                      <DetailRow
-                        label="Outstanding"
-                        value={formatMoney(
-                          tenant.subscription.outstandingBalance,
-                          tenant.subscription.currency,
-                        )}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="section-title">Limits</div>
-                    <div className="mt-3 divide-y divide-[var(--border)]">
-                      <DetailRow label="Max Stations" value={tenant.subscription.limits.maxStations} />
-                      <DetailRow label="Max Charge Points" value={tenant.subscription.limits.maxChargePoints} />
-                      <DetailRow label="Max Swap Cabinets" value={tenant.subscription.limits.maxSwapCabinets} />
-                      <DetailRow label="Max Users" value={tenant.subscription.limits.maxUsers} />
-                      <DetailRow label="API Access" value={tenant.subscription.limits.apiAccess ? "Enabled" : "Disabled"} />
-                      <DetailRow label="OCPI Access" value={tenant.subscription.limits.ocpiAccess ? "Enabled" : "Disabled"} />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === "applications" && (
-                <div className="space-y-3">
-                  <div className="section-title">Tenant Applications</div>
-                  {tenant.applications.map((application) => (
-                    <div key={application.id} className="rounded-lg border border-[var(--border)] p-4">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div>
-                          <div className="font-semibold">{application.organizationName}</div>
-                          <div className="text-xs text-subtle">
-                            {application.applicantName} · {application.applicantEmail}
+                {activeTab === "applications" && (
+                  <div className="space-y-4">
+                    <h3 className="section-title">Historical Applications</h3>
+                    {tenant.applications.length === 0 ? (
+                      <div className="p-12 text-center text-subtle italic bg-muted/20 rounded-xl border border-dashed">
+                        No historical onboarding records found.
+                      </div>
+                    ) : (
+                      tenant.applications.map((app) => (
+                        <div key={app.id} className="group relative overflow-hidden rounded-xl border border-[var(--border-light)] p-5 transition-all hover:border-accent/50 hover:shadow-lg hover:shadow-accent/5">
+                          <div className="flex flex-wrap items-center justify-between gap-4">
+                            <div className="flex items-center gap-4">
+                              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent/10 text-accent group-hover:bg-accent group-hover:text-accent-ink transition-colors">
+                                <Building2 size={24} />
+                              </div>
+                              <div>
+                                <div className="text-lg font-black">{app.organizationName}</div>
+                                <div className="text-xs font-medium text-subtle">
+                                  Contact: {app.applicantName} · {app.applicantEmail}
+                                </div>
+                              </div>
+                            </div>
+                            <span className={`pill ${statusClass(app.stage)}`}>
+                              {app.stage}
+                            </span>
+                          </div>
+                          <div className="divider opacity-30 my-4"></div>
+                          <div className="grid grid-cols-2 gap-4 text-xs font-bold uppercase tracking-wider text-subtle md:grid-cols-3">
+                            <div className="flex flex-col gap-1">
+                              <span>Vertical</span>
+                              <span className="text-sm font-black text-[var(--text)]">{app.requestedCpoType}</span>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <span>Territory</span>
+                              <span className="text-sm font-black text-[var(--text)]">{app.region}</span>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <span>Audit Timestamp</span>
+                              <span className="text-sm font-black text-[var(--text)]">{formatDate(app.submittedAt)}</span>
+                            </div>
                           </div>
                         </div>
-                        <span className={`pill ${statusClass(application.stage)}`}>
-                          {application.stage}
-                        </span>
-                      </div>
-                      <div className="mt-3 grid grid-cols-1 gap-2 text-sm md:grid-cols-3">
-                        <div>Requested Type: {application.requestedCpoType}</div>
-                        <div>Region: {application.region}</div>
-                        <div>Submitted: {formatDate(application.submittedAt)}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                      ))
+                    )}
+                  </div>
+                )}
 
-              {activeTab === "audit" && (
-                <div className="space-y-3">
-                  <div className="section-title">Audit Trail</div>
-                  {tenant.auditEvents.map((event) => (
-                    <div
-                      key={event.id}
-                      className="flex items-start gap-3 rounded-lg border border-[var(--border)] p-3"
-                    >
-                      <ShieldCheck size={16} className="mt-0.5" />
-                      <div>
-                        <div className="text-sm font-semibold">{event.action}</div>
-                        <div className="text-xs text-subtle">
-                          {event.actorName} · {formatDateTime(event.createdAt)}
-                        </div>
-                      </div>
+                {activeTab === "audit" && (
+                  <div className="space-y-4">
+                    <h3 className="section-title">System Governance Trail</h3>
+                    <div className="space-y-3 relative before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-0.5 before:bg-border-light">
+                      {tenant.auditEvents.length === 0 ? (
+                        <div className="p-12 text-center text-subtle italic">No governance events recorded.</div>
+                      ) : (
+                        tenant.auditEvents.map((event) => (
+                          <div
+                            key={event.id}
+                            className="relative flex items-center gap-4 rounded-xl border border-[var(--border-light)] bg-[var(--bg-card)] p-4 transition-all hover:border-accent/30 hover:shadow-sm"
+                          >
+                            <div className="z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-4 border-[var(--bg-card)] bg-muted text-subtle">
+                              <ShieldCheck size={18} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-black text-[var(--text)]">{event.action}</div>
+                              <div className="mt-0.5 text-xs font-medium text-subtle flex items-center gap-2">
+                                <span className="text-accent">{event.actorName}</span>
+                                <span className="opacity-30">·</span>
+                                <span>{formatDateTime(event.createdAt)}</span>
+                              </div>
+                            </div>
+                            <div className="hidden sm:block text-[10px] font-bold text-subtle uppercase opacity-50 font-mono">{event.id.slice(0, 8)}</div>
+                          </div>
+                        ))
+                      )}
                     </div>
-                  ))}
-                </div>
-              )}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        </main>
+          </main>
+        </div>
       </div>
     </DashboardLayout>
   );
