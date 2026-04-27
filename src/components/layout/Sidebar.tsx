@@ -229,6 +229,12 @@ const NAV: NavGroup[] = [
     labelKey: "nav.groups.platform",
     items: [
       {
+        labelKey: "nav.items.tenants",
+        icon: <Users size={16} />,
+        path: PATHS.TENANTS,
+        policy: "platformTenantsRead",
+      },
+      {
         labelKey: "nav.items.reports",
         icon: <BarChart3 size={16} />,
         path: PATHS.REPORTS,

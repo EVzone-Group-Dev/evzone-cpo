@@ -277,43 +277,66 @@ describe('canAccessPolicy', () => {
     ).toBe(true)
   })
 
-  it('blocks tenant-only policies for platform sessions without impersonation', () => {
-    expect(
-      canAccessPolicy(
-        {
-          role: 'SUPER_ADMIN',
-          sessionScopeType: 'platform',
-          actingAsTenant: false,
-          accessProfile: buildAccessProfile({
-            canonicalRole: 'PLATFORM_SUPER_ADMIN',
-            permissions: ['stations.read'],
-            scope: {
-              type: 'platform',
-              tenantId: null,
-              stationId: null,
-              stationIds: [],
-              providerId: null,
-              isTemporary: false,
-            },
-          }),
+  it("allows platform super admin to read and write stations without tenant impersonation", () => {
+    const user = {
+      role: "SUPER_ADMIN",
+      sessionScopeType: "platform",
+      actingAsTenant: false,
+      accessProfile: buildAccessProfile({
+        canonicalRole: "PLATFORM_SUPER_ADMIN",
+        roleFamily: "platform",
+        permissions: ["stations.read", "stations.write"],
+        scope: {
+          type: "platform",
+          tenantId: null,
+          stationId: null,
+          stationIds: [],
+          providerId: null,
+          isTemporary: false,
         },
-        'stationsRead',
-      ),
-    ).toBe(false)
-  })
+      }),
+    };
 
-  it('keeps platform-control policies available without tenant impersonation', () => {
+    expect(canAccessPolicy(user, "stationsRead")).toBe(true);
+    expect(canAccessPolicy(user, "stationsWrite")).toBe(true);
+  });
+
+  it("allows platform billing admin to read stations but not write", () => {
+    const user = {
+      role: "FINANCE",
+      sessionScopeType: "platform",
+      actingAsTenant: false,
+      accessProfile: buildAccessProfile({
+        canonicalRole: "PLATFORM_BILLING_ADMIN",
+        roleFamily: "platform",
+        permissions: ["stations.read"],
+        scope: {
+          type: "platform",
+          tenantId: null,
+          stationId: null,
+          stationIds: [],
+          providerId: null,
+          isTemporary: false,
+        },
+      }),
+    };
+
+    expect(canAccessPolicy(user, "stationsRead")).toBe(true);
+    expect(canAccessPolicy(user, "stationsWrite")).toBe(false);
+  });
+
+  it("keeps platform-control policies available without tenant impersonation", () => {
     expect(
       canAccessPolicy(
         {
-          role: 'SUPER_ADMIN',
-          sessionScopeType: 'platform',
+          role: "SUPER_ADMIN",
+          sessionScopeType: "platform",
           actingAsTenant: false,
           accessProfile: buildAccessProfile({
-            canonicalRole: 'PLATFORM_SUPER_ADMIN',
-            permissions: ['platform.tenants.read'],
+            canonicalRole: "PLATFORM_SUPER_ADMIN",
+            permissions: ["platform.tenants.read"],
             scope: {
-              type: 'platform',
+              type: "platform",
               tenantId: null,
               stationId: null,
               stationIds: [],
@@ -322,10 +345,10 @@ describe('canAccessPolicy', () => {
             },
           }),
         },
-        'dashboardSuperAdmin',
+        "dashboardSuperAdmin",
       ),
-    ).toBe(true)
-  })
+    ).toBe(true);
+  });
 })
 
 describe('normalizeAuthenticatedUser', () => {

@@ -182,6 +182,8 @@ export const ACCESS_POLICY = {
   settingsRead: SETTINGS_ROLES,
   notificationsRead: SETTINGS_ROLES,
   whiteLabelAdmin: ADMIN_ROLES,
+  platformTenantsRead: PLATFORM_ADMIN_ROLES,
+  platformTenantsWrite: SUPER_ADMIN_ROLES,
   remoteCommandStart: OPERATIONS_ROLES,
   chargePointCommands: OPERATIONS_ROLES,
 } as const;
@@ -301,6 +303,8 @@ const ACCESS_PERMISSION_MAP: Record<
     "platform.tenants.write",
     "platform.tenants.read",
   ],
+  platformTenantsRead: ["platform.tenants.read"],
+  platformTenantsWrite: ["platform.tenants.write"],
   remoteCommandStart: ["commands.write"],
   chargePointCommands: ["charge_points.command"],
 };
@@ -402,6 +406,16 @@ const FLEET_SCOPE_ALLOWED_POLICIES = new Set<AccessPolicyKey>([
   "alertsRead",
   "settingsRead",
   "notificationsRead",
+]);
+
+const PLATFORM_STATION_READ_CANONICAL_ROLES = new Set<CanonicalAccessRole>([
+  "PLATFORM_SUPER_ADMIN",
+  "PLATFORM_BILLING_ADMIN",
+  "PLATFORM_NOC_LEAD",
+]);
+
+const PLATFORM_STATION_WRITE_CANONICAL_ROLES = new Set<CanonicalAccessRole>([
+  "PLATFORM_SUPER_ADMIN",
 ]);
 
 const TENANT_CONTEXT_REQUIRED_POLICIES = new Set<AccessPolicyKey>([
@@ -988,6 +1002,32 @@ function isScopePolicyAllowed(user: AccessAwareUser, policy: AccessPolicyKey) {
   return true;
 }
 
+function isPlatformStationPolicyAllowed(
+  user: AccessAwareUser,
+  policy: AccessPolicyKey,
+) {
+  const canonicalRole = getCanonicalUserRole(user);
+
+  if (policy === "stationsRead") {
+    return (
+      canonicalRole != null &&
+      PLATFORM_STATION_READ_CANONICAL_ROLES.has(canonicalRole) &&
+      matchesPermission(user, ["stations.read"])
+    );
+  }
+
+  if (policy === "stationsWrite") {
+    return (
+      canonicalRole != null &&
+      PLATFORM_STATION_WRITE_CANONICAL_ROLES.has(canonicalRole) &&
+      matchesPermission(user, ["stations.write"])
+    );
+  }
+
+  return false;
+}
+
+
 export function canAccessRole(
   role: string | undefined | null,
   allowedRoles: readonly CPORole[],
@@ -1015,6 +1055,9 @@ export function canAccessPolicy(
     policyRequiresTenantContext(policy) &&
     isPlatformSessionWithoutTenant(user)
   ) {
+    if (policy === "stationsRead" || policy === "stationsWrite") {
+      return isPlatformStationPolicyAllowed(user, policy);
+    }
     return false;
   }
 

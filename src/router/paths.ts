@@ -12,6 +12,8 @@ export const PATHS = {
   SITE_DASHBOARD: "/site-dashboard",
   ONBOARDING: "/onboarding",
   ONBOARDING_ADMIN: "/platform/onboarding-review",
+  TENANTS: "/platform/tenants",
+  TENANT_DETAIL: (id: string) => `/platform/tenants/${id}`,
 
   // Infrastructure
   STATIONS: "/stations",

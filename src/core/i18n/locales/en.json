@@ -31,6 +31,7 @@
     },
     "items": {
       "dashboard": "Dashboard",
+      "tenants": "Tenants",
       "stations": "Stations",
       "chargePoints": "Charge Points",
       "swapStations": "Swap Stations",
