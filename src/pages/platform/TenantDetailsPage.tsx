@@ -169,6 +169,16 @@ export function TenantDetailsPage() {
     };
   }, [tenantId]);
 
+  async function loadTenant() {
+    if (!tenantId) return;
+    try {
+      const data = await getPlatformTenantDetails(tenantId);
+      setTenant(data);
+    } catch (error) {
+      console.error("Failed to reload tenant:", error);
+    }
+  }
+
   async function runTenantAction(action: "suspend" | "revoke" | "reactivate") {
     if (!tenant || !canWriteTenants) return;
 
@@ -190,6 +200,9 @@ export function TenantDetailsPage() {
         await reactivatePlatformTenant(tenant.id);
         setNotice("Tenant reactivated successfully.");
       }
+
+      // Reload data to show updated status
+      await loadTenant();
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Action failed.");
     } finally {
@@ -644,7 +657,7 @@ export function TenantDetailsPage() {
 
                     <div className="space-y-6">
                       <div className="flex items-center gap-2 mb-2">
-                        <cpu className="text-accent" size={20} />
+                    <Cpu className="text-accent" size={20} />
                         <h3 className="section-title mb-0">Provisioned Resource Quotas</h3>
                       </div>
                       <div className="space-y-1">

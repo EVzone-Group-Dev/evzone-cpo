@@ -164,7 +164,13 @@ function mapOrganizationToSummary(org: BackendOrganization): PlatformTenantSumma
     name: org.name,
     code: org.tenantSubdomain || org.id.slice(0, 8).toUpperCase(),
     cpoType: (org.type === "HYBRID" || org.type === "CPO" ? "HYBRID" : "CHARGE") as TenantCpoType,
-    status: org.suspendedAt ? "Suspended" : (org.billingStatus === "PAST_DUE" ? "Past Due" : "Active"),
+    status: org.suspendedAt
+      ? "Suspended"
+      : org.billingStatus === "REVOKED"
+        ? "Revoked"
+        : org.billingStatus === "PAST_DUE"
+          ? "Past Due"
+          : "Active",
     country: org.country || "Uganda",
     city: org.city || "Kampala",
     email: org.email || "",
@@ -239,9 +245,16 @@ export async function suspendPlatformTenant(tenantId: OrganizationId) {
 }
 
 export async function reactivatePlatformTenant(tenantId: OrganizationId) {
-  return fetchJson(`/api/v1/platform/tenants/${tenantId}/suspend`, {
+  // First clear the suspension
+  await fetchJson(`/api/v1/platform/tenants/${tenantId}/suspend`, {
     method: "POST",
     body: JSON.stringify({ suspended: false }),
+  });
+
+  // Then restore billing status to Active
+  return fetchJson(`/api/v1/platform/tenants/${tenantId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ billingStatus: "ACTIVE" }),
   });
 }
 

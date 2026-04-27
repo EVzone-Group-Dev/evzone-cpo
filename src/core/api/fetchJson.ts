@@ -128,6 +128,10 @@ export async function fetchJson<T>(input: string, init?: RequestInit): Promise<T
 
   const requestUrl = resolveRequestUrl(input)
 
+  if (init?.body && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json')
+  }
+
   const baseRequest: RequestInit = {
     ...init,
     headers,
