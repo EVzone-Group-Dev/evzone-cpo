@@ -91,15 +91,13 @@ function SectionHeader({ icon: Icon, title, description }: { icon: any, title: s
 export function SettingsPage() {
   const { user, replaceUser } = useAuthStore()
   const { i18n, t } = useTranslation()
-  const { resolvedTheme, setThemeMode, themeMode } = useTheme()
+  const { setThemeMode, themeMode } = useTheme()
   const {
     activeStationContext,
     activeTenant,
     availableCountries,
     availableCurrencies,
     availableLanguages,
-    availableStationContexts,
-    availableTenants,
     dataScopeLabel,
   } = useTenant()
   
@@ -154,7 +152,6 @@ export function SettingsPage() {
   const [saveError, setSaveError] = useState<string | null>(null)
 
   const initials = useMemo(() => userName.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'EV', [userName])
-  const assignedStations = user?.assignedStationIds?.length ? user.assignedStationIds.join(', ') : user?.accessProfile?.scope.stationIds.length ? user.accessProfile.scope.stationIds.join(', ') : t('dashboard.assignedStations')
   const tenantDisplayName = resolveDisplayLabel({ primary: user?.displayTenantName ?? user?.activeTenantName ?? user?.organizationName ?? user?.selectedTenantName ?? activeTenant?.name ?? null, secondary: null, fallback: 'Platform-wide access' })
   const activeStationDisplayName = resolveDisplayLabel({ primary: activeStationContext?.stationName ?? user?.displayStationName ?? user?.activeStationName ?? null, secondary: null, fallback: t('dashboard.assignedStations') })
   const scopeType = getUserScopeType(user)
@@ -168,9 +165,6 @@ export function SettingsPage() {
   }, [user, t])
   const temporaryAccessWindowLabel = getTemporaryAccessWindowLabel(user)
   const hasTemporaryScope = isTemporaryScopeUser(user)
-  
-  const selectedTenantCountryName = useMemo(() => (countryOptions.find((country) => country.code2 === draft.tenantCountryCode)?.name ?? draft.tenantCountryCode) || '-', [countryOptions, draft.tenantCountryCode])
-  const selectedTenantStateName = useMemo(() => (tenantStates.find((state) => state.code === draft.tenantStateCode)?.name ?? draft.tenantStateCode) || '-', [draft.tenantStateCode, tenantStates])
 
   const profileCompleteness = useMemo(() => {
     const fields = [draft.name, draft.email, draft.tenantCountryCode, draft.tenantStateCode, draft.tenantCity]

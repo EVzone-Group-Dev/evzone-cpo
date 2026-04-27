@@ -295,7 +295,7 @@ describe('canAccessPolicy', () => {
           isTemporary: false,
         },
       }),
-    };
+    } as const;
 
     expect(canAccessPolicy(user, "stationsRead")).toBe(true);
     expect(canAccessPolicy(user, "stationsWrite")).toBe(true);
@@ -319,7 +319,7 @@ describe('canAccessPolicy', () => {
           isTemporary: false,
         },
       }),
-    };
+    } as const;
 
     expect(canAccessPolicy(user, "stationsRead")).toBe(true);
     expect(canAccessPolicy(user, "stationsWrite")).toBe(false);
@@ -344,8 +344,8 @@ describe('canAccessPolicy', () => {
               isTemporary: false,
             },
           }),
-        },
-        "dashboardSuperAdmin",
+        } as const,
+        "platformTenantsRead",
       ),
     ).toBe(true);
   });
