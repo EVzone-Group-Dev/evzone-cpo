@@ -25,6 +25,7 @@
     },
     "items": {
       "dashboard": "Tableau de bord",
+      "tenants": "Tenants",
       "stations": "Stations",
       "chargePoints": "Points de charge",
       "swapStations": "Stations d'échange",

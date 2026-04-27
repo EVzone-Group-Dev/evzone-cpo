@@ -140,6 +140,16 @@ const TenantOnboardingReviewPage = lazy(() =>
     default: m.TenantOnboardingReviewPage,
   })),
 );
+const TenantsPage = lazy(() =>
+  import("@/pages/platform/TenantsPage").then((m) => ({
+    default: m.TenantsPage,
+  })),
+);
+const TenantDetailPage = lazy(() =>
+  import("@/pages/platform/TenantDetailPage").then((m) => ({
+    default: m.TenantDetailPage,
+  })),
+);
 const OCPIPartnersPage = lazy(() =>
   import("@/pages/roaming/OCPIPartnersPage").then((m) => ({
     default: m.OCPIPartnersPage,
@@ -654,6 +664,22 @@ export function AppRoutes() {
           element={
             <RequireAuth policy="onboardingAdmin">
               <TenantOnboardingReviewPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={PATHS.TENANTS}
+          element={
+            <RequireAuth policy="platformTenantsRead">
+              <TenantsPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/platform/tenants/:id"
+          element={
+            <RequireAuth policy="platformTenantsRead">
+              <TenantDetailPage />
             </RequireAuth>
           }
         />
