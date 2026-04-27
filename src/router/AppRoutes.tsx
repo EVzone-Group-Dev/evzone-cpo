@@ -145,9 +145,9 @@ const TenantsPage = lazy(() =>
     default: m.TenantsPage,
   })),
 );
-const TenantDetailPage = lazy(() =>
-  import("@/pages/platform/TenantDetailPage").then((m) => ({
-    default: m.TenantDetailPage,
+const TenantDetailsPage = lazy(() =>
+  import("@/pages/platform/TenantDetailsPage").then((m) => ({
+    default: m.TenantDetailsPage,
   })),
 );
 const OCPIPartnersPage = lazy(() =>
@@ -676,10 +676,10 @@ export function AppRoutes() {
           }
         />
         <Route
-          path="/platform/tenants/:id"
+          path="/platform/tenants/:tenantId"
           element={
             <RequireAuth policy="platformTenantsRead">
-              <TenantDetailPage />
+              <TenantDetailsPage />
             </RequireAuth>
           }
         />
