@@ -223,11 +223,36 @@
   .text-info    { color: var(--info); }
   .text-accent  { color: var(--accent); }
 
+  /* ─── Page Shell ─── */
+  .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 0.75rem; }
+  .page-title  { font-size: 1.6rem; font-weight: 800; color: var(--text); }
+  .page-sub    { font-size: 0.875rem; color: var(--text-muted); margin-top: 0.2rem; }
+
+  /* ─── Section Headers ─── */
+  .section-title { font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+
+  /* ─── Dividers ─── */
+  .divider { border: none; border-top: 1px solid var(--border); margin: 1.25rem 0; }
+
+  /* ─── Misc Utilities ─── */
+  .text-muted   { color: var(--text-muted); }
+  .text-subtle  { color: var(--text-subtle); }
+  .text-ok      { color: var(--ok); }
+  .text-danger  { color: var(--danger); }
+  .text-warning { color: var(--warning); }
+  .text-info    { color: var(--info); }
+  .text-accent  { color: var(--accent); }
+
   .bg-muted     { background: var(--bg-muted); }
   .bg-card      { background: var(--bg-card); }
   .border-std   { border: 1px solid var(--border); }
 
   .badge { display: inline-flex; align-items: center; justify-content: center; min-width: 1.25rem; height: 1.25rem; padding: 0 0.35rem; background: var(--danger); color: white; border-radius: 9999px; font-size: 0.65rem; font-weight: 800; }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
 
   /* ─── Sidebar Nav ─── */
   .nav-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.55rem 0.875rem; border-radius: 10px; font-size: 0.875rem; font-weight: 500; color: var(--text-muted); transition: all 0.15s; cursor: pointer; width: 100%; border: none; background: transparent; text-align: left; }

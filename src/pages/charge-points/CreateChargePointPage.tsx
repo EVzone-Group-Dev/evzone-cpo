@@ -40,17 +40,20 @@ const FIELD_CONFIG = {
 };
 
 export function CreateChargePointPage() {
+  console.log("[CreateChargePointPage] Rendering...");
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const presetStationId = searchParams.get("stationId") ?? "";
+  console.log("[CreateChargePointPage] presetStationId:", presetStationId);
   const returnTo = searchParams.get("returnTo");
   const {
     data: stations,
     isLoading: isStationsLoading,
     error: stationsError,
   } = useStations();
+  console.log("[CreateChargePointPage] Stations state:", { isStationsLoading, stationsCount: stations?.length, hasError: !!stationsError });
   const createChargePoint = useCreateChargePoint();
 
   const {
