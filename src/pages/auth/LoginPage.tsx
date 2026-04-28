@@ -86,7 +86,7 @@ export function LoginPage() {
 
     setUser(auth.user, bearerToken, auth.refreshToken ?? null)
     navigate(
-      requiresMfaSetup(auth.user) ? PATHS.MFA_SETUP : getRoleHomePath(auth.user),
+      requiresMfaSetup(auth.user) ? PATHS.MFA_SELECTION : getRoleHomePath(auth.user),
       { replace: true },
     )
   }

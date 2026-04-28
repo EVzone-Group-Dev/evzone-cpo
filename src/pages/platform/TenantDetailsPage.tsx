@@ -86,29 +86,6 @@ function statusClass(status: string) {
   return "pending";
 }
 
-function StatCard({
-  label,
-  value,
-  icon,
-  hint,
-}: {
-  label: string;
-  value: string | number;
-  icon: React.ReactNode;
-  hint?: string;
-}) {
-  return (
-    <div className="card">
-      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-subtle">
-        {icon}
-        {label}
-      </div>
-      <div className="mt-2 text-2xl font-bold text-[var(--text)]">{value}</div>
-      {hint && <div className="mt-1 text-xs text-subtle">{hint}</div>}
-    </div>
-  );
-}
-
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="grid grid-cols-2 gap-3 py-2 text-sm">

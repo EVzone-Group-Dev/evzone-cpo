@@ -1,7 +1,11 @@
 export const PATHS = {
   HOME: "/",
   LOGIN: "/login",
-  MFA_SETUP: "/auth/mfa-setup",
+  MFA_SELECTION: "/auth/mfa-selection",
+  MFA_OTP_SETUP: "/auth/mfa-otp-setup",
+  MFA_AUTHENTICATOR_SETUP: "/auth/mfa-authenticator-setup",
+  MFA_PASSKEY_SETUP: "/auth/mfa-passkey-setup",
+  MFA_SETUP: "/auth/mfa-setup", // Legacy - kept for backwards compatibility
   DASHBOARD: "/dashboard",
   DASHBOARD_SUPER_ADMIN: "/dashboard/super-admin",
   DASHBOARD_CPO_ADMIN: "/dashboard/cpo-admin",

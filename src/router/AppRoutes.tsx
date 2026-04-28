@@ -10,6 +10,26 @@ import { CoreErrorBoundary } from "@/components/common/CoreErrorBoundary";
 const LoginPage = lazy(() =>
   import("@/pages/auth/LoginPage").then((m) => ({ default: m.LoginPage })),
 );
+const MfaSelectionPage = lazy(() =>
+  import("@/pages/auth/MfaSelectionPage").then((m) => ({
+    default: m.MfaSelectionPage,
+  })),
+);
+const OtpSetupPage = lazy(() =>
+  import("@/pages/auth/OtpSetupPage").then((m) => ({
+    default: m.OtpSetupPage,
+  })),
+);
+const AuthenticatorSetupPage = lazy(() =>
+  import("@/pages/auth/AuthenticatorSetupPage").then((m) => ({
+    default: m.AuthenticatorSetupPage,
+  })),
+);
+const PasskeySetupPage = lazy(() =>
+  import("@/pages/auth/PasskeySetupPage").then((m) => ({
+    default: m.PasskeySetupPage,
+  })),
+);
 const MfaSetupPage = lazy(() =>
   import("@/pages/auth/MfaSetupPage").then((m) => ({
     default: m.MfaSetupPage,
@@ -285,6 +305,38 @@ export function AppRoutes() {
               <RequireGuest>
                 <LoginPage />
               </RequireGuest>
+            }
+          />
+          <Route
+            path={PATHS.MFA_SELECTION}
+            element={
+              <RequireAuth allowMfaSetupBypass>
+                <MfaSelectionPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path={PATHS.MFA_OTP_SETUP}
+            element={
+              <RequireAuth allowMfaSetupBypass>
+                <OtpSetupPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path={PATHS.MFA_AUTHENTICATOR_SETUP}
+            element={
+              <RequireAuth allowMfaSetupBypass>
+                <AuthenticatorSetupPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path={PATHS.MFA_PASSKEY_SETUP}
+            element={
+              <RequireAuth allowMfaSetupBypass>
+                <PasskeySetupPage />
+              </RequireAuth>
             }
           />
           <Route

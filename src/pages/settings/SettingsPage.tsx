@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { fetchJson } from '@/core/api/fetchJson'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
+import { MfaManagementSection } from '@/components/settings/MfaManagementSection'
 import { getTemporaryAccessState, getTemporaryAccessWindowLabel, getUserRoleLabel, getUserScopeType, isTemporaryScopeUser } from '@/core/auth/access'
 import { resolveDisplayLabel } from '@/core/auth/displayLabel'
 import { useAuthStore } from '@/core/auth/authStore'
@@ -313,6 +314,13 @@ export function SettingsPage() {
                     onChange={(next) => setDraft((current) => ({ ...current, mfaEnabled: next }))}
                   />
                 </div>
+              </div>
+              {draft.mfaEnabled && (
+                <div className="mt-4">
+                  <MfaManagementSection />
+                </div>
+              )}
+              <div className="rounded-[32px] border border-[var(--border)]/60 bg-[var(--bg-card)]/50 backdrop-blur-xl divide-y divide-[var(--border)]/40 overflow-hidden shadow-2xl shadow-black/5 mt-4">
                 <div className="px-8 py-2">
                   <SettingToggle
                     id="settings-access-alerts"

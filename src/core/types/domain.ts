@@ -360,6 +360,7 @@ export interface CPOUser {
   mfaRequired?: boolean
   twoFactorEnabled?: boolean
   mfaSetupRequired?: boolean
+  mfaType?: 'otp' | 'authenticator' | 'passkey' | null
   providerId?: string | null
   region?: string | null
   zoneId?: string | null

@@ -384,6 +384,7 @@ const demoUsers: DemoUserRecord[] = [
       role: "SUPER_ADMIN",
       status: "Active",
       mfaEnabled: true,
+      mfaType: 'authenticator',
       createdAt: "2026-03-01T08:00:00.000Z",
     },
   },
@@ -406,6 +407,7 @@ const demoUsers: DemoUserRecord[] = [
       status: "Active",
       tenantId: "org-evzone-ke",
       mfaEnabled: true,
+      mfaType: 'otp',
       createdAt: "2026-03-02T08:00:00.000Z",
     },
   },
@@ -454,6 +456,7 @@ const demoUsers: DemoUserRecord[] = [
       tenantId: "org-evzone-ke",
       assignedStationIds: ["st-1", "st-2", "st-3"],
       mfaEnabled: true,
+      mfaType: 'passkey',
       createdAt: "2026-03-04T08:00:00.000Z",
     },
   },
@@ -476,6 +479,7 @@ const demoUsers: DemoUserRecord[] = [
       status: "Active",
       tenantId: "org-evzone-finance",
       mfaEnabled: true,
+      mfaType: 'authenticator',
       createdAt: "2026-03-05T08:00:00.000Z",
     },
   },
@@ -523,6 +527,7 @@ const demoUsers: DemoUserRecord[] = [
       tenantId:
         tenantOrganizationCatalog["tenant-westlands-mall"].organizationId,
       mfaEnabled: true,
+      mfaType: 'otp',
       createdAt: "2026-03-07T08:00:00.000Z",
     },
   },
@@ -546,6 +551,7 @@ const demoUsers: DemoUserRecord[] = [
       status: "Active",
       providerId: "provider-demo-1",
       mfaEnabled: true,
+      mfaType: 'passkey',
       createdAt: "2026-03-08T08:00:00.000Z",
     },
   },
@@ -4901,6 +4907,7 @@ export function updateDemoUserMfaRequirement(
   options?: {
     mfaSetupRequired?: boolean
     twoFactorEnabled?: boolean
+    mfaType?: 'otp' | 'authenticator' | 'passkey' | null
   },
 ) {
   if (!access) {
@@ -4912,6 +4919,9 @@ export function updateDemoUserMfaRequirement(
   access.demoUser.user.mfaSetupRequired = options?.mfaSetupRequired ?? false
   if (typeof options?.twoFactorEnabled === 'boolean') {
     access.demoUser.user.twoFactorEnabled = options.twoFactorEnabled
+  }
+  if (typeof options?.mfaType !== 'undefined') {
+    access.demoUser.user.mfaType = options.mfaType
   }
 
   return buildDemoUserSession(
