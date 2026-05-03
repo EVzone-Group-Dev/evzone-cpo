@@ -16,7 +16,6 @@ type MfaMethodResponse = {
 
 export function MfaManagementSection() {
   const user = useAuthStore((state) => state.user)
-  const reloadUser = useAuthStore((state) => state.replaceUser)
   const navigate = useNavigate()
 
   const [isLoading, setIsLoading] = useState(false)
@@ -36,27 +35,27 @@ export function MfaManagementSection() {
     setSuccess(null)
     setIsLoading(true)
 
-    try {
-      const response = await fetchJson<MfaMethodResponse>(
-        `/api/v1/users/${user?.id}/mfa/${methodType}`,
-        {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        },
-      )
+     try {
+       await fetchJson<MfaMethodResponse>(
+         `/api/v1/users/${user?.id}/mfa/${methodType}`,
+         {
+           method: 'DELETE',
+           headers: {
+             'Content-Type': 'application/json',
+           },
+         },
+       )
 
-      setSuccess(`${methodType} MFA has been removed.`)
-      // Reload user to get updated MFA info
-      setTimeout(() => {
-        window.location.reload()
-      }, 1000)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to remove MFA method.')
-    } finally {
-      setIsLoading(false)
-    }
+       setSuccess(`${methodType} MFA has been removed.`)
+       // Reload user to get updated MFA info
+       setTimeout(() => {
+         window.location.reload()
+       }, 1000)
+     } catch (err) {
+       setError(err instanceof Error ? err.message : 'Unable to remove MFA method.')
+     } finally {
+       setIsLoading(false)
+     }
   }
 
   const handleAddMfa = (): void => {

@@ -1,7 +1,12 @@
 export const PATHS = {
   HOME: "/",
   LOGIN: "/login",
+  FORGOT_PASSWORD: "/auth/forgot-password",
+  FORGOT_PASSWORD_SENT: "/auth/forgot-password/sent",
+  RESET_PASSWORD: "/auth/reset-password",
+  VERIFY_ACCOUNT: "/auth/verify-account",
   MFA_SELECTION: "/auth/mfa-selection",
+  MFA_AUTHENTICATOR_CHALLENGE: "/auth/mfa-authenticator-challenge",
   MFA_OTP_SETUP: "/auth/mfa-otp-setup",
   MFA_AUTHENTICATOR_SETUP: "/auth/mfa-authenticator-setup",
   MFA_PASSKEY_SETUP: "/auth/mfa-passkey-setup",

@@ -10,6 +10,31 @@ import { CoreErrorBoundary } from "@/components/common/CoreErrorBoundary";
 const LoginPage = lazy(() =>
   import("@/pages/auth/LoginPage").then((m) => ({ default: m.LoginPage })),
 );
+const ForgotPasswordPage = lazy(() =>
+  import("@/pages/auth/ForgotPasswordPage").then((m) => ({
+    default: m.ForgotPasswordPage,
+  })),
+);
+const ForgotPasswordSentPage = lazy(() =>
+  import("@/pages/auth/ForgotPasswordSentPage").then((m) => ({
+    default: m.ForgotPasswordSentPage,
+  })),
+);
+const ResetPasswordPage = lazy(() =>
+  import("@/pages/auth/ResetPasswordPage").then((m) => ({
+    default: m.ResetPasswordPage,
+  })),
+);
+const VerifyAccountPage = lazy(() =>
+  import("@/pages/auth/VerifyAccountPage").then((m) => ({
+    default: m.VerifyAccountPage,
+  })),
+);
+const AuthenticatorChallengePage = lazy(() =>
+  import("@/pages/auth/AuthenticatorChallengePage").then((m) => ({
+    default: m.AuthenticatorChallengePage,
+  })),
+);
 const MfaSelectionPage = lazy(() =>
   import("@/pages/auth/MfaSelectionPage").then((m) => ({
     default: m.MfaSelectionPage,
@@ -304,6 +329,46 @@ export function AppRoutes() {
             element={
               <RequireGuest>
                 <LoginPage />
+              </RequireGuest>
+            }
+          />
+          <Route
+            path={PATHS.FORGOT_PASSWORD}
+            element={
+              <RequireGuest>
+                <ForgotPasswordPage />
+              </RequireGuest>
+            }
+          />
+          <Route
+            path={PATHS.FORGOT_PASSWORD_SENT}
+            element={
+              <RequireGuest>
+                <ForgotPasswordSentPage />
+              </RequireGuest>
+            }
+          />
+          <Route
+            path={PATHS.RESET_PASSWORD}
+            element={
+              <RequireGuest>
+                <ResetPasswordPage />
+              </RequireGuest>
+            }
+          />
+          <Route
+            path={PATHS.VERIFY_ACCOUNT}
+            element={
+              <RequireGuest>
+                <VerifyAccountPage />
+              </RequireGuest>
+            }
+          />
+          <Route
+            path={PATHS.MFA_AUTHENTICATOR_CHALLENGE}
+            element={
+              <RequireGuest>
+                <AuthenticatorChallengePage />
               </RequireGuest>
             }
           />
