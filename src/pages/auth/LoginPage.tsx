@@ -176,6 +176,9 @@ export function LoginPage() {
 
   return (
     <AuthShell
+      showVisualSection={false}
+      showFormCard={false}
+      showBackgroundOverlay={false}
       visualTitle="Secure access to your charging operations."
       visualSubtitle="A responsive, multi-step sign-in built for EVzone teams across desktop, tablet, and mobile."
       visualBullets={[
@@ -270,4 +273,3 @@ export function LoginPage() {
     </AuthShell>
   );
 }
-
