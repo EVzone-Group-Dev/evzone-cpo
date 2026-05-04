@@ -160,6 +160,69 @@ export interface DashboardOverviewResponse {
   recentSessions: DashboardSession[];
 }
 
+export interface SuperAdminDashboardKpi {
+  id:
+    | "total-tenants"
+    | "active-stations"
+    | "total-chargers"
+    | "active-sessions-today"
+    | "revenue-mtd"
+    | "open-alerts";
+  label: string;
+  value: string;
+  delta: string;
+  trend: "up" | "down" | "neutral";
+}
+
+export interface SuperAdminNetworkGrowthPoint {
+  label: string;
+  sessions: number;
+}
+
+export interface SuperAdminTenantRevenuePoint {
+  tenantId: string;
+  tenantName: string;
+  revenue: number;
+  revenueLabel: string;
+}
+
+export interface SuperAdminUtilizationSlice {
+  id: "in-use" | "available" | "offline";
+  label: "In Use" | "Available" | "Offline";
+  value: number;
+  percentage: number;
+}
+
+export interface SuperAdminTopTenantRecord {
+  tenantId: string;
+  tenantName: string;
+  revenue: number;
+  revenueLabel: string;
+  stations: number;
+  chargers: number;
+  openAlerts: number;
+}
+
+export interface SuperAdminRecentAlertRecord {
+  id: string;
+  tenantName: string;
+  stationName: string;
+  severity: "Critical" | "Warning" | "Info";
+  message: string;
+  status: "Open" | "Acknowledged" | "Closed";
+  timeLabel: string;
+  timestamp: number;
+}
+
+export interface SuperAdminDashboardResponse {
+  kpis: SuperAdminDashboardKpi[];
+  networkGrowthSeries: SuperAdminNetworkGrowthPoint[];
+  tenantRevenueSeries: SuperAdminTenantRevenuePoint[];
+  utilizationBreakdown: SuperAdminUtilizationSlice[];
+  topTenants: SuperAdminTopTenantRecord[];
+  recentAlerts: SuperAdminRecentAlertRecord[];
+}
+
 export interface SiteOwnerMetric {
   id: "revenue" | "uptime" | "utilisation" | "energy";
   label: string;

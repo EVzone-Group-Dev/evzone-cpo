@@ -1,5 +1,6 @@
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import {
+  isSuperAdminUser,
   isFinanceDashboardUser,
   isSiteScopedUser,
   isStationManagerDashboardUser,
@@ -11,6 +12,7 @@ import { useTenant } from '@/core/hooks/useTenant'
 import { FinanceDashboard } from '@/pages/dashboard/FinanceDashboard'
 import { SiteOwnerDashboard } from '@/pages/dashboard/SiteOwnerDashboard'
 import { StationManagerDashboard } from '@/pages/dashboard/StationManagerDashboard'
+import { SuperAdminDashboard } from '@/pages/dashboard/SuperAdminDashboard'
 import { TechnicianDashboard } from '@/pages/dashboard/TechnicianDashboard'
 import { Zap, Activity, AlertTriangle, BarChart3, TrendingUp, Cpu, Users, Globe2 } from 'lucide-react'
 
@@ -29,6 +31,7 @@ export function DashboardPage() {
   const { user } = useAuthStore()
   const { activeTenant, dashboardMode, isLoading: isTenantLoading } = useTenant()
   const usesOperationsDashboard = dashboardMode !== 'site'
+    && !isSuperAdminUser(user)
     && !isFinanceDashboardUser(user)
     && !isTechnicianDashboardUser(user)
     && !isStationManagerDashboardUser(user)
@@ -48,6 +51,10 @@ export function DashboardPage() {
 
   if (isStationManagerDashboardUser(user)) {
     return <StationManagerDashboard />
+  }
+
+  if (isSuperAdminUser(user)) {
+    return <SuperAdminDashboard />
   }
 
   if (isSiteScopedUser(user) || dashboardMode === 'site') {

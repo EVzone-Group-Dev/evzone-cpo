@@ -923,6 +923,13 @@ export function isStationManagerDashboardUser(user?: AccessAwareUser) {
   );
 }
 
+export function isSuperAdminUser(user?: AccessAwareUser) {
+  return (
+    getCanonicalUserRole(user) === "PLATFORM_SUPER_ADMIN" ||
+    getResolvedUserRole(user) === "SUPER_ADMIN"
+  );
+}
+
 export function isTechnicianDashboardUser(user?: AccessAwareUser) {
   const canonicalRole = getCanonicalUserRole(user);
   return (
