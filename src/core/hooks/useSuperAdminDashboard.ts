@@ -10,6 +10,8 @@ interface PlatformTenantRecord {
   id: string;
   name: string;
   currency: string;
+  stationCount: number;
+  chargePointCount: number;
 }
 
 interface NormalizedStation {
@@ -38,10 +40,18 @@ interface TenantSnapshot {
   tenantId: string;
   tenantName: string;
   currency: string;
+  tenantStationCount: number;
+  tenantChargePointCount: number;
   stations: NormalizedStation[];
   chargePoints: NormalizedChargePoint[];
   sessions: NormalizedSession[];
   alerts: NormalizedAlert[];
+  analytics: {
+    activeChargers: number;
+    activeSessionsToday: number;
+    incidents24h: number;
+    revenueToday: number;
+  };
 }
 
 const DEFAULT_CURRENCY = "USD";
@@ -60,6 +70,11 @@ function asString(value: unknown, fallback = ""): string {
   return typeof value === "string" && value.trim().length > 0
     ? value.trim()
     : fallback;
+}
+
+function asNumber(value: unknown, fallback = 0) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
 }
 
 function parseCurrencyAmount(value: unknown): number {
@@ -155,8 +170,16 @@ function normalizeTenantList(value: unknown): PlatformTenantRecord[] {
         record.currency ?? record.defaultCurrency,
         DEFAULT_CURRENCY,
       ).toUpperCase();
+      const stationCount = asNumber(
+        record.stationCount ?? asRecord(record._count).sites,
+        0,
+      );
+      const chargePointCount = asNumber(
+        record.chargePointCount ?? asRecord(record._count).chargePoints,
+        0,
+      );
 
-      return { id, name, currency };
+      return { id, name, currency, stationCount, chargePointCount };
     })
     .filter((tenant) => tenant.id.length > 0);
 }
@@ -212,6 +235,45 @@ function normalizeSessions(value: unknown): NormalizedSession[] {
       status: asString(record.status, "unknown").toUpperCase(),
     };
   });
+}
+
+function normalizeAnalytics(value: unknown) {
+  const record = asRecord(value);
+  const today = asRecord(record.today);
+  const realtime = asRecord(record.realTime);
+
+  // Supports both /api/v1/analytics/dashboard shape and legacy /api/dashboard/overview KPI shape.
+  const fallbackKpis = asArray<Record<string, unknown>>(record.kpis);
+  const fallbackRevenue = fallbackKpis.find((kpi) =>
+    asString(kpi.label).toLowerCase().includes("revenue"),
+  );
+  const fallbackSessions = fallbackKpis.find((kpi) =>
+    asString(kpi.label).toLowerCase().includes("session"),
+  );
+  const fallbackChargers = fallbackKpis.find((kpi) =>
+    asString(kpi.label).toLowerCase().includes("charger"),
+  );
+  const fallbackIncidents = fallbackKpis.find((kpi) =>
+    asString(kpi.label).toLowerCase().includes("incident"),
+  );
+
+  return {
+    activeSessionsToday: asNumber(
+      today.sessions ?? record.totalSessions ?? fallbackSessions?.value,
+      0,
+    ),
+    revenueToday: parseCurrencyAmount(
+      today.revenue ?? record.revenue ?? fallbackRevenue?.value,
+    ),
+    activeChargers: asNumber(
+      realtime.onlineChargers ?? record.activeChargers ?? fallbackChargers?.value,
+      0,
+    ),
+    incidents24h: asNumber(
+      today.incidents ?? record.incidents24h ?? fallbackIncidents?.value,
+      0,
+    ),
+  };
 }
 
 function normalizeAlertSeverity(value: unknown): "Critical" | "Warning" | "Info" {
@@ -492,6 +554,30 @@ function resolveChargePoints(snapshot: TenantSnapshot) {
     }
   });
 
+  if (derived.length === 0 && snapshot.tenantChargePointCount > 0) {
+    const active = Math.min(
+      snapshot.tenantChargePointCount,
+      Math.max(snapshot.analytics.activeChargers, snapshot.analytics.activeSessionsToday),
+    );
+    const available = Math.max(
+      0,
+      snapshot.tenantChargePointCount - active,
+    );
+
+    for (let i = 0; i < active; i += 1) {
+      derived.push({
+        id: `${snapshot.tenantId}-synthetic-active-${i + 1}`,
+        status: "ACTIVE",
+      });
+    }
+    for (let i = 0; i < available; i += 1) {
+      derived.push({
+        id: `${snapshot.tenantId}-synthetic-available-${i + 1}`,
+        status: "AVAILABLE",
+      });
+    }
+  }
+
   return derived;
 }
 
@@ -507,7 +593,7 @@ function buildSuperAdminDashboardModel(
   const allSessions = snapshots.flatMap((snapshot) => snapshot.sessions);
   const allAlerts = snapshots.flatMap((snapshot) => snapshot.alerts);
   const allChargePoints = snapshots.flatMap((snapshot) => resolveChargePoints(snapshot));
-  const allStations = snapshots.flatMap((snapshot) =>
+  const stationRows = snapshots.flatMap((snapshot) =>
     snapshot.stations.map((station) => ({
       ...station,
       uniqueId: `${snapshot.tenantId}:${station.id}`,
@@ -526,9 +612,13 @@ function buildSuperAdminDashboardModel(
   const totalRevenue =
     sessionsForRevenue.length > 0
       ? sessionsForRevenue.reduce((sum, session) => sum + session.amount, 0)
-      : allSessions.reduce((sum, session) => sum + session.amount, 0);
+      : allSessions.length > 0
+        ? allSessions.reduce((sum, session) => sum + session.amount, 0)
+        : snapshots.reduce((sum, snapshot) => sum + snapshot.analytics.revenueToday, 0);
 
-  const openAlerts = allAlerts.filter((alert) => alert.status !== "Closed").length;
+  const openAlerts = allAlerts.length > 0
+    ? allAlerts.filter((alert) => alert.status !== "Closed").length
+    : snapshots.reduce((sum, snapshot) => sum + snapshot.analytics.incidents24h, 0);
   const activeSessionsToday = allSessions.filter((session) => {
     if (isActiveSessionStatus(session.status)) {
       return true;
@@ -540,12 +630,19 @@ function buildSuperAdminDashboardModel(
       startOfDay(session.startedAt).getTime() ===
       startOfDay(referenceDate).getTime()
     );
-  }).length;
-  const activeStations = allStations.filter((station) =>
-    isActiveStationStatus(station.status),
-  ).length;
+  }).length || snapshots.reduce(
+    (sum, snapshot) => sum + snapshot.analytics.activeSessionsToday,
+    0,
+  );
 
-  const uniqueStationCount = new Set(allStations.map((station) => station.uniqueId)).size;
+  const uniqueStationCount = stationRows.length > 0
+    ? new Set(stationRows.map((station) => station.uniqueId)).size
+    : snapshots.reduce((sum, snapshot) => sum + snapshot.tenantStationCount, 0);
+
+  const activeStations = stationRows.length > 0
+    ? stationRows.filter((station) => isActiveStationStatus(station.status)).length
+    : uniqueStationCount;
+
   const uniqueChargePointCount = allChargePoints.length;
 
   const revenueCurrency = snapshots[0]?.currency ?? DEFAULT_CURRENCY;
@@ -654,8 +751,14 @@ function buildSuperAdminDashboardModel(
         tenantName: snapshot.tenantName,
         revenue,
         revenueLabel: formatCurrency(revenue, snapshot.currency),
-        stations: snapshot.stations.length,
-        chargers: snapshotChargePoints.length,
+        stations:
+          snapshot.stations.length > 0
+            ? snapshot.stations.length
+            : snapshot.tenantStationCount,
+        chargers:
+          snapshotChargePoints.length > 0
+            ? snapshotChargePoints.length
+            : snapshot.tenantChargePointCount,
         openAlerts: snapshotOpenAlerts,
       };
     })
@@ -693,8 +796,12 @@ async function fetchTenantSnapshot(
     "x-tenant-id": tenant.id,
   };
 
-  const [stationsValue, chargePointsValue, sessionsValue, alertsValue, incidentsValue] =
+  const [analyticsValue, stationsValue, chargePointsValue, sessionsValue, alertsValue, incidentsValue] =
     await Promise.all([
+      fetchWithFallback<unknown>(
+        ["/api/v1/analytics/dashboard", "/api/dashboard/overview"],
+        { headers },
+      ),
       fetchWithFallback<unknown>(["/api/v1/stations", "/api/stations"], { headers }),
       fetchWithFallback<unknown>(
         ["/api/v1/charge-points", "/api/charge-points"],
@@ -714,15 +821,19 @@ async function fetchTenantSnapshot(
   const chargePoints = normalizeChargePoints(chargePointsValue ?? []);
   const sessions = normalizeSessions(sessionsValue ?? []);
   const alerts = normalizeAlerts(alertsValue ?? [], incidentsValue ?? [], tenant);
+  const analytics = normalizeAnalytics(analyticsValue ?? {});
 
   return {
     tenantId: tenant.id,
     tenantName: tenant.name,
     currency: tenant.currency || DEFAULT_CURRENCY,
+    tenantStationCount: tenant.stationCount,
+    tenantChargePointCount: tenant.chargePointCount,
     stations,
     chargePoints,
     sessions,
     alerts,
+    analytics,
   };
 }
 

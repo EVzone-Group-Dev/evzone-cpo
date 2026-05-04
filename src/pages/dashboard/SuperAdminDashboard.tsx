@@ -5,6 +5,7 @@ import {
   Building2,
   Gauge,
   RadioTower,
+  TriangleAlert,
   Zap,
 } from "lucide-react";
 import {
@@ -24,25 +25,62 @@ import {
 } from "recharts";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useSuperAdminDashboard } from "@/core/hooks/useSuperAdminDashboard";
+import { useAuthStore } from "@/core/auth/authStore";
 import { PATHS } from "@/router/paths";
-import dashboardHeroImage from "@/assets/OrUsethis.jpg";
 
 const KPI_ICONS = {
-  "total-tenants": <Building2 size={16} />,
-  "active-stations": <RadioTower size={16} />,
-  "total-chargers": <Zap size={16} />,
-  "active-sessions-today": <Gauge size={16} />,
-  "revenue-mtd": <BarChart3 size={16} />,
-  "open-alerts": <AlertTriangle size={16} />,
+  "total-tenants": <Building2 size={14} />,
+  "active-stations": <RadioTower size={14} />,
+  "total-chargers": <Zap size={14} />,
+  "active-sessions-today": <Gauge size={14} />,
+  "revenue-mtd": <BarChart3 size={14} />,
+  "open-alerts": <AlertTriangle size={14} />,
 } as const;
 
 const UTILIZATION_COLORS = {
   "in-use": "var(--accent)",
-  available: "var(--ok)",
-  offline: "var(--danger)",
+  available: "#6CD9B6",
+  offline: "#FF8A5B",
 } as const;
 
+function buildCoverageRows(
+  topTenants: Array<{ tenantName: string; chargers: number }>,
+): Array<{ label: string; percentage: number }> {
+  const total = topTenants.reduce((sum, tenant) => sum + tenant.chargers, 0);
+  if (total <= 0) {
+    return [];
+  }
+
+  return topTenants.slice(0, 4).map((tenant) => ({
+    label: tenant.tenantName,
+    percentage: Math.max(1, Math.round((tenant.chargers / total) * 100)),
+  }));
+}
+
+function buildGrowthPercentages(
+  topTenants: Array<{ tenantId: string; revenue: number }>,
+): Record<string, string> {
+  const values = topTenants.map((tenant) => tenant.revenue).filter((value) => value > 0);
+  const baseline = values.length > 0
+    ? values.reduce((sum, value) => sum + value, 0) / values.length
+    : 0;
+
+  const percentages: Record<string, string> = {};
+  for (const tenant of topTenants) {
+    if (baseline <= 0 || tenant.revenue <= 0) {
+      percentages[tenant.tenantId] = "+0.0%";
+      continue;
+    }
+
+    const delta = ((tenant.revenue - baseline) / baseline) * 100;
+    percentages[tenant.tenantId] = `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}%`;
+  }
+
+  return percentages;
+}
+
 export function SuperAdminDashboard() {
+  const { user } = useAuthStore();
   const { data, isLoading, error } = useSuperAdminDashboard();
 
   if (isLoading) {
@@ -65,52 +103,41 @@ export function SuperAdminDashboard() {
     );
   }
 
+  const coverageRows = buildCoverageRows(data.topTenants);
+  const growthPercentages = buildGrowthPercentages(data.topTenants);
+  const greetingName =
+    user?.role === "SUPER_ADMIN"
+      ? "Super Admin"
+      : user?.name?.trim() || "Super Admin";
+
   return (
     <DashboardLayout pageTitle="Super Admin Dashboard">
-      <div className="mx-auto w-full max-w-[1440px] space-y-6 sm:space-y-7">
-        <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_360px]">
-          <div className="card">
-            <div className="text-xs uppercase tracking-[0.18em] text-accent font-semibold">
-              Platform Command View
-            </div>
-            <h2 className="mt-2 text-2xl font-bold leading-tight text-[var(--text)]">
-              Role Dashboard - Super Admin
-            </h2>
-            <p className="mt-2 max-w-3xl text-sm text-subtle leading-relaxed">
-              Platform-wide oversight across tenants, stations, chargers, sessions,
-              revenue, and active operational alerts.
-            </p>
-          </div>
-          <div className="hidden md:block">
-            <div className="card h-full overflow-hidden p-0">
-              <div className="relative h-full min-h-[148px]">
-                <img
-                  src={dashboardHeroImage}
-                  alt="EV charging station network"
-                  className="h-full w-full object-cover"
-                />
-                <div
-                  className="absolute inset-0"
-                  style={{
-                    background:
-                      "linear-gradient(135deg, rgba(15, 23, 42, 0.12), rgba(15, 23, 42, 0.42))",
-                  }}
-                />
-              </div>
-            </div>
-          </div>
+      <div className="mx-auto w-full max-w-[1440px]">
+        <section className="mb-5">
+          <h2 className="text-[27px] font-extrabold tracking-tight text-[var(--text)] leading-tight">
+            Welcome back, <span style={{ color: "var(--accent)" }}>{greetingName}</span>
+          </h2>
+          <p className="mt-1.5 text-sm text-subtle">
+            Here's what's happening across your platform today.
+          </p>
         </section>
 
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <section className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6 mb-4">
           {data.kpis.map((kpi) => (
-            <div key={kpi.id} className="kpi-card">
-              <div className="flex items-center gap-2 text-[var(--text-muted)]">
+            <article
+              key={kpi.id}
+              className="rounded-xl border bg-[var(--bg-card)] px-3.5 py-3 shadow-sm"
+              style={{ borderColor: "var(--border)" }}
+            >
+              <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.11em] text-[var(--text-muted)]">
                 <span style={{ color: "var(--accent)" }}>{KPI_ICONS[kpi.id]}</span>
-                <span className="label">{kpi.label}</span>
+                <span>{kpi.label}</span>
               </div>
-              <div className="value">{kpi.value}</div>
+              <div className="mt-2 text-[33px] leading-none font-extrabold tracking-tight text-[var(--text)]">
+                {kpi.value}
+              </div>
               <div
-                className={`text-xs font-semibold ${
+                className={`mt-2 text-[11px] font-semibold ${
                   kpi.trend === "up"
                     ? "text-ok"
                     : kpi.trend === "down"
@@ -121,43 +148,29 @@ export function SuperAdminDashboard() {
                 {kpi.trend === "up" ? "↑ " : kpi.trend === "down" ? "↓ " : ""}
                 {kpi.delta}
               </div>
-            </div>
+            </article>
           ))}
         </section>
 
-        <section className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-          <div className="card">
-            <div className="flex items-center justify-between gap-3">
-              <div className="section-title mb-0">Network Growth (Total Sessions)</div>
-              <Link className="text-xs font-semibold text-accent" to={PATHS.SESSIONS}>
-                View all
-              </Link>
+        <section className="grid grid-cols-1 gap-4 xl:grid-cols-12 mb-4">
+          <article className="card xl:col-span-5 !p-0 overflow-hidden">
+            <div className="flex items-center justify-between border-b px-4 py-3" style={{ borderColor: "var(--border)" }}>
+              <h3 className="text-sm font-bold text-[var(--text)]">Network Growth (Total Sessions)</h3>
+              <span className="rounded-md border px-2 py-0.5 text-[10px] font-semibold text-subtle" style={{ borderColor: "var(--border)" }}>
+                Last 30 Days
+              </span>
             </div>
             {data.networkGrowthSeries.length === 0 ? (
-              <div className="mt-6 rounded-lg border border-[var(--border)] px-4 py-8 text-center text-sm text-subtle">
-                No session trend data available for the selected 30-day window.
+              <div className="px-4 py-10 text-center text-sm text-subtle">
+                No session trend data available.
               </div>
             ) : (
-              <div className="mt-4 h-[250px] sm:h-[280px]">
+              <div className="h-[222px] px-2 pb-2">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={data.networkGrowthSeries}>
-                    <CartesianGrid
-                      stroke="var(--border)"
-                      strokeDasharray="4 4"
-                      vertical={false}
-                    />
-                    <XAxis
-                      dataKey="label"
-                      tick={{ fontSize: 11, fill: "var(--text-subtle)" }}
-                      tickLine={false}
-                      axisLine={false}
-                    />
-                    <YAxis
-                      allowDecimals={false}
-                      tick={{ fontSize: 11, fill: "var(--text-subtle)" }}
-                      tickLine={false}
-                      axisLine={false}
-                    />
+                    <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fontSize: 10, fill: "var(--text-subtle)" }} tickLine={false} axisLine={false} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: "var(--text-subtle)" }} tickLine={false} axisLine={false} />
                     <Tooltip
                       contentStyle={{
                         borderRadius: 10,
@@ -166,44 +179,80 @@ export function SuperAdminDashboard() {
                         fontSize: 12,
                       }}
                     />
-                    <Line
-                      dataKey="sessions"
-                      stroke="var(--accent)"
-                      strokeWidth={2.5}
-                      dot={{ r: 2 }}
-                      activeDot={{ r: 4 }}
-                    />
+                    <Line dataKey="sessions" stroke="var(--accent)" strokeWidth={2.2} dot={{ r: 2 }} activeDot={{ r: 4 }} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
             )}
-          </div>
+          </article>
 
-          <div className="card">
-            <div className="section-title mb-0">Charger Utilization</div>
+          <article className="card xl:col-span-4 !p-0 overflow-hidden">
+            <div className="flex items-center justify-between border-b px-4 py-3" style={{ borderColor: "var(--border)" }}>
+              <h3 className="text-sm font-bold text-[var(--text)]">Tenant Performance (Revenue)</h3>
+              <span className="rounded-md border px-2 py-0.5 text-[10px] font-semibold text-subtle" style={{ borderColor: "var(--border)" }}>
+                MTD
+              </span>
+            </div>
+            {data.tenantRevenueSeries.length === 0 ? (
+              <div className="px-4 py-10 text-center text-sm text-subtle">
+                No tenant revenue data available.
+              </div>
+            ) : (
+              <div className="h-[222px] px-2 pb-2">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={data.tenantRevenueSeries}>
+                    <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
+                    <XAxis
+                      dataKey="tenantName"
+                      tick={{ fontSize: 9, fill: "var(--text-subtle)" }}
+                      tickLine={false}
+                      axisLine={false}
+                      interval={0}
+                    />
+                    <YAxis tick={{ fontSize: 10, fill: "var(--text-subtle)" }} tickLine={false} axisLine={false} />
+                    <Tooltip
+                      formatter={(value, _name, payload) => [payload?.payload?.revenueLabel ?? value, "Revenue"]}
+                      contentStyle={{
+                        borderRadius: 10,
+                        border: "1px solid var(--border)",
+                        background: "var(--bg-card)",
+                        fontSize: 12,
+                      }}
+                    />
+                    <Bar dataKey="revenue" fill="var(--accent)" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </article>
+
+          <article className="card xl:col-span-3 !p-0 overflow-hidden">
+            <div className="flex items-center justify-between border-b px-4 py-3" style={{ borderColor: "var(--border)" }}>
+              <h3 className="text-sm font-bold text-[var(--text)]">Charger Utilization</h3>
+              <span className="rounded-md border px-2 py-0.5 text-[10px] font-semibold text-subtle" style={{ borderColor: "var(--border)" }}>
+                Today
+              </span>
+            </div>
             {data.utilizationBreakdown.every((slice) => slice.value === 0) ? (
-              <div className="mt-6 rounded-lg border border-[var(--border)] px-4 py-8 text-center text-sm text-subtle">
+              <div className="px-4 py-10 text-center text-sm text-subtle">
                 No charger utilization data available.
               </div>
             ) : (
-              <div className="mt-4 h-[250px] sm:h-[280px]">
+              <div className="h-[222px] px-2 pb-2">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={data.utilizationBreakdown}
                       dataKey="value"
                       nameKey="label"
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={88}
-                      innerRadius={58}
+                      cx="34%"
+                      cy="52%"
+                      outerRadius={56}
+                      innerRadius={38}
                       paddingAngle={2}
                     >
                       {data.utilizationBreakdown.map((slice) => (
-                        <Cell
-                          key={slice.id}
-                          fill={UTILIZATION_COLORS[slice.id]}
-                        />
+                        <Cell key={slice.id} fill={UTILIZATION_COLORS[slice.id]} />
                       ))}
                     </Pie>
                     <Tooltip
@@ -219,12 +268,12 @@ export function SuperAdminDashboard() {
                       }}
                     />
                     <Legend
-                      verticalAlign="bottom"
+                      layout="vertical"
+                      align="right"
+                      verticalAlign="middle"
                       iconType="circle"
                       formatter={(value, entry) => {
-                        const payload = entry.payload as {
-                          percentage?: number;
-                        };
+                        const payload = entry.payload as { percentage?: number };
                         return `${value} ${payload.percentage ?? 0}%`;
                       }}
                     />
@@ -232,166 +281,122 @@ export function SuperAdminDashboard() {
                 </ResponsiveContainer>
               </div>
             )}
-          </div>
+          </article>
         </section>
 
-        <section className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
-          <div className="card">
-            <div className="flex items-center justify-between gap-3">
-              <div className="section-title mb-0">Tenant Performance (Revenue)</div>
-              <Link className="text-xs font-semibold text-accent" to={PATHS.TENANTS}>
-                View all
-              </Link>
+        <section className="grid grid-cols-1 gap-4 xl:grid-cols-12">
+          <article className="card xl:col-span-5 !p-0 overflow-hidden">
+            <div className="border-b px-4 py-3" style={{ borderColor: "var(--border)" }}>
+              <h3 className="text-sm font-bold text-[var(--text)]">Network Coverage</h3>
             </div>
-            {data.tenantRevenueSeries.length === 0 ? (
-              <div className="mt-6 rounded-lg border border-[var(--border)] px-4 py-8 text-center text-sm text-subtle">
-                No tenant revenue data available.
+            {coverageRows.length === 0 ? (
+              <div className="px-4 py-10 text-center text-sm text-subtle">
+                Coverage data is not available yet.
               </div>
             ) : (
-              <div className="mt-4 h-[250px] sm:h-[280px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={data.tenantRevenueSeries}>
-                    <CartesianGrid
-                      stroke="var(--border)"
-                      strokeDasharray="4 4"
-                      vertical={false}
-                    />
-                    <XAxis
-                      dataKey="tenantName"
-                      tick={{ fontSize: 11, fill: "var(--text-subtle)" }}
-                      tickLine={false}
-                      axisLine={false}
-                      interval={0}
-                      angle={-12}
-                      textAnchor="end"
-                      height={62}
-                    />
-                    <YAxis
-                      tick={{ fontSize: 11, fill: "var(--text-subtle)" }}
-                      tickLine={false}
-                      axisLine={false}
-                    />
-                    <Tooltip
-                      formatter={(value, _name, payload) => [
-                        payload?.payload?.revenueLabel ?? value,
-                        "Revenue",
-                      ]}
-                      contentStyle={{
-                        borderRadius: 10,
-                        border: "1px solid var(--border)",
-                        background: "var(--bg-card)",
-                        fontSize: 12,
-                      }}
-                    />
-                    <Bar dataKey="revenue" fill="var(--accent)" radius={[5, 5, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+              <div className="grid grid-cols-[minmax(0,1fr)_170px] gap-3 p-4">
+                <div
+                  className="relative min-h-[160px] rounded-xl border overflow-hidden"
+                  style={{ borderColor: "var(--border)", background: "var(--bg-muted)" }}
+                >
+                  <div className="absolute inset-0 opacity-80" style={{ background: "linear-gradient(140deg, rgba(20, 199, 139, 0.18), rgba(59, 130, 246, 0.08))" }} />
+                  <div className="absolute left-[16%] top-[32%] h-3.5 w-3.5 rounded-full bg-[var(--accent)] border border-white" />
+                  <div className="absolute left-[45%] top-[28%] h-3.5 w-3.5 rounded-full bg-[var(--accent)] border border-white" />
+                  <div className="absolute left-[55%] top-[58%] h-3.5 w-3.5 rounded-full bg-[var(--accent)] border border-white" />
+                  <div className="absolute left-[28%] top-[65%] h-3.5 w-3.5 rounded-full bg-[var(--accent)] border border-white" />
+                </div>
+                <div className="space-y-2">
+                  {coverageRows.map((row) => (
+                    <div key={row.label} className="flex items-center justify-between gap-2 text-xs">
+                      <span className="truncate text-[var(--text-muted)]">{row.label}</span>
+                      <span className="font-bold text-[var(--text)]">{row.percentage}%</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
-          </div>
+          </article>
 
-          <div className="card">
-            <div className="flex items-center justify-between gap-3">
-              <div className="section-title mb-0">Recent Alerts</div>
-              <Link className="text-xs font-semibold text-accent" to={PATHS.ALERTS}>
+          <article className="card xl:col-span-4 !p-0 overflow-hidden">
+            <div className="flex items-center justify-between border-b px-4 py-3" style={{ borderColor: "var(--border)" }}>
+              <h3 className="text-sm font-bold text-[var(--text)]">Top Tenants by Revenue</h3>
+              <Link className="text-[11px] font-semibold text-accent" to={PATHS.TENANTS}>
+                View all tenants
+              </Link>
+            </div>
+            {data.topTenants.length === 0 ? (
+              <div className="px-4 py-10 text-center text-sm text-subtle">
+                No tenant performance records are available.
+              </div>
+            ) : (
+              <div className="px-4 py-3">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-[10px] uppercase tracking-[0.08em] text-[var(--text-muted)]">
+                      <th className="py-1 text-left">#</th>
+                      <th className="py-1 text-left">Tenant</th>
+                      <th className="py-1 text-left">Revenue (MTD)</th>
+                      <th className="py-1 text-right">Growth</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.topTenants.slice(0, 5).map((tenant, index) => (
+                      <tr key={tenant.tenantId} className="border-t" style={{ borderColor: "var(--border-light)" }}>
+                        <td className="py-2 text-subtle">{index + 1}</td>
+                        <td className="py-2 font-semibold text-[var(--text)]">{tenant.tenantName}</td>
+                        <td className="py-2 text-[var(--text)]">{tenant.revenueLabel}</td>
+                        <td className="py-2 text-right font-semibold text-ok">{growthPercentages[tenant.tenantId]}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </article>
+
+          <article className="card xl:col-span-3 !p-0 overflow-hidden">
+            <div className="flex items-center justify-between border-b px-4 py-3" style={{ borderColor: "var(--border)" }}>
+              <h3 className="text-sm font-bold text-[var(--text)]">Recent Alerts</h3>
+              <Link className="text-[11px] font-semibold text-accent" to={PATHS.ALERTS}>
                 View all
               </Link>
             </div>
             {data.recentAlerts.length === 0 ? (
-              <div className="mt-6 rounded-lg border border-[var(--border)] px-4 py-8 text-center text-sm text-subtle">
+              <div className="px-4 py-10 text-center text-sm text-subtle">
                 No alerts in the current window.
               </div>
             ) : (
-              <div className="mt-4 space-y-3">
-                {data.recentAlerts.slice(0, 5).map((alert) => (
-                  <div
-                    key={`${alert.tenantName}-${alert.id}`}
-                    className="rounded-lg border px-3 py-3"
-                    style={{
-                      borderColor: "var(--border)",
-                      background: "var(--bg-muted)",
-                    }}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="text-xs font-semibold text-[var(--text)]">
-                          {alert.tenantName}
-                        </div>
-                        <div className="text-[11px] text-subtle truncate">
-                          {alert.stationName}
-                        </div>
+              <div className="space-y-2 p-3">
+                {data.recentAlerts.slice(0, 4).map((alert) => (
+                  <div key={`${alert.tenantName}-${alert.id}`} className="flex items-start gap-2 rounded-lg border p-2.5" style={{ borderColor: "var(--border)", background: "var(--bg-muted)" }}>
+                    <TriangleAlert
+                      size={14}
+                      className={
+                        alert.severity === "Critical"
+                          ? "text-danger mt-0.5"
+                          : alert.severity === "Warning"
+                            ? "text-warning mt-0.5"
+                            : "text-info mt-0.5"
+                      }
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-[11px] font-semibold text-[var(--text)]">
+                        {alert.message}
                       </div>
-                      <span
-                        className={`pill ${
-                          alert.severity === "Critical"
-                            ? "faulted"
-                            : alert.severity === "Warning"
-                              ? "degraded"
-                              : "pending"
-                        }`}
-                      >
-                        {alert.severity}
-                      </span>
+                      <div className="truncate text-[10px] text-subtle">
+                        {alert.stationName}
+                      </div>
                     </div>
-                    <div className="mt-2 text-xs text-[var(--text)]">{alert.message}</div>
-                    <div className="mt-2 text-[10px] text-subtle">
-                      {alert.status} · {alert.timeLabel}
+                    <div className="text-[10px] text-subtle whitespace-nowrap">
+                      {alert.timeLabel}
                     </div>
                   </div>
                 ))}
               </div>
             )}
-          </div>
-        </section>
-
-        <section className="card">
-          <div className="flex items-center justify-between gap-3">
-            <div className="section-title mb-0">Top Tenants</div>
-            <Link className="text-xs font-semibold text-accent" to={PATHS.TENANTS}>
-              View all tenants
-            </Link>
-          </div>
-          {data.topTenants.length === 0 ? (
-            <div className="mt-6 rounded-lg border border-[var(--border)] px-4 py-8 text-center text-sm text-subtle">
-              No tenant performance records are available.
-            </div>
-          ) : (
-            <div className="table-wrap mt-4">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Tenant</th>
-                    <th>Revenue (MTD)</th>
-                    <th>Stations</th>
-                    <th>Chargers</th>
-                    <th>Open Alerts</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.topTenants.map((tenant) => (
-                    <tr key={tenant.tenantId}>
-                      <td className="font-semibold">{tenant.tenantName}</td>
-                      <td>{tenant.revenueLabel}</td>
-                      <td>{tenant.stations}</td>
-                      <td>{tenant.chargers}</td>
-                      <td>
-                        <span
-                          className={`pill ${
-                            tenant.openAlerts > 0 ? "faulted" : "online"
-                          }`}
-                        >
-                          {tenant.openAlerts}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          </article>
         </section>
       </div>
     </DashboardLayout>
   );
 }
-

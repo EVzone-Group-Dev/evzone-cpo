@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useSuperAdminDashboard } from "@/core/hooks/useSuperAdminDashboard";
+import { useAuthStore } from "@/core/auth/authStore";
 import { SuperAdminDashboard } from "@/pages/dashboard/SuperAdminDashboard";
 
 vi.mock("@/components/layout/DashboardLayout", () => ({
@@ -24,11 +25,27 @@ vi.mock("@/core/hooks/useSuperAdminDashboard", () => ({
   useSuperAdminDashboard: vi.fn(),
 }));
 
+vi.mock("@/core/auth/authStore", () => ({
+  useAuthStore: vi.fn(),
+}));
+
 describe("SuperAdminDashboard", () => {
   const mockedUseSuperAdminDashboard = vi.mocked(useSuperAdminDashboard);
+  const mockedUseAuthStore = vi.mocked(useAuthStore);
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockedUseAuthStore.mockReturnValue({
+      user: {
+        id: "user-super",
+        name: "Delta Admin",
+        email: "super@evzone.io",
+        role: "SUPER_ADMIN",
+        status: "Active",
+        mfaEnabled: true,
+        createdAt: "2026-01-01T00:00:00.000Z",
+      },
+    } as unknown as ReturnType<typeof useAuthStore>);
   });
 
   it("renders a loading state", () => {
@@ -115,7 +132,7 @@ describe("SuperAdminDashboard", () => {
     );
 
     expect(
-      screen.getByText("No session trend data available for the selected 30-day window."),
+      screen.getByText("No session trend data available."),
     ).toBeInTheDocument();
     expect(screen.getByText("No tenant revenue data available.")).toBeInTheDocument();
     expect(screen.getByText("No alerts in the current window.")).toBeInTheDocument();
@@ -220,7 +237,7 @@ describe("SuperAdminDashboard", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText("Role Dashboard - Super Admin")).toBeInTheDocument();
+    expect(screen.getByText(/Welcome back,/i)).toBeInTheDocument();
     expect(screen.getByText("Network Growth (Total Sessions)")).toBeInTheDocument();
     expect(screen.getByText("Tenant Performance (Revenue)")).toBeInTheDocument();
     expect(screen.getAllByText("Alpha Mobility").length).toBeGreaterThan(0);

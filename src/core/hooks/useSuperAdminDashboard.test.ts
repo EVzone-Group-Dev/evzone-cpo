@@ -58,6 +58,12 @@ describe("loadSuperAdminDashboardData", () => {
           ? [{ id: "st-a", status: "Online" }, { id: "st-b", status: "Offline" }]
           : [{ id: "st-c", status: "Online" }] as never;
       }
+      if (path === "/api/v1/analytics/dashboard") {
+        return {
+          today: { sessions: tenantId === "tenant-1" ? 2 : 1, revenue: tenantId === "tenant-1" ? 192 : 40, incidents: 0 },
+          realTime: { onlineChargers: tenantId === "tenant-1" ? 2 : 1 },
+        } as never;
+      }
 
       if (path === "/api/v1/charge-points") {
         return tenantId === "tenant-1"
@@ -133,6 +139,8 @@ describe("loadSuperAdminDashboardData", () => {
       }
 
       if (
+        path === "/api/v1/analytics/dashboard" ||
+        path === "/api/dashboard/overview" ||
         path === "/api/v1/stations" ||
         path === "/api/v1/charge-points" ||
         path === "/api/v1/sessions/history/all" ||
@@ -213,6 +221,9 @@ describe("loadSuperAdminDashboardData", () => {
       if (path === "/api/v1/stations") {
         return [{ id: "st-1", status: "???unknown" }] as never;
       }
+      if (path === "/api/v1/analytics/dashboard") {
+        return { today: { sessions: "NaN", revenue: "oops", incidents: "NaN" }, realTime: { onlineChargers: "NaN" } } as never;
+      }
       if (path === "/api/v1/charge-points") {
         return [
           { id: "cp-1", status: "mystery" },
@@ -267,4 +278,3 @@ describe("loadSuperAdminDashboardData", () => {
     expect(result.recentAlerts.some((alert) => alert.status === "Acknowledged")).toBe(true);
   });
 });
-
