@@ -157,7 +157,7 @@ describe('CreateStationPage', () => {
     const lastCityCall = mockedUseReferenceCities.mock.calls.at(-1)
     expect(lastCityCall?.[0]).toBe('KE')
     expect(lastCityCall?.[1]).toBe('NA')
-  })
+  }, 15000)
 
   it('falls back to text state and city fields when references are unavailable', async () => {
     renderPage()

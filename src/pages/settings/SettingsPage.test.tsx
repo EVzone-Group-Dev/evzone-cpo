@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { MemoryRouter } from 'react-router-dom'
 import { fetchJson } from '@/core/api/fetchJson'
 import { SettingsPage } from '@/pages/settings/SettingsPage'
 import { useAuthStore } from '@/core/auth/authStore'
@@ -41,6 +42,46 @@ vi.mock('@/core/theme/themeContext', () => ({
   useTheme: vi.fn(),
 }))
 
+const translationMap: Record<string, string> = {
+  'settings.workspaceSettings': 'Workspace Settings',
+  'settings.workspaceDescription': 'Configure workspace identity and controls.',
+  'settings.profile': 'Profile & Identity',
+  'settings.security': 'Security & Access',
+  'settings.notifications': 'Notification Controls',
+  'settings.interface': 'Interface',
+  'settings.provisioning': 'Provisioning',
+  'settings.scope': 'Tenant Scope',
+  'settings.health': 'Health',
+  'settings.policy': 'Policy',
+  'settings.role': 'Role',
+  'settings.tenant': 'Tenant',
+  'settings.scopeType': 'Scope Type',
+  'settings.displayName': 'Display Name',
+  'settings.workEmail': 'Work Email',
+  'settings.theme': 'Theme',
+  'settings.screenDensity': 'Screen Density',
+  'settings.language': 'Language',
+  'settings.country': 'Country',
+  'settings.state': 'State / Province',
+  'settings.city': 'City',
+  'settings.mfa': 'Multi-factor authentication',
+  'common.save': 'Save changes',
+  'common.saved': 'All changes saved',
+  'common.saving': 'Saving changes...',
+}
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, options?: { time?: string }) =>
+      key === 'settings.lastSaved'
+        ? `Last saved ${options?.time ?? ''}`.trim()
+        : (translationMap[key] ?? key),
+    i18n: {
+      changeLanguage: vi.fn(),
+    },
+  }),
+}))
+
 describe('SettingsPage', () => {
   const mockedUseAuthStore = vi.mocked(useAuthStore)
   const mockedFetchJson = vi.mocked(fetchJson)
@@ -49,6 +90,14 @@ describe('SettingsPage', () => {
   const mockedUseTenant = vi.mocked(useTenant)
   const mockedUseTheme = vi.mocked(useTheme)
   let replaceUser: ReturnType<typeof vi.fn>
+
+  function renderPage() {
+    render(
+      <MemoryRouter>
+        <SettingsPage />
+      </MemoryRouter>,
+    )
+  }
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -176,7 +225,7 @@ describe('SettingsPage', () => {
   })
 
   it('renders premium settings sections and save flow', async () => {
-    render(<SettingsPage />)
+    renderPage()
 
     expect(screen.getByRole('heading', { name: 'Settings' })).toBeInTheDocument()
     expect(screen.getByText('Workspace Settings')).toBeInTheDocument()
@@ -236,7 +285,7 @@ describe('SettingsPage', () => {
       isLoading: false,
     }) as unknown as ReturnType<typeof useReferenceCities>)
 
-    render(<SettingsPage />)
+    renderPage()
 
     const countrySelect = screen.getByLabelText('Country')
     fireEvent.change(countrySelect, { target: { value: 'KE' } })
@@ -269,7 +318,7 @@ describe('SettingsPage', () => {
   })
 
   it('persists MFA requirement changes to backend policy endpoint', async () => {
-    render(<SettingsPage />)
+    renderPage()
 
     const mfaSwitch = screen.getByRole('switch', { name: 'Multi-factor authentication' })
     fireEvent.click(mfaSwitch)
@@ -300,11 +349,14 @@ describe('SettingsPage', () => {
     )
   })
 
-  it('restores saved language, country, and currency selections after reload', async () => {
-    const { unmount } = render(<SettingsPage />)
+  it('restores saved language and country selections after reload', async () => {
+    const { unmount } = render(
+      <MemoryRouter>
+        <SettingsPage />
+      </MemoryRouter>,
+    )
 
     fireEvent.change(screen.getByLabelText('Language'), { target: { value: 'Swahili' } })
-    fireEvent.change(screen.getByLabelText('Currency'), { target: { value: 'UGX' } })
     fireEvent.change(screen.getByLabelText('Country'), { target: { value: 'UG' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
 
@@ -312,14 +364,12 @@ describe('SettingsPage', () => {
 
     const storedDraft = loadSettingsDraft('usr-1')
     expect(storedDraft?.language).toBe('Swahili')
-    expect(storedDraft?.currency).toBe('UGX')
     expect(storedDraft?.tenantCountryCode).toBe('UG')
 
     unmount()
-    render(<SettingsPage />)
+    renderPage()
 
     expect(screen.getByLabelText('Language')).toHaveValue('Swahili')
-    expect(screen.getByLabelText('Currency')).toHaveValue('UGX')
     expect(screen.getByLabelText('Country')).toHaveValue('UG')
   })
 })

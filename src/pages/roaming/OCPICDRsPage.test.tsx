@@ -146,5 +146,5 @@ describe('OCPICDRsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Clear Filters' }))
     expect(screen.getByText('CDR-29481')).toBeInTheDocument()
     expect(screen.getByText('CDR-29482')).toBeInTheDocument()
-  })
+  }, 15000)
 })

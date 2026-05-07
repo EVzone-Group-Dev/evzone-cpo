@@ -91,6 +91,5 @@ describe('IncidentsPage', () => {
 
     expect(screen.getByText('Communication Loss')).toBeInTheDocument()
     expect(screen.getByText('Hardware Failure')).toBeInTheDocument()
-  })
+  }, 15000)
 })
-

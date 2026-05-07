@@ -156,52 +156,58 @@ describe('RequireAuth', () => {
   })
 
   it('shows an expiry notice when temporary station access has ended', async () => {
-    mockAuthState({
-      isAuthenticated: true,
-      user: {
-        ...buildUser('TECHNICIAN'),
-        activeStationContext: {
-          assignmentId: 'assignment-1',
-          stationId: 'st-1',
-          stationName: 'Kampala Yard',
-          tenantId: 'org-1',
-          role: 'INSTALLER_AGENT',
-          isPrimary: true,
-          shiftStart: '2026-04-01T08:00:00.000Z',
-          shiftEnd: '2026-04-01T09:00:00.000Z',
-        },
-        accessProfile: buildAccessProfile({
-          legacyRole: 'INSTALLER_AGENT',
-          canonicalRole: 'INSTALLER_AGENT',
-          roleFamily: 'technical',
-          permissions: ['maintenance.dispatch.read'],
-          scope: {
-            type: 'temporary',
-            tenantId: 'org-1',
-            stationId: 'st-1',
-            stationIds: ['st-1'],
-            providerId: null,
-            isTemporary: true,
-          },
-        }),
-      },
-    })
-
-    vi.setSystemTime(new Date('2026-04-01T09:30:00.000Z'))
-
-    render(
-      <MemoryRouter initialEntries={[PATHS.DASHBOARD_TECHNICIAN]}>
-        <Routes>
-          <Route
-            path={PATHS.DASHBOARD_TECHNICIAN}
-            element={<RequireAuth policy="dashboardTechnician"><div>Technician Dashboard</div></RequireAuth>}
-          />
-        </Routes>
-      </MemoryRouter>,
+    const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(
+      new Date('2026-04-01T09:30:00.000Z').getTime(),
     )
 
-    expect(await screen.findByText('Temporary station access expired')).toBeInTheDocument()
-    expect(screen.queryByText('Technician Dashboard')).not.toBeInTheDocument()
+    try {
+      mockAuthState({
+        isAuthenticated: true,
+        user: {
+          ...buildUser('TECHNICIAN'),
+          activeStationContext: {
+            assignmentId: 'assignment-1',
+            stationId: 'st-1',
+            stationName: 'Kampala Yard',
+            tenantId: 'org-1',
+            role: 'INSTALLER_AGENT',
+            isPrimary: true,
+            shiftStart: '2026-04-01T08:00:00.000Z',
+            shiftEnd: '2026-04-01T09:00:00.000Z',
+          },
+          accessProfile: buildAccessProfile({
+            legacyRole: 'INSTALLER_AGENT',
+            canonicalRole: 'INSTALLER_AGENT',
+            roleFamily: 'technical',
+            permissions: ['maintenance.dispatch.read'],
+            scope: {
+              type: 'temporary',
+              tenantId: 'org-1',
+              stationId: 'st-1',
+              stationIds: ['st-1'],
+              providerId: null,
+              isTemporary: true,
+            },
+          }),
+        },
+      })
+
+      render(
+        <MemoryRouter initialEntries={[PATHS.DASHBOARD_TECHNICIAN]}>
+          <Routes>
+            <Route
+              path={PATHS.DASHBOARD_TECHNICIAN}
+              element={<RequireAuth policy="dashboardTechnician"><div>Technician Dashboard</div></RequireAuth>}
+            />
+          </Routes>
+        </MemoryRouter>,
+      )
+
+      expect(await screen.findByText('Temporary station access expired')).toBeInTheDocument()
+      expect(screen.queryByText('Technician Dashboard')).not.toBeInTheDocument()
+    } finally {
+      nowSpy.mockRestore()
+    }
   })
 
   it('redirects provider-scoped users away from infrastructure pages toward roaming home', async () => {
@@ -251,7 +257,7 @@ describe('RequireAuth', () => {
         actingAsTenant: false,
         accessProfile: buildAccessProfile({
           canonicalRole: 'PLATFORM_SUPER_ADMIN',
-          permissions: ['stations.read'],
+          permissions: ['charge_points.read'],
           scope: {
             type: 'platform',
             tenantId: null,
@@ -265,11 +271,11 @@ describe('RequireAuth', () => {
     })
 
     render(
-      <MemoryRouter initialEntries={[PATHS.STATIONS]}>
+      <MemoryRouter initialEntries={[PATHS.CHARGE_POINTS]}>
         <Routes>
           <Route
-            path={PATHS.STATIONS}
-            element={<RequireAuth policy="stationsRead"><div>Stations</div></RequireAuth>}
+            path={PATHS.CHARGE_POINTS}
+            element={<RequireAuth policy="chargePointsRead"><div>Charge Points</div></RequireAuth>}
           />
           <Route path={PATHS.DASHBOARD_SUPER_ADMIN} element={<div>Super Admin Home</div>} />
         </Routes>
@@ -277,6 +283,6 @@ describe('RequireAuth', () => {
     )
 
     expect(await screen.findByText('Super Admin Home')).toBeInTheDocument()
-    expect(screen.queryByText('Stations')).not.toBeInTheDocument()
+    expect(screen.queryByText('Charge Points')).not.toBeInTheDocument()
   })
 })

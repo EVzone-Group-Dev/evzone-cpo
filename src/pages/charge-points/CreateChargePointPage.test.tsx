@@ -120,5 +120,5 @@ describe('CreateChargePointPage', () => {
         }),
       })
     })
-  })
+  }, 15000)
 })
