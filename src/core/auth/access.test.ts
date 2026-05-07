@@ -178,29 +178,84 @@ describe('canAccessPolicy', () => {
     ).toBe(false)
   })
 
-  it('blocks site-scoped users from tenant infrastructure pages', () => {
-    expect(
-      canAccessPolicy(
-        {
-          role: 'SITE_HOST',
-          accessProfile: buildAccessProfile({
-            legacyRole: 'SITE_HOST',
-            canonicalRole: 'SITE_HOST',
-            roleFamily: 'tenant',
-            permissions: ['stations.read', 'finance.revenue_reports.read'],
-            scope: {
-              type: 'site',
-              tenantId: 'org-site-1',
-              stationId: null,
-              stationIds: ['st-1'],
-              providerId: null,
-              isTemporary: false,
-            },
-          }),
+  it('allows site-scoped users to read owned-site stations without broader infrastructure access', () => {
+    const user = {
+      role: 'SITE_HOST',
+      accessProfile: buildAccessProfile({
+        legacyRole: 'SITE_HOST',
+        canonicalRole: 'SITE_HOST',
+        roleFamily: 'tenant',
+        permissions: ['sites.read', 'finance.revenue_reports.read'],
+        scope: {
+          type: 'site',
+          tenantId: 'org-site-1',
+          stationId: null,
+          stationIds: ['st-1'],
+          providerId: null,
+          isTemporary: false,
         },
-        'stationsRead',
-      ),
-    ).toBe(false)
+      }),
+    } as const
+
+    expect(canAccessPolicy(user, 'stationsRead')).toBe(true)
+    expect(canAccessPolicy(user, 'stationsWrite')).toBe(false)
+    expect(canAccessPolicy(user, 'chargePointsRead')).toBe(false)
+  })
+
+  it('allows site-scoped energy management when site energy permissions are present', () => {
+    const user = {
+      role: 'SITE_HOST',
+      accessProfile: buildAccessProfile({
+        legacyRole: 'SITE_HOST',
+        canonicalRole: 'SITE_HOST',
+        roleFamily: 'tenant',
+        permissions: [
+          'sites.read',
+          'smart_charging.read',
+          'smart_charging.write',
+          'load_profiles.read',
+          'sites.energy.write',
+        ],
+        scope: {
+          type: 'site',
+          tenantId: 'org-site-1',
+          stationId: null,
+          stationIds: ['st-1'],
+          providerId: null,
+          isTemporary: false,
+        },
+      }),
+    } as const
+
+    expect(canAccessPolicy(user, 'smartChargingRead')).toBe(true)
+    expect(canAccessPolicy(user, 'loadPoliciesRead')).toBe(true)
+    expect(canAccessPolicy(user, 'smartChargingWrite')).toBe(true)
+    expect(canAccessPolicy(user, 'loadPoliciesWrite')).toBe(true)
+    expect(canAccessPolicy(user, 'derOrchestrationRead')).toBe(false)
+  })
+
+  it('does not let tenant-scoped sites.read bypass station and energy policies', () => {
+    const user = {
+      role: 'CPO_ADMIN',
+      accessProfile: buildAccessProfile({
+        legacyRole: 'TENANT_ADMIN',
+        canonicalRole: 'TENANT_ADMIN',
+        roleFamily: 'tenant',
+        permissions: ['sites.read'],
+        scope: {
+          type: 'tenant',
+          tenantId: 'org-1',
+          stationId: null,
+          stationIds: [],
+          providerId: null,
+          isTemporary: false,
+        },
+      }),
+    } as const
+
+    expect(canAccessPolicy(user, 'stationsRead')).toBe(false)
+    expect(canAccessPolicy(user, 'smartChargingRead')).toBe(false)
+    expect(canAccessPolicy(user, 'loadPoliciesRead')).toBe(false)
   })
 
   it('allows roaming pages for provider-scoped users', () => {

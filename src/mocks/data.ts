@@ -353,7 +353,15 @@ const DEMO_PERMISSION_SETS = {
     "maintenance.dispatch.read",
     "commands.write",
   ],
-  siteHost: ["finance.revenue_reports.read", "sites.read"],
+  siteHost: [
+    "finance.revenue_reports.read",
+    "sites.read",
+    "stations.read",
+    "smart_charging.read",
+    "smart_charging.write",
+    "load_profiles.read",
+    "sites.energy.write",
+  ],
   providerAdmin: [
     "ocpi.partners.read",
     "ocpi.sessions.read",
@@ -4499,6 +4507,15 @@ function buildDemoScope(
   } else if (activeStationContext || stationContexts.length > 0) {
     type = "station";
   }
+  const stationIds =
+    type === "site" && activeTenantId
+      ? stations
+          .filter((station) => station.tenantIds.includes(activeTenantId))
+          .map((station) => station.id)
+      : stationContexts.map((context) => context.stationId);
+  const stationId =
+    activeStationContext?.stationId ??
+    (type === "site" && stationIds.length === 1 ? stationIds[0] : null);
 
   return {
     type,
@@ -4508,8 +4525,8 @@ function buildDemoScope(
         : activeTenantId
           ? tenantOrganizationCatalog[activeTenantId].organizationId
           : null,
-    stationId: activeStationContext?.stationId ?? null,
-    stationIds: stationContexts.map((context) => context.stationId),
+    stationId,
+    stationIds,
     providerId: demoUser.providerId ?? demoUser.user.providerId ?? null,
     isTemporary: false,
   };

@@ -111,6 +111,14 @@ export const SITE_HOST_ROLES = [
 export const TECHNICIAN_ROLES = [
   "TECHNICIAN",
 ] as const satisfies readonly CPORole[];
+export const STATION_READ_ROLES = [
+  ...INFRASTRUCTURE_ROLES,
+  ...SITE_HOST_ROLES,
+] as const satisfies readonly CPORole[];
+export const SITE_ENERGY_ROLES = [
+  ...ENERGY_ROLES,
+  ...SITE_HOST_ROLES,
+] as const satisfies readonly CPORole[];
 
 export const ROLE_DASHBOARD_VARIANT = {
   SUPER_ADMIN: "super-admin",
@@ -148,7 +156,7 @@ export const ACCESS_POLICY = {
     ...CPO_ADMIN_ROLES,
     ...SITE_HOST_ROLES,
   ] as const satisfies readonly CPORole[],
-  stationsRead: INFRASTRUCTURE_ROLES,
+  stationsRead: STATION_READ_ROLES,
   stationsWrite: ASSET_MANAGER_ROLES,
   chargePointsRead: INFRASTRUCTURE_ROLES,
   chargePointsWrite: ASSET_MANAGER_ROLES,
@@ -161,11 +169,11 @@ export const ACCESS_POLICY = {
   swapDispatchWrite: OPERATIONS_ROLES,
   incidentsRead: OPERATIONS_ROLES,
   alertsRead: OPERATIONS_ROLES,
-  smartChargingRead: ENERGY_ROLES,
-  loadPoliciesRead: ENERGY_ROLES,
+  smartChargingRead: SITE_ENERGY_ROLES,
+  loadPoliciesRead: SITE_ENERGY_ROLES,
   derOrchestrationRead: ENERGY_ROLES,
-  smartChargingWrite: ENERGY_ROLES,
-  loadPoliciesWrite: ENERGY_ROLES,
+  smartChargingWrite: SITE_ENERGY_ROLES,
+  loadPoliciesWrite: SITE_ENERGY_ROLES,
   batteryInventoryRead: ENERGY_ROLES,
   pncRead: INFRASTRUCTURE_ROLES,
   roamingRead: ROAMING_ROLES,
@@ -283,8 +291,8 @@ const ACCESS_PERMISSION_MAP: Record<
   smartChargingRead: ["smart_charging.read", "load_profiles.read"],
   loadPoliciesRead: ["smart_charging.read", "load_profiles.read"],
   derOrchestrationRead: ["smart_charging.read", "load_profiles.read"],
-  smartChargingWrite: ["smart_charging.write"],
-  loadPoliciesWrite: ["smart_charging.write"],
+  smartChargingWrite: ["smart_charging.write", "sites.energy.write"],
+  loadPoliciesWrite: ["smart_charging.write", "sites.energy.write"],
   batteryInventoryRead: ["battery_inventory.read"],
   pncRead: ["charge_points.read", "charge_points.security.write"],
   roamingRead: [
@@ -393,6 +401,11 @@ const SITE_SCOPE_ALLOWED_POLICIES = new Set<AccessPolicyKey>([
   "tenancyContext",
   "dashboardHome",
   "siteDashboard",
+  "stationsRead",
+  "smartChargingRead",
+  "loadPoliciesRead",
+  "smartChargingWrite",
+  "loadPoliciesWrite",
   "settingsRead",
   "notificationsRead",
 ]);
@@ -1122,6 +1135,36 @@ function isPlatformStationPolicyAllowed(
   return false;
 }
 
+function isSiteScopedPolicyAccessAllowed(
+  user: AccessAwareUser,
+  policy: AccessPolicyKey,
+) {
+  if (!isSiteScopedUser(user)) {
+    return false;
+  }
+
+  if (policy === "stationsRead") {
+    return matchesPermission(user, ["sites.read", "stations.read"]);
+  }
+
+  if (policy === "smartChargingRead" || policy === "loadPoliciesRead") {
+    return matchesPermission(user, [
+      "sites.read",
+      "smart_charging.read",
+      "load_profiles.read",
+    ]);
+  }
+
+  if (policy === "smartChargingWrite" || policy === "loadPoliciesWrite") {
+    return matchesPermission(user, [
+      "sites.energy.write",
+      "smart_charging.write",
+    ]);
+  }
+
+  return false;
+}
+
 
 export function canAccessRole(
   role: string | undefined | null,
@@ -1138,9 +1181,11 @@ export function canAccessPolicy(
   const hasPermissionAccess = Boolean(
     user?.accessProfile && permissions && permissions.length > 0,
   );
+  const hasSiteScopedAccess = isSiteScopedPolicyAccessAllowed(user, policy);
   const hasBaseAccess = hasPermissionAccess
-    ? matchesPermission(user, permissions ?? [])
-    : canAccessRole(getResolvedUserRole(user), ACCESS_POLICY[policy]);
+    ? matchesPermission(user, permissions ?? []) || hasSiteScopedAccess
+    : canAccessRole(getResolvedUserRole(user), ACCESS_POLICY[policy]) ||
+      hasSiteScopedAccess;
 
   if (!hasBaseAccess) {
     return false;

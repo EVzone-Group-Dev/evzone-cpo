@@ -99,6 +99,59 @@ describe('MSW RBAC authorization boundaries', () => {
     })
   })
 
+  it('lets site hosts fetch only their owned site station and energy scope', async () => {
+    const loginResponse = await fetch('/api/v1/auth/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: 'sitehost@evzone.io',
+        password: 'sitehost',
+        otpCode: '123456',
+      }),
+    })
+    const auth = await loginResponse.json() as {
+      accessToken: string
+      user: {
+        activeTenantId: string
+        accessProfile: {
+          scope: {
+            stationIds: string[]
+            type: string
+          }
+        }
+      }
+    }
+
+    expect(loginResponse.status).toBe(200)
+    expect(auth.user.accessProfile.scope).toMatchObject({
+      type: 'site',
+      stationIds: ['st-1'],
+    })
+
+    const headers = authHeaders(auth.accessToken, auth.user.activeTenantId)
+    const stationsResponse = await fetch('/api/v1/stations', { headers })
+    const stations = await stationsResponse.json() as Array<{ id: string }>
+
+    expect(stationsResponse.status).toBe(200)
+    expect(stations.map((station) => station.id)).toEqual(['st-1'])
+
+    const otherStationResponse = await fetch('/api/v1/stations/st-2', { headers })
+    expect(otherStationResponse.status).toBe(404)
+
+    const energyResponse = await fetch('/api/v1/energy-management/groups', { headers })
+    const groups = await energyResponse.json() as Array<{ id: string; stationId: string }>
+
+    expect(energyResponse.status).toBe(200)
+    expect(groups).toEqual([
+      expect.objectContaining({
+        id: 'ems-mall-westlands',
+        stationId: 'st-1',
+      }),
+    ])
+  })
+
   it('switches tenant context and reflects it in users/me', async () => {
     const switchResponse = await fetch('/api/v1/auth/switch-tenant', {
       method: 'POST',

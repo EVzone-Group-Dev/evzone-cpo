@@ -1223,13 +1223,34 @@ export const handlers = [
     return HttpResponse.json(getSiteOwnerDashboard(result.access.tenantId));
   }),
 
+  http.get("/api/v1/analytics/owner/dashboard", ({ request }) => {
+    const result = authorize(request, "siteDashboard");
+    if (!result.ok) return result.response;
+    return HttpResponse.json(getSiteOwnerDashboard(result.access.tenantId));
+  }),
+
   http.get("/api/stations", ({ request }) => {
     const result = authorize(request, "stationsRead");
     if (!result.ok) return result.response;
     return HttpResponse.json(listStations(result.access.tenantId));
   }),
 
+  http.get("/api/v1/stations", ({ request }) => {
+    const result = authorize(request, "stationsRead");
+    if (!result.ok) return result.response;
+    return HttpResponse.json(listStations(result.access.tenantId));
+  }),
+
   http.get("/api/stations/:id", ({ params, request }) => {
+    const result = authorize(request, "stationsRead");
+    if (!result.ok) return result.response;
+
+    const station = getStationById(String(params.id), result.access.tenantId);
+    if (!station) return new HttpResponse(null, { status: 404 });
+    return HttpResponse.json(station);
+  }),
+
+  http.get("/api/v1/stations/:id", ({ params, request }) => {
     const result = authorize(request, "stationsRead");
     if (!result.ok) return result.response;
 
