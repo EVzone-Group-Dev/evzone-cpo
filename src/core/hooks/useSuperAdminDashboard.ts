@@ -593,12 +593,21 @@ function buildSuperAdminDashboardModel(
   const allSessions = snapshots.flatMap((snapshot) => snapshot.sessions);
   const allAlerts = snapshots.flatMap((snapshot) => snapshot.alerts);
   const allChargePoints = snapshots.flatMap((snapshot) => resolveChargePoints(snapshot));
-  const stationRows = snapshots.flatMap((snapshot) =>
-    snapshot.stations.map((station) => ({
-      ...station,
-      uniqueId: `${snapshot.tenantId}:${station.id}`,
-    })),
-  );
+  const stationRows = snapshots.flatMap((snapshot) => snapshot.stations);
+  const uniqueStationsById = new Map<string, NormalizedStation>();
+  stationRows.forEach((station) => {
+    const existing = uniqueStationsById.get(station.id);
+    if (!existing) {
+      uniqueStationsById.set(station.id, station);
+      return;
+    }
+
+    // Keep the active representation if duplicate station snapshots disagree.
+    if (!isActiveStationStatus(existing.status) && isActiveStationStatus(station.status)) {
+      uniqueStationsById.set(station.id, station);
+    }
+  });
+  const uniqueStations = Array.from(uniqueStationsById.values());
 
   const reportingMonthKey = resolveReportingMonthKey(allSessions, referenceDate);
   const sessionsForRevenue =
@@ -635,12 +644,12 @@ function buildSuperAdminDashboardModel(
     0,
   );
 
-  const uniqueStationCount = stationRows.length > 0
-    ? new Set(stationRows.map((station) => station.uniqueId)).size
+  const uniqueStationCount = uniqueStations.length > 0
+    ? uniqueStations.length
     : snapshots.reduce((sum, snapshot) => sum + snapshot.tenantStationCount, 0);
 
-  const activeStations = stationRows.length > 0
-    ? stationRows.filter((station) => isActiveStationStatus(station.status)).length
+  const activeStations = uniqueStations.length > 0
+    ? uniqueStations.filter((station) => isActiveStationStatus(station.status)).length
     : uniqueStationCount;
 
   const uniqueChargePointCount = allChargePoints.length;

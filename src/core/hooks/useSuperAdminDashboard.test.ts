@@ -130,6 +130,59 @@ describe("loadSuperAdminDashboardData", () => {
     expect(result.recentAlerts[0]?.severity).toBe("Critical");
   });
 
+  it("dedupes station totals by real station id when platform station payloads repeat per tenant", async () => {
+    mockedFetchJson.mockImplementation(async (path, init) => {
+      const tenantId = getHeader(init, "x-tenant-id");
+
+      if (path === "/api/v1/platform/tenants") {
+        return [
+          { id: "tenant-1", name: "Alpha Mobility", currency: "USD", stationCount: 2 },
+          { id: "tenant-2", name: "Beta Charging", currency: "USD", stationCount: 2 },
+        ] as never;
+      }
+
+      if (path === "/api/v1/stations") {
+        return [
+          { id: "st-shared-1", status: "Online" },
+          { id: "st-shared-2", status: "Offline" },
+        ] as never;
+      }
+
+      if (path === "/api/v1/analytics/dashboard") {
+        return {
+          today: { sessions: tenantId === "tenant-1" ? 1 : 0, revenue: 0, incidents: 0 },
+          realTime: { onlineChargers: 0 },
+        } as never;
+      }
+
+      if (path === "/api/v1/charge-points") {
+        return [] as never;
+      }
+
+      if (path === "/api/v1/sessions/history/all") {
+        return [] as never;
+      }
+
+      if (path === "/api/v1/alerts") {
+        return [] as never;
+      }
+
+      if (path === "/api/v1/incidents") {
+        return { incidents: [] } as never;
+      }
+
+      throw new Error(`Unexpected path ${path}`);
+    });
+
+    const result = await loadSuperAdminDashboardData(
+      new Date("2026-05-04T10:00:00.000Z"),
+    );
+
+    const activeStationsKpi = result.kpis.find((kpi) => kpi.id === "active-stations");
+    expect(activeStationsKpi?.value).toBe("1");
+    expect(activeStationsKpi?.delta).toBe("2 total");
+  });
+
   it("falls back to legacy endpoints when v1 endpoints are unavailable", async () => {
     const now = new Date("2026-05-04T10:00:00.000Z");
 
