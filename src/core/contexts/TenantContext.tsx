@@ -494,12 +494,19 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       const availableTenants = (Array.isArray(tenantRecords) ? tenantRecords : []).map(toTenantSummary)
 
       if (isPlatformSessionWithoutTenantContext(user)) {
+        const activeAssistedTenant =
+          user?.assistedProxyStatus === 'ACTIVE' && activeTenantId
+            ? availableTenants.find((tenant) => tenant.id === activeTenantId) ?? null
+            : null
+
         return {
-          activeTenant: null,
+          activeTenant: activeAssistedTenant,
           availableTenants,
           canSwitchTenants: availableTenants.length > 0,
-          dashboardMode: 'operations',
-          dataScopeLabel: 'Platform-wide visibility. Select a tenant to act as.',
+          dashboardMode: activeAssistedTenant?.scope === 'site' ? 'site' : 'operations',
+          dataScopeLabel: activeAssistedTenant
+            ? `Assisted onboarding mode for ${activeAssistedTenant.name}.`
+            : 'Platform-wide visibility. Select a tenant to act as.',
         }
       }
 

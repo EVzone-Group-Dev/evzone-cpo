@@ -277,6 +277,64 @@ describe('canAccessPolicy', () => {
     ).toBe(true)
   })
 
+  it('allows tenant-context policies for platform sessions with active assisted proxy scope', () => {
+    expect(
+      canAccessPolicy(
+        {
+          role: 'SUPER_ADMIN',
+          sessionScopeType: 'platform',
+          actingAsTenant: false,
+          assistedProxySessionId: 'aps-1',
+          assistedProxyTenantId: 'org-1',
+          assistedProxyStatus: 'ACTIVE',
+          assistedProxyScopes: ['CHARGE_POINT_SETUP'],
+          accessProfile: buildAccessProfile({
+            canonicalRole: 'PLATFORM_SUPER_ADMIN',
+            permissions: ['charge_points.read'],
+            scope: {
+              type: 'platform',
+              tenantId: null,
+              stationId: null,
+              stationIds: [],
+              providerId: null,
+              isTemporary: false,
+            },
+          }),
+        },
+        'chargePointsRead',
+      ),
+    ).toBe(true)
+  })
+
+  it('blocks tenant-context policies when assisted proxy scope does not cover the requested policy', () => {
+    expect(
+      canAccessPolicy(
+        {
+          role: 'SUPER_ADMIN',
+          sessionScopeType: 'platform',
+          actingAsTenant: false,
+          assistedProxySessionId: 'aps-1',
+          assistedProxyTenantId: 'org-1',
+          assistedProxyStatus: 'ACTIVE',
+          assistedProxyScopes: ['TEAM_SETUP'],
+          accessProfile: buildAccessProfile({
+            canonicalRole: 'PLATFORM_SUPER_ADMIN',
+            permissions: ['charge_points.read'],
+            scope: {
+              type: 'platform',
+              tenantId: null,
+              stationId: null,
+              stationIds: [],
+              providerId: null,
+              isTemporary: false,
+            },
+          }),
+        },
+        'chargePointsRead',
+      ),
+    ).toBe(false)
+  })
+
   it("allows platform super admin to read and write stations without tenant impersonation", () => {
     const user = {
       role: "SUPER_ADMIN",

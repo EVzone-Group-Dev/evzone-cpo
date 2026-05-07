@@ -1,5 +1,6 @@
 import type {
   AccessProfile,
+  AssistedSessionScope,
   CPORole,
   CPOUser,
   CanonicalAccessRole,
@@ -200,6 +201,10 @@ type AccessAwareUser =
       | "sessionScopeType"
       | "actingAsTenant"
       | "selectedTenantId"
+      | "assistedProxySessionId"
+      | "assistedProxyTenantId"
+      | "assistedProxyScopes"
+      | "assistedProxyStatus"
       | "tenantActivated"
       | "mfaRequired"
       | "twoFactorEnabled"
@@ -212,6 +217,10 @@ type AccessAwareUser =
       sessionScopeType?: "platform" | "tenant";
       actingAsTenant?: boolean;
       selectedTenantId?: string | null;
+      assistedProxySessionId?: string | null;
+      assistedProxyTenantId?: string | null;
+      assistedProxyScopes?: AssistedSessionScope[];
+      assistedProxyStatus?: string | null;
       tenantActivated?: boolean;
       mfaRequired?: boolean;
       twoFactorEnabled?: boolean;
@@ -455,6 +464,18 @@ const TENANT_CONTEXT_REQUIRED_POLICIES = new Set<AccessPolicyKey>([
   "reportsRead",
 ]);
 
+const ASSISTED_SCOPE_POLICY_MAP: Record<
+  AssistedSessionScope,
+  readonly AccessPolicyKey[]
+> = {
+  TEAM_SETUP: ["teamRead"],
+  STATION_SETUP: ["stationsRead", "stationsWrite"],
+  CHARGE_POINT_SETUP: ["chargePointsRead", "chargePointsWrite", "chargePointCommands"],
+  SWAP_BAY_SETUP: ["swapStationsRead", "batteryInventoryRead", "swapSessionsRead"],
+  BRANDING_SETUP: ["whiteLabelAdmin", "settingsRead"],
+  TARIFF_SETUP: ["tariffsRead", "billingRead"],
+};
+
 function policyRequiresTenantContext(policy: AccessPolicyKey) {
   return TENANT_CONTEXT_REQUIRED_POLICIES.has(policy);
 }
@@ -524,6 +545,29 @@ function readRawStringValue(
   return typeof value === "string" && value.trim().length > 0 ? value : null;
 }
 
+function readAssistedScopesValue(
+  record: Record<string, unknown>,
+): AssistedSessionScope[] {
+  const value = record.assistedProxyScopes;
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const validScopes = new Set<AssistedSessionScope>([
+    "TEAM_SETUP",
+    "STATION_SETUP",
+    "CHARGE_POINT_SETUP",
+    "SWAP_BAY_SETUP",
+    "BRANDING_SETUP",
+    "TARIFF_SETUP",
+  ]);
+
+  return value
+    .filter((scope): scope is AssistedSessionScope => (
+      typeof scope === "string" && validScopes.has(scope as AssistedSessionScope)
+    ));
+}
+
 function isTenantImpersonationSession(user: {
   accessProfile?: AccessProfile | null;
   sessionScopeType?: "platform" | "tenant";
@@ -575,6 +619,36 @@ function isPlatformSessionWithoutTenant(user: AccessAwareUser) {
     activeTenantId: null,
     tenantId: null,
   });
+}
+
+function hasActiveAssistedSession(user: AccessAwareUser) {
+  if (!user) {
+    return false;
+  }
+
+  return (
+    typeof user.assistedProxySessionId === "string" &&
+    user.assistedProxySessionId.length > 0 &&
+    typeof user.assistedProxyTenantId === "string" &&
+    user.assistedProxyTenantId.length > 0 &&
+    user.assistedProxyStatus === "ACTIVE"
+  );
+}
+
+function isAssistedPolicyAllowed(
+  user: AccessAwareUser,
+  policy: AccessPolicyKey,
+) {
+  if (!hasActiveAssistedSession(user)) {
+    return false;
+  }
+
+  const scopes = user?.assistedProxyScopes ?? [];
+  if (scopes.length === 0) {
+    return false;
+  }
+
+  return scopes.some((scope) => ASSISTED_SCOPE_POLICY_MAP[scope]?.includes(policy));
 }
 
 export function normalizeUserRole(
@@ -660,6 +734,16 @@ export function normalizeAuthenticatedUser<
   const actingAsTenant = rawUser.actingAsTenant === true;
   const selectedTenantId = readRawStringValue(rawUser, "selectedTenantId");
   const selectedTenantName = readRawStringValue(rawUser, "selectedTenantName");
+  const assistedProxySessionId = readRawStringValue(
+    rawUser,
+    "assistedProxySessionId",
+  );
+  const assistedProxyTenantId = readRawStringValue(
+    rawUser,
+    "assistedProxyTenantId",
+  );
+  const assistedProxyScopes = readAssistedScopesValue(rawUser);
+  const assistedProxyStatus = readRawStringValue(rawUser, "assistedProxyStatus");
   const rawTenantId =
     readRawStringValue(rawUser, "activeTenantId") ??
     readRawStringValue(rawUser, "activeOrganizationId") ??
@@ -808,6 +892,10 @@ export function normalizeAuthenticatedUser<
       normalizedSessionScopeType === "tenant" ? normalizedActiveTenantId : null,
     selectedTenantName:
       normalizedSessionScopeType === "tenant" ? displayTenantName : null,
+    assistedProxySessionId,
+    assistedProxyTenantId,
+    assistedProxyScopes,
+    assistedProxyStatus,
     memberships: normalizedMemberships,
     accessProfile: user.accessProfile ?? null,
   };
@@ -1062,6 +1150,10 @@ export function canAccessPolicy(
     policyRequiresTenantContext(policy) &&
     isPlatformSessionWithoutTenant(user)
   ) {
+    if (isAssistedPolicyAllowed(user, policy)) {
+      return true;
+    }
+
     if (policy === "stationsRead" || policy === "stationsWrite") {
       return isPlatformStationPolicyAllowed(user, policy);
     }

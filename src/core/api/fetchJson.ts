@@ -115,7 +115,7 @@ async function refreshAccessToken(): Promise<string | null> {
 }
 
 export async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
-  const { activeTenantId, token } = useAuthStore.getState()
+  const { activeTenantId, token, user } = useAuthStore.getState()
   const headers = new Headers(init?.headers)
 
   if (token && !headers.has('Authorization')) {
@@ -124,6 +124,14 @@ export async function fetchJson<T>(input: string, init?: RequestInit): Promise<T
 
   if (activeTenantId && !headers.has('x-tenant-id')) {
     headers.set('x-tenant-id', activeTenantId)
+  }
+
+  if (
+    user?.assistedProxySessionId
+    && user.assistedProxyStatus === 'ACTIVE'
+    && !headers.has('x-assisted-session-id')
+  ) {
+    headers.set('x-assisted-session-id', user.assistedProxySessionId)
   }
 
   const requestUrl = resolveRequestUrl(input)
@@ -150,6 +158,13 @@ export async function fetchJson<T>(input: string, init?: RequestInit): Promise<T
     retryHeaders.set('Authorization', `Bearer ${refreshedToken}`)
     if (activeTenantId && !retryHeaders.has('x-tenant-id')) {
       retryHeaders.set('x-tenant-id', activeTenantId)
+    }
+    if (
+      user?.assistedProxySessionId
+      && user.assistedProxyStatus === 'ACTIVE'
+      && !retryHeaders.has('x-assisted-session-id')
+    ) {
+      retryHeaders.set('x-assisted-session-id', user.assistedProxySessionId)
     }
 
     response = await fetch(requestUrl, {

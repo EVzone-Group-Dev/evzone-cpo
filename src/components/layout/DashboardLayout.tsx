@@ -35,6 +35,11 @@ export function DashboardLayout({ children, pageTitle, actions }: Props) {
   const temporaryAccessState = getTemporaryAccessState(user)
   const temporaryAccessLabel = getTemporaryAccessWindowLabel(user)
   const hasTemporaryScope = isTemporaryScopeUser(user)
+  const hasActiveAssistedProxySession = Boolean(
+    user?.assistedProxySessionId
+    && user.assistedProxyStatus === 'ACTIVE'
+    && user.assistedProxyTenantId,
+  )
   const { branding } = useBranding()
   const [isLocalizationOpen, setIsLocalizationOpen] = useState(false)
   const headerLogoUrl = branding.branding.logoUrl || branding.branding.logoIconUrl || LOGO_PATHS.cpms
@@ -219,6 +224,25 @@ export function DashboardLayout({ children, pageTitle, actions }: Props) {
             </div>
             <div style={{ color: 'var(--text-subtle)' }}>
               {activeStationContext?.stationName ?? 'Assigned station scope'} · {temporaryAccessLabel}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {hasActiveAssistedProxySession && (
+        <div
+          className="border-b px-4 sm:px-6 py-3"
+          style={{
+            borderColor: 'var(--accent)',
+            background: 'rgba(58, 130, 246, 0.1)',
+          }}
+        >
+          <div className="flex flex-col gap-1 text-sm">
+            <div className="font-semibold" style={{ color: 'var(--text)' }}>
+              Assisted Onboarding Mode Active
+            </div>
+            <div style={{ color: 'var(--text-subtle)' }}>
+              You are configuring tenant {user?.assistedProxyTenantId} under session {user?.assistedProxySessionId}.
             </div>
           </div>
         </div>

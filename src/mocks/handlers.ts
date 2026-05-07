@@ -8,9 +8,15 @@ import { http, HttpResponse } from "msw";
 import {
   applySwapPackRetirementDecision,
   applySwapDispatchAction,
+  approveAssistedSessionConsent,
   authenticateDemoUser,
   authenticateDemoUserByEmail,
+  completeAssistedSession,
+  createAssistedSession,
   createChargePoint,
+  extendAssistedSession,
+  getAssistedHandoverReport,
+  getAssistedSession,
   getBatteryInventory,
   getBilling,
   getChargePointById,
@@ -38,6 +44,8 @@ import {
   // Legacy analytics mocks remain for backward compatibility.
   inspectSwapPack,
   listAlerts,
+  listAssistedAuditEvents,
+  listAssistedSessions,
   listAuditLogs,
   listBatterySwapSessions,
   listChargePoints,
@@ -53,9 +61,15 @@ import {
   refreshDemoUserSession,
   resetDemoAuthSessions,
   resolveDemoAccess,
+  recordAssistedScopedAction,
+  rejectAssistedSessionConsent,
+  requestAssistedSessionConsent,
+  startAssistedSession,
   stopSessionById,
   updateDemoUserProfile,
+  validateAssistedScopedWrite,
   transitionSwapPack,
+  revokeAssistedSession,
   switchDemoTenant,
   switchDemoStationContext,
   updateDemoUserMfaRequirement,
@@ -124,6 +138,15 @@ function authorize(request: Request, policy: AccessPolicyKey): AccessResult {
   }
 
   return { ok: true, access };
+}
+
+function resolveAccessTenantExternalId(access: RequestAccess): string | null {
+  return (
+    access.user.activeTenantId
+    ?? access.user.selectedTenantId
+    ?? access.user.tenantId
+    ?? null
+  )
 }
 
 function loginResolver(request: Request) {
@@ -974,6 +997,193 @@ export const handlers = [
     return HttpResponse.json(tenants);
   }),
 
+  http.get("/api/v1/platform/assisted-sessions", ({ request }) => {
+    const access = getRequestAccess(request);
+    if (!access) {
+      return unauthorized();
+    }
+
+    const url = new URL(request.url);
+    return HttpResponse.json(
+      listAssistedSessions(request.headers.get("authorization"), {
+        tenantId: url.searchParams.get("tenantId"),
+        status: url.searchParams.get("status"),
+        applicationId: url.searchParams.get("applicationId"),
+      }),
+    );
+  }),
+
+  http.post("/api/v1/platform/assisted-sessions", async ({ request }) => {
+    const created = createAssistedSession(
+      request.headers.get("authorization"),
+      await readJsonBody(request),
+    );
+
+    if (!created.ok) {
+      return HttpResponse.json({ message: created.message }, { status: created.status });
+    }
+
+    return HttpResponse.json(created.value, { status: 201 });
+  }),
+
+  http.get("/api/v1/platform/assisted-sessions/:id", ({ params, request }) => {
+    const session = getAssistedSession(
+      request.headers.get("authorization"),
+      String(params.id),
+    );
+
+    if (!session) {
+      return HttpResponse.json({ message: "Assisted session not found." }, { status: 404 });
+    }
+
+    return HttpResponse.json(session);
+  }),
+
+  http.post(
+    "/api/v1/platform/assisted-sessions/:id/request-consent",
+    ({ params, request }) => {
+      const result = requestAssistedSessionConsent(
+        request.headers.get("authorization"),
+        String(params.id),
+      );
+
+      if (!result.ok) {
+        return HttpResponse.json({ message: result.message }, { status: result.status });
+      }
+
+      return HttpResponse.json(result.value.receipt, { status: 202 });
+    },
+  ),
+
+  http.post(
+    "/api/v1/tenant/assisted-sessions/:id/consent/approve",
+    ({ params, request }) => {
+      const result = approveAssistedSessionConsent(
+        request.headers.get("authorization"),
+        String(params.id),
+      );
+
+      if (!result.ok) {
+        return HttpResponse.json({ message: result.message }, { status: result.status });
+      }
+
+      return HttpResponse.json(result.value);
+    },
+  ),
+
+  http.post(
+    "/api/v1/tenant/assisted-sessions/:id/consent/reject",
+    async ({ params, request }) => {
+      const body = await readJsonBody<{ reason?: string }>(request);
+      const result = rejectAssistedSessionConsent(
+        request.headers.get("authorization"),
+        String(params.id),
+        body.reason,
+      );
+
+      if (!result.ok) {
+        return HttpResponse.json({ message: result.message }, { status: result.status });
+      }
+
+      return HttpResponse.json(result.value);
+    },
+  ),
+
+  http.post(
+    "/api/v1/platform/assisted-sessions/:id/start",
+    async ({ params, request }) => {
+      const result = startAssistedSession(
+        request.headers.get("authorization"),
+        String(params.id),
+        await readJsonBody(request),
+      );
+
+      if (!result.ok) {
+        return HttpResponse.json({ message: result.message }, { status: result.status });
+      }
+
+      return HttpResponse.json(result.value);
+    },
+  ),
+
+  http.post(
+    "/api/v1/platform/assisted-sessions/:id/extend",
+    async ({ params, request }) => {
+      const result = extendAssistedSession(
+        request.headers.get("authorization"),
+        String(params.id),
+        await readJsonBody(request),
+      );
+
+      if (!result.ok) {
+        return HttpResponse.json({ message: result.message }, { status: result.status });
+      }
+
+      return HttpResponse.json(result.value);
+    },
+  ),
+
+  http.post(
+    "/api/v1/platform/assisted-sessions/:id/complete",
+    async ({ params, request }) => {
+      const result = completeAssistedSession(
+        request.headers.get("authorization"),
+        String(params.id),
+        await readJsonBody(request),
+      );
+
+      if (!result.ok) {
+        return HttpResponse.json({ message: result.message }, { status: result.status });
+      }
+
+      return HttpResponse.json(result.value);
+    },
+  ),
+
+  http.post(
+    "/api/v1/platform/assisted-sessions/:id/revoke",
+    async ({ params, request }) => {
+      const body = await readJsonBody<{ reason?: string }>(request);
+      const result = revokeAssistedSession(
+        request.headers.get("authorization"),
+        String(params.id),
+        body.reason,
+      );
+
+      if (!result.ok) {
+        return HttpResponse.json({ message: result.message }, { status: result.status });
+      }
+
+      return HttpResponse.json(result.value);
+    },
+  ),
+
+  http.get("/api/v1/platform/assisted-sessions/:id/audit-events", ({ params, request }) => {
+    const result = listAssistedAuditEvents(
+      request.headers.get("authorization"),
+      String(params.id),
+    );
+
+    if (!result.ok) {
+      return HttpResponse.json({ message: result.message }, { status: result.status });
+    }
+
+    return HttpResponse.json(result.value);
+  }),
+
+  http.get("/api/v1/tenant/assisted-sessions/:id/handover-report", ({ params, request }) => {
+    const result = getAssistedHandoverReport(
+      request.headers.get("authorization"),
+      String(params.id),
+    );
+
+    if (!result.ok) {
+      return HttpResponse.json({ message: result.message }, { status: result.status });
+    }
+
+    return HttpResponse.json(result.value);
+  }),
+
   http.get("/api/v1/geography/reference/countries", () =>
     HttpResponse.json(REFERENCE_COUNTRIES),
   ),
@@ -1076,6 +1286,28 @@ export const handlers = [
     const result = authorize(request, "chargePointsWrite");
     if (!result.ok) return result.response;
 
+    const assistedSessionId = request.headers.get("x-assisted-session-id");
+    if (assistedSessionId) {
+      const tenantExternalId = resolveAccessTenantExternalId(result.access);
+      if (!tenantExternalId) {
+        return HttpResponse.json(
+          { message: "Unable to resolve tenant context for assisted session." },
+          { status: 400 },
+        );
+      }
+
+      const validation = validateAssistedScopedWrite(
+        request.headers.get("authorization"),
+        assistedSessionId,
+        tenantExternalId,
+        "CHARGE_POINT_SETUP",
+      );
+
+      if (!validation.ok) {
+        return HttpResponse.json({ message: validation.message }, { status: validation.status });
+      }
+    }
+
     const payload =
       await readJsonBody<Parameters<typeof createChargePoint>[0]>(request);
     const chargePoint = createChargePoint(payload, result.access.tenantId);
@@ -1085,6 +1317,33 @@ export const handlers = [
         { message: "Station not found for active tenant." },
         { status: 400 },
       );
+    }
+
+    if (assistedSessionId) {
+      const tenantExternalId = resolveAccessTenantExternalId(result.access);
+      if (!tenantExternalId) {
+        return HttpResponse.json(
+          { message: "Unable to resolve tenant context for assisted session." },
+          { status: 400 },
+        );
+      }
+
+      const audit = recordAssistedScopedAction(
+        request.headers.get("authorization"),
+        assistedSessionId,
+        tenantExternalId,
+        "CHARGE_POINT_SETUP",
+        {
+          action: "CHARGE_POINT_CREATED",
+          resourceType: "charge_point",
+          resourceId: chargePoint.id,
+          after: chargePoint as unknown as Record<string, unknown>,
+        },
+      );
+
+      if (!audit.ok) {
+        return HttpResponse.json({ message: audit.message }, { status: audit.status });
+      }
     }
 
     return HttpResponse.json(chargePoint, { status: 201 });

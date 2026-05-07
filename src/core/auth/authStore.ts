@@ -1,6 +1,11 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { CPOUser, CPORole } from '@/core/types/domain'
+import type {
+  AssistedSessionScope,
+  AssistedSessionStatus,
+  CPOUser,
+  CPORole,
+} from '@/core/types/domain'
 import type { AuthenticatedApiUser } from '@/core/types/mockApi'
 import { canAccessPolicy, getResolvedUserRole, normalizeAuthenticatedUser } from '@/core/auth/access'
 
@@ -16,6 +21,13 @@ export interface AuthState {
   replaceUser: (user: CPOUser | AuthenticatedApiUser) => void
   setTokens: (token: string, refreshToken?: string | null) => void
   setActiveTenantId: (tenantId: string | null) => void
+  setAssistedProxySession: (session: {
+    sessionId: string
+    tenantId: string
+    scopes: AssistedSessionScope[]
+    status: AssistedSessionStatus
+  }) => void
+  clearAssistedProxySession: () => void
   logout: () => void
   setLoading: (v: boolean) => void
 }
@@ -99,6 +111,22 @@ export function mergeAuthUser(currentUser: CPOUser | null, incomingUser: CPOUser
       incomingUser.selectedTenantName
       ?? (incomingIsPlatformWithoutTenant ? null : currentUser.selectedTenantName)
       ?? null,
+    assistedProxySessionId:
+      incomingUser.assistedProxySessionId
+      ?? currentUser.assistedProxySessionId
+      ?? null,
+    assistedProxyTenantId:
+      incomingUser.assistedProxyTenantId
+      ?? currentUser.assistedProxyTenantId
+      ?? null,
+    assistedProxyScopes:
+      incomingUser.assistedProxyScopes
+      ?? currentUser.assistedProxyScopes
+      ?? [],
+    assistedProxyStatus:
+      incomingUser.assistedProxyStatus
+      ?? currentUser.assistedProxyStatus
+      ?? null,
     accessProfile: incomingUser.accessProfile ?? currentUser.accessProfile ?? null,
     memberships: incomingUser.memberships ?? currentUser.memberships,
     stationContexts: incomingUser.stationContexts ?? currentUser.stationContexts,
@@ -131,9 +159,17 @@ export function sanitizePersistedUser(user: CPOUser | null) {
   }
 
   if (isPlatformSessionWithoutTenantContext(user)) {
+    const hasAssistedProxySession = Boolean(
+      user.assistedProxySessionId
+      && user.assistedProxyTenantId
+      && user.assistedProxyStatus === 'ACTIVE',
+    )
+
     return {
       ...user,
-      activeTenantId: null,
+      activeTenantId: hasAssistedProxySession
+        ? user.assistedProxyTenantId ?? null
+        : null,
       tenantId: undefined,
       orgId: null,
       selectedTenantId: null,
@@ -189,6 +225,42 @@ export const useAuthStore = create<AuthState>()(
           isAuthenticated: !!state.user,
         })),
       setActiveTenantId: (tenantId) => set({ activeTenantId: tenantId }),
+      setAssistedProxySession: (session) =>
+        set((state) => {
+          if (!state.user) {
+            return {}
+          }
+
+          return {
+            activeTenantId: session.tenantId,
+            user: normalizeAuthenticatedUser({
+              ...state.user,
+              assistedProxySessionId: session.sessionId,
+              assistedProxyTenantId: session.tenantId,
+              assistedProxyScopes: session.scopes,
+              assistedProxyStatus: session.status,
+            }),
+          }
+        }),
+      clearAssistedProxySession: () =>
+        set((state) => {
+          if (!state.user) {
+            return {}
+          }
+
+          return {
+            activeTenantId: isPlatformSessionWithoutTenantContext(state.user)
+              ? null
+              : state.activeTenantId,
+            user: normalizeAuthenticatedUser({
+              ...state.user,
+              assistedProxySessionId: null,
+              assistedProxyTenantId: null,
+              assistedProxyScopes: [],
+              assistedProxyStatus: null,
+            }),
+          }
+        }),
       logout: () =>
         set({
           activeTenantId: null,
@@ -220,7 +292,11 @@ export const useAuthStore = create<AuthState>()(
         const persistedUser = sanitizePersistedUser(s.user)
 
         return {
-          activeTenantId: isPlatformSessionWithoutTenantContext(persistedUser) ? null : s.activeTenantId,
+          activeTenantId:
+            isPlatformSessionWithoutTenantContext(persistedUser)
+            && !persistedUser?.assistedProxySessionId
+              ? null
+              : s.activeTenantId,
           user: persistedUser,
           token: s.token,
           refreshToken: s.refreshToken,

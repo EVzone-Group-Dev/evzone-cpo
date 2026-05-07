@@ -280,6 +280,21 @@ export type AccessRoleFamily =
   | 'provider'
   | 'legacy'
 
+export type AssistedSessionScope =
+  | 'TEAM_SETUP'
+  | 'STATION_SETUP'
+  | 'CHARGE_POINT_SETUP'
+  | 'SWAP_BAY_SETUP'
+  | 'BRANDING_SETUP'
+  | 'TARIFF_SETUP'
+
+export type AssistedSessionStatus =
+  | 'PENDING_CONSENT'
+  | 'ACTIVE'
+  | 'EXPIRED'
+  | 'REVOKED'
+  | 'COMPLETED'
+
 export interface AccessScopeSummary {
   type: AccessScopeType
   tenantId: string | null
@@ -349,6 +364,10 @@ export interface CPOUser {
   actingAsTenant?: boolean
   selectedTenantId?: OrganizationId | null
   selectedTenantName?: string | null
+  assistedProxySessionId?: string | null
+  assistedProxyTenantId?: OrganizationId | null
+  assistedProxyScopes?: AssistedSessionScope[]
+  assistedProxyStatus?: AssistedSessionStatus | null
   assignedStationIds?: StationId[]
   memberships?: OrganizationMembershipSummary[]
   stationContexts?: StationContextSummary[]

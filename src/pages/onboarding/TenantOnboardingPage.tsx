@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import {
+  approveAssistedSessionConsent,
+  getAssistedSessionHandoverReport,
+  listAssistedSessions,
+  rejectAssistedSessionConsent,
+} from '@/core/api/assistedOnboarding'
+import {
   acceptEnterpriseQuote,
   confirmOnboardingTier,
   createOnboardingApplication,
@@ -14,6 +20,10 @@ import {
   type TenantOnboardingApplication,
   type TenantOnboardingStage,
 } from '@/core/api/onboarding'
+import type {
+  AdminProxySession,
+  HandoverReport,
+} from '@/core/types/assistedOnboarding'
 
 type Notice = {
   kind: 'success' | 'error'
@@ -120,6 +130,8 @@ export function TenantOnboardingPage() {
   const [selectedBillingCycle, setSelectedBillingCycle] = useState<BillingCycle>('MONTHLY')
   const [requestWhiteLabel, setRequestWhiteLabel] = useState(false)
   const [quoteReference, setQuoteReference] = useState('')
+  const [assistedSession, setAssistedSession] = useState<AdminProxySession | null>(null)
+  const [handoverReport, setHandoverReport] = useState<HandoverReport | null>(null)
 
   const activeApplication = applications[0] || null
 
@@ -187,6 +199,7 @@ export function TenantOnboardingPage() {
       ])
       setApplications(apps)
       setTiers(publishedTiers)
+      const currentApplication = apps[0] ?? null
       if (apps[0]?.selectedTierCode) {
         setSelectedTier(apps[0].selectedTierCode)
       }
@@ -195,6 +208,28 @@ export function TenantOnboardingPage() {
       }
       if (apps[0]?.pricingSnapshot?.whiteLabelRequested) {
         setRequestWhiteLabel(true)
+      }
+
+      if (currentApplication) {
+        const assistedResponse = await listAssistedSessions({
+          applicationId: currentApplication.id,
+        })
+        const currentSession = assistedResponse.items[0] ?? null
+        setAssistedSession(currentSession)
+
+        if (currentSession && currentSession.status === 'COMPLETED') {
+          try {
+            const report = await getAssistedSessionHandoverReport(currentSession.id)
+            setHandoverReport(report)
+          } catch {
+            setHandoverReport(null)
+          }
+        } else {
+          setHandoverReport(null)
+        }
+      } else {
+        setAssistedSession(null)
+        setHandoverReport(null)
       }
     } catch (error) {
       setNotice({
@@ -308,6 +343,50 @@ export function TenantOnboardingPage() {
       setNotice({
         kind: 'error',
         text: error instanceof Error ? error.message : 'Failed to accept enterprise quote.',
+      })
+    } finally {
+      setWorking(false)
+    }
+  }
+
+  async function handleApproveAssistedConsent() {
+    if (!assistedSession) {
+      return
+    }
+
+    setWorking(true)
+    setNotice(null)
+    try {
+      await approveAssistedSessionConsent(assistedSession.id, {})
+      setNotice({ kind: 'success', text: 'Assisted setup request approved.' })
+      await reload()
+    } catch (error) {
+      setNotice({
+        kind: 'error',
+        text: error instanceof Error ? error.message : 'Failed to approve assisted setup request.',
+      })
+    } finally {
+      setWorking(false)
+    }
+  }
+
+  async function handleRejectAssistedConsent() {
+    if (!assistedSession) {
+      return
+    }
+
+    setWorking(true)
+    setNotice(null)
+    try {
+      await rejectAssistedSessionConsent(assistedSession.id, {
+        reason: 'Tenant rejected assisted setup request.',
+      })
+      setNotice({ kind: 'success', text: 'Assisted setup request rejected.' })
+      await reload()
+    } catch (error) {
+      setNotice({
+        kind: 'error',
+        text: error instanceof Error ? error.message : 'Failed to reject assisted setup request.',
       })
     } finally {
       setWorking(false)
@@ -611,14 +690,67 @@ export function TenantOnboardingPage() {
             )}
 
             {activeApplication.onboardingStage === 'COMPLETED' && (
-              <div className="card">
-                <div className="section-title">Tenant Activated</div>
-                <p className="mt-2 text-sm text-subtle">
-                  Provisioning completed on {new Date(activeApplication.provisionedAt || activeApplication.updatedAt).toLocaleString()}.
-                </p>
-                {activeApplication.provisionedOrganizationId && (
-                  <div className="mt-3 pill online">
-                    Organization ID: {activeApplication.provisionedOrganizationId}
+              <div className="space-y-3">
+                <div className="card">
+                  <div className="section-title">Tenant Activated</div>
+                  <p className="mt-2 text-sm text-subtle">
+                    Provisioning completed on {new Date(activeApplication.provisionedAt || activeApplication.updatedAt).toLocaleString()}.
+                  </p>
+                  {activeApplication.provisionedOrganizationId && (
+                    <div className="mt-3 pill online">
+                      Organization ID: {activeApplication.provisionedOrganizationId}
+                    </div>
+                  )}
+                </div>
+
+                {assistedSession && (
+                  <div className="card space-y-3">
+                    <div className="section-title">Assisted Onboarding Mode</div>
+                    <div className="text-sm text-subtle">
+                      Session <strong>{assistedSession.id}</strong> · Status:{' '}
+                      <span className="font-semibold text-[var(--text)]">{assistedSession.status}</span>
+                    </div>
+                    <div className="text-xs text-subtle">
+                      Scope: {assistedSession.scopes.join(', ')} · Expires: {new Date(assistedSession.expiresAt).toLocaleString()}
+                    </div>
+
+                    {assistedSession.status === 'PENDING_CONSENT' && assistedSession.consentMode === 'TENANT_APPROVAL' && (
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          className="btn primary"
+                          disabled={working}
+                          onClick={() => void handleApproveAssistedConsent()}
+                        >
+                          {working ? 'Submitting...' : 'Approve Assisted Setup'}
+                        </button>
+                        <button
+                          className="btn"
+                          disabled={working}
+                          onClick={() => void handleRejectAssistedConsent()}
+                        >
+                          {working ? 'Submitting...' : 'Reject Request'}
+                        </button>
+                      </div>
+                    )}
+
+                    {assistedSession.status === 'ACTIVE' && (
+                      <p className="text-sm text-subtle">
+                        EVzone admin is currently assisting your tenant setup. You can continue monitoring progress from this workspace.
+                      </p>
+                    )}
+
+                    {assistedSession.status === 'COMPLETED' && handoverReport && (
+                      <div className="rounded border border-[var(--border)] p-3 space-y-2">
+                        <div className="text-sm font-semibold text-[var(--text)]">Handover Checklist</div>
+                        <div className="space-y-1">
+                          {handoverReport.checklist.map((item) => (
+                            <div key={item.key} className="text-xs text-subtle">
+                              {item.key}: <span className="font-semibold text-[var(--text)]">{item.status}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

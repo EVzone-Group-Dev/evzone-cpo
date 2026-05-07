@@ -64,6 +64,8 @@ describe('StationDetailPage', () => {
       replaceUser: vi.fn(),
       setTokens: vi.fn(),
       setActiveTenantId: vi.fn(),
+      setAssistedProxySession: vi.fn(),
+      clearAssistedProxySession: vi.fn(),
       logout: vi.fn(),
       setLoading: vi.fn(),
     }

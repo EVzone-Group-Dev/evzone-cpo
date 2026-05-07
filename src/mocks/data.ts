@@ -57,6 +57,15 @@ import type {
   TenantSummary,
   WebhooksModuleResponse,
 } from "@/core/types/mockApi";
+import type {
+  AdminProxySession,
+  AssistedSessionScope,
+  CompleteAssistedSessionResponse,
+  ConsentDispatchReceipt,
+  HandoverChecklistItem,
+  HandoverReport,
+  ProxyAuditEvent,
+} from "@/core/types/assistedOnboarding";
 
 type TenantId = "tenant-global" | "tenant-evzone-ke" | "tenant-westlands-mall";
 
@@ -5503,6 +5512,836 @@ export function getIncidentCommand(
         : {
             text: "Based on heat signatures, Station LOC-2 is at risk of a major connector fault within the next 48 hours.",
             cta: "Schedule Maintenance",
-          },
+    },
   };
+}
+
+type AssistedSessionActionResult<T> =
+  | { ok: true; value: T }
+  | { ok: false; status: number; message: string }
+
+interface AssistedSessionCreateInput {
+  tenantId?: string
+  applicationId?: string
+  reason?: string
+  scopes?: AssistedSessionScope[]
+  consentMode?: "TENANT_APPROVAL" | "CONTRACT"
+  consentTextVersion?: string
+  expiresAt?: string
+}
+
+interface AssistedSessionUpdateInput {
+  reason?: string
+  expiresAt?: string
+  contractEvidenceRef?: string
+  handoverNotes?: string
+}
+
+const assistedSessions: AdminProxySession[] = []
+const assistedAuditEvents: ProxyAuditEvent[] = []
+const assistedHandoverReports: HandoverReport[] = []
+let assistedSessionCounter = 1
+let assistedAuditCounter = 1
+let assistedHandoverCounter = 1
+
+function resolveTenantIdFromExternalId(tenantId: string | null | undefined): TenantId | null {
+  if (!tenantId) {
+    return null
+  }
+
+  const normalized = tenantId.trim()
+  const match = (Object.keys(tenantOrganizationCatalog) as TenantId[]).find((candidateTenantId) => (
+    candidateTenantId === normalized
+    || tenantOrganizationCatalog[candidateTenantId].organizationId === normalized
+  ))
+
+  return match ?? null
+}
+
+function resolveTenantExternalId(tenantId: TenantId) {
+  return tenantOrganizationCatalog[tenantId].organizationId
+}
+
+function resolveTenantName(tenantId: TenantId) {
+  return tenantOrganizationCatalog[tenantId].organizationName
+}
+
+function isPlatformSuperAdminDemoUser(demoUser: DemoUserRecord) {
+  return demoUser.canonicalRole === "PLATFORM_SUPER_ADMIN"
+}
+
+function canAccessAssistedSessionForTenant(
+  access: ResolvedDemoAccess,
+  tenantId: TenantId,
+) {
+  return access.demoUser.tenantIds.includes(tenantId)
+}
+
+function buildAssistedEventHash(sessionId: string, action: string) {
+  return `hash-${sessionId}-${action}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`
+}
+
+function recordAssistedAuditEvent(input: {
+  session: AdminProxySession
+  actorAdminUserId: string | null
+  actorType: "PLATFORM_ADMIN" | "TENANT_ADMIN" | "SYSTEM"
+  action: string
+  resourceType: string
+  resourceId?: string | null
+  before?: Record<string, unknown> | null
+  after?: Record<string, unknown> | null
+}) {
+  const lastEventForSession = assistedAuditEvents
+    .filter((event) => event.proxySessionId === input.session.id)
+    .sort((left, right) => Date.parse(left.createdAt) - Date.parse(right.createdAt))
+    .at(-1)
+
+  assistedAuditEvents.push({
+    id: `pae-${assistedAuditCounter++}`,
+    proxySessionId: input.session.id,
+    tenantId: input.session.tenantId,
+    actorAdminUserId: input.actorAdminUserId,
+    actorType: input.actorType,
+    action: input.action,
+    resourceType: input.resourceType,
+    resourceId: input.resourceId ?? null,
+    before: input.before ?? null,
+    after: input.after ?? null,
+    ipAddress: null,
+    userAgent: null,
+    eventHash: buildAssistedEventHash(input.session.id, input.action),
+    previousEventHash: lastEventForSession?.eventHash ?? null,
+    createdAt: new Date().toISOString(),
+  })
+}
+
+function findAssistedSessionRecord(
+  sessionId: string,
+): { index: number; session: AdminProxySession } | null {
+  const index = assistedSessions.findIndex((session) => session.id === sessionId)
+  if (index === -1) {
+    return null
+  }
+
+  return {
+    index,
+    session: assistedSessions[index],
+  }
+}
+
+function getAssistedSessionForAccess(
+  access: ResolvedDemoAccess | null,
+  sessionId: string,
+): AssistedSessionActionResult<{ index: number; tenantId: TenantId; session: AdminProxySession }> {
+  if (!access) {
+    return { ok: false, status: 401, message: "Unauthorized." }
+  }
+
+  const record = findAssistedSessionRecord(sessionId)
+  if (!record) {
+    return { ok: false, status: 404, message: "Assisted session not found." }
+  }
+
+  const tenantId = resolveTenantIdFromExternalId(record.session.tenantId)
+  if (!tenantId) {
+    return { ok: false, status: 404, message: "Tenant not found for assisted session." }
+  }
+
+  if (!canAccessAssistedSessionForTenant(access, tenantId)) {
+    return { ok: false, status: 403, message: "Forbidden." }
+  }
+
+  if (
+    record.session.status === "ACTIVE"
+    && Date.parse(record.session.expiresAt) <= Date.now()
+  ) {
+    const expiredSession: AdminProxySession = {
+      ...record.session,
+      status: "EXPIRED",
+      endedAt: new Date().toISOString(),
+    }
+    assistedSessions[record.index] = expiredSession
+    recordAssistedAuditEvent({
+      session: expiredSession,
+      actorAdminUserId: null,
+      actorType: "SYSTEM",
+      action: "SESSION_EXPIRED",
+      resourceType: "assisted_session",
+      resourceId: expiredSession.id,
+    })
+    return { ok: false, status: 409, message: "Assisted session has expired." }
+  }
+
+  return {
+    ok: true,
+    value: {
+      index: record.index,
+      session: assistedSessions[record.index],
+      tenantId,
+    },
+  }
+}
+
+function buildHandoverChecklist(sessionId: string): HandoverChecklistItem[] {
+  const sessionEvents = assistedAuditEvents
+    .filter((event) => event.proxySessionId === sessionId)
+    .sort((left, right) => Date.parse(left.createdAt) - Date.parse(right.createdAt))
+
+  const resolveCompletedAt = (actions: string[]) =>
+    sessionEvents.find((event) => actions.includes(event.action))?.createdAt ?? null
+
+  const checklist: HandoverChecklistItem[] = [
+    {
+      key: "FIRST_TENANT_ADMIN_INVITED",
+      status: resolveCompletedAt(["TEAM_INVITE_CREATED"]) ? "DONE" : "PENDING",
+      completedAt: resolveCompletedAt(["TEAM_INVITE_CREATED"]),
+      notes: null,
+    },
+    {
+      key: "FIRST_STATION_CREATED",
+      status: resolveCompletedAt(["STATION_CREATED"]) ? "DONE" : "PENDING",
+      completedAt: resolveCompletedAt(["STATION_CREATED"]),
+      notes: null,
+    },
+    {
+      key: "FIRST_CONNECTOR_OR_SWAP_BAY_CREATED",
+      status:
+        resolveCompletedAt(["CHARGE_POINT_CREATED", "SWAP_BAY_CREATED"])
+          ? "DONE"
+          : "PENDING",
+      completedAt: resolveCompletedAt(["CHARGE_POINT_CREATED", "SWAP_BAY_CREATED"]),
+      notes: null,
+    },
+    {
+      key: "TARIFF_BASELINE_CONFIGURED",
+      status: resolveCompletedAt(["TARIFF_TEMPLATE_CREATED"]) ? "DONE" : "PENDING",
+      completedAt: resolveCompletedAt(["TARIFF_TEMPLATE_CREATED"]),
+      notes: null,
+    },
+    {
+      key: "BRANDING_BASELINE_CONFIGURED",
+      status: resolveCompletedAt(["BRANDING_UPDATED"]) ? "DONE" : "PENDING",
+      completedAt: resolveCompletedAt(["BRANDING_UPDATED"]),
+      notes: null,
+    },
+    {
+      key: "TENANT_HANDOVER_CONFIRMED",
+      status: "PENDING",
+      completedAt: null,
+      notes: null,
+    },
+  ]
+
+  return checklist
+}
+
+function buildHandoverReportForSession(session: AdminProxySession): HandoverReport {
+  const sessionEvents = assistedAuditEvents.filter((event) => event.proxySessionId === session.id)
+  const actionsSummary = sessionEvents.reduce<Record<string, number>>((summary, event) => {
+    summary[event.resourceType] = (summary[event.resourceType] ?? 0) + 1
+    return summary
+  }, {})
+  const checklist = buildHandoverChecklist(session.id)
+  const pendingItems = checklist
+    .filter((item) => item.status === "PENDING")
+    .map((item) => item.key)
+
+  return {
+    id: `ahr-${assistedHandoverCounter++}`,
+    sessionId: session.id,
+    tenantId: session.tenantId,
+    startedAt: session.startedAt,
+    endedAt: session.endedAt,
+    checklist,
+    actionsSummary,
+    pendingItems,
+    tenantAcknowledgedAt: null,
+    createdAt: new Date().toISOString(),
+  }
+}
+
+export function listAssistedSessions(
+  authorizationHeader: string | null | undefined,
+  filters?: { status?: string | null; tenantId?: string | null; applicationId?: string | null },
+) {
+  const access = resolveDemoAccess(authorizationHeader)
+  if (!access) {
+    return { items: [] as AdminProxySession[] }
+  }
+
+  const allowedTenantIds = new Set(
+    access.demoUser.tenantIds.map((tenantId) => resolveTenantExternalId(tenantId)),
+  )
+
+  const statusFilter = filters?.status?.trim()
+  const tenantFilter = filters?.tenantId?.trim()
+  const applicationFilter = filters?.applicationId?.trim()
+
+  const items = assistedSessions
+    .filter((session) => allowedTenantIds.has(session.tenantId))
+    .filter((session) => (statusFilter ? session.status === statusFilter : true))
+    .filter((session) => (tenantFilter ? session.tenantId === tenantFilter : true))
+    .filter((session) => (applicationFilter ? session.applicationId === applicationFilter : true))
+    .sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt))
+
+  return { items }
+}
+
+export function getAssistedSession(
+  authorizationHeader: string | null | undefined,
+  sessionId: string,
+): AdminProxySession | null {
+  const access = resolveDemoAccess(authorizationHeader)
+  const result = getAssistedSessionForAccess(access, sessionId)
+  if (!result.ok) {
+    return null
+  }
+
+  return result.value.session
+}
+
+export function createAssistedSession(
+  authorizationHeader: string | null | undefined,
+  input: AssistedSessionCreateInput,
+): AssistedSessionActionResult<AdminProxySession> {
+  const access = resolveDemoAccess(authorizationHeader)
+  if (!access) {
+    return { ok: false, status: 401, message: "Unauthorized." }
+  }
+
+  if (!isPlatformSuperAdminDemoUser(access.demoUser)) {
+    return { ok: false, status: 403, message: "Only platform super admin can create assisted sessions." }
+  }
+
+  const targetTenantId = resolveTenantIdFromExternalId(input.tenantId)
+  if (!targetTenantId) {
+    return { ok: false, status: 400, message: "A valid tenantId is required." }
+  }
+
+  if (!canAccessAssistedSessionForTenant(access, targetTenantId)) {
+    return { ok: false, status: 403, message: "Target tenant is outside your scope." }
+  }
+
+  if (!isTenantActivated(targetTenantId)) {
+    return { ok: false, status: 409, message: "Tenant must be activated before assisted setup can begin." }
+  }
+
+  const reason = input.reason?.trim()
+  if (!reason) {
+    return { ok: false, status: 400, message: "A setup reason is required." }
+  }
+
+  const scopes = Array.isArray(input.scopes) ? input.scopes : []
+  if (scopes.length === 0) {
+    return { ok: false, status: 400, message: "At least one assisted setup scope is required." }
+  }
+
+  const expiresAtRaw = input.expiresAt ? Date.parse(input.expiresAt) : NaN
+  if (!Number.isFinite(expiresAtRaw) || expiresAtRaw <= Date.now()) {
+    return { ok: false, status: 400, message: "expiresAt must be a future timestamp." }
+  }
+
+  const consentMode = input.consentMode === "CONTRACT" ? "CONTRACT" : "TENANT_APPROVAL"
+  const consentTextVersion = input.consentTextVersion?.trim() || "v1.0"
+  const now = new Date().toISOString()
+
+  const session: AdminProxySession = {
+    id: `aps-${assistedSessionCounter++}`,
+    tenantId: resolveTenantExternalId(targetTenantId),
+    tenantName: resolveTenantName(targetTenantId),
+    applicationId: input.applicationId?.trim() || null,
+    adminUserId: access.user.id,
+    approvedByTenantUserId: null,
+    reason,
+    scopes,
+    consentMode,
+    consentTextVersion,
+    status: "PENDING_CONSENT",
+    expiresAt: new Date(expiresAtRaw).toISOString(),
+    createdAt: now,
+    startedAt: null,
+    endedAt: null,
+  }
+
+  assistedSessions.push(session)
+  recordAssistedAuditEvent({
+    session,
+    actorAdminUserId: access.user.id,
+    actorType: "PLATFORM_ADMIN",
+    action: "SESSION_CREATED",
+    resourceType: "assisted_session",
+    resourceId: session.id,
+    after: { status: session.status, scopes: session.scopes, expiresAt: session.expiresAt },
+  })
+
+  return { ok: true, value: session }
+}
+
+export function requestAssistedSessionConsent(
+  authorizationHeader: string | null | undefined,
+  sessionId: string,
+): AssistedSessionActionResult<{ receipt: ConsentDispatchReceipt; session: AdminProxySession }> {
+  const access = resolveDemoAccess(authorizationHeader)
+  if (!access) {
+    return { ok: false, status: 401, message: "Unauthorized." }
+  }
+
+  const result = getAssistedSessionForAccess(access, sessionId)
+  if (!result.ok) {
+    return result
+  }
+
+  if (!isPlatformSuperAdminDemoUser(access.demoUser)) {
+    return { ok: false, status: 403, message: "Only platform super admin can request consent." }
+  }
+
+  if (result.value.session.status !== "PENDING_CONSENT") {
+    return { ok: false, status: 409, message: "Consent can only be requested for pending sessions." }
+  }
+
+  recordAssistedAuditEvent({
+    session: result.value.session,
+    actorAdminUserId: access.user.id,
+    actorType: "PLATFORM_ADMIN",
+    action: "CONSENT_REQUESTED",
+    resourceType: "assisted_session",
+    resourceId: result.value.session.id,
+  })
+
+  return {
+    ok: true,
+    value: {
+      session: result.value.session,
+      receipt: {
+        sessionId: result.value.session.id,
+        status: "DISPATCHED",
+        dispatchedAt: new Date().toISOString(),
+      },
+    },
+  }
+}
+
+export function approveAssistedSessionConsent(
+  authorizationHeader: string | null | undefined,
+  sessionId: string,
+): AssistedSessionActionResult<AdminProxySession> {
+  const access = resolveDemoAccess(authorizationHeader)
+  if (!access) {
+    return { ok: false, status: 401, message: "Unauthorized." }
+  }
+
+  const result = getAssistedSessionForAccess(access, sessionId)
+  if (!result.ok) {
+    return result
+  }
+
+  if (access.demoUser.canonicalRole !== "TENANT_ADMIN") {
+    return { ok: false, status: 403, message: "Only tenant admins can approve consent." }
+  }
+
+  if (result.value.session.status !== "PENDING_CONSENT") {
+    return { ok: false, status: 409, message: "Only pending sessions can be approved." }
+  }
+
+  const updatedSession: AdminProxySession = {
+    ...result.value.session,
+    status: "ACTIVE",
+    approvedByTenantUserId: access.user.id,
+    startedAt: new Date().toISOString(),
+  }
+
+  assistedSessions[result.value.index] = updatedSession
+  recordAssistedAuditEvent({
+    session: updatedSession,
+    actorAdminUserId: access.user.id,
+    actorType: "TENANT_ADMIN",
+    action: "CONSENT_APPROVED",
+    resourceType: "assisted_session",
+    resourceId: updatedSession.id,
+    before: { status: result.value.session.status },
+    after: { status: updatedSession.status },
+  })
+  recordAssistedAuditEvent({
+    session: updatedSession,
+    actorAdminUserId: access.user.id,
+    actorType: "TENANT_ADMIN",
+    action: "SESSION_STARTED",
+    resourceType: "assisted_session",
+    resourceId: updatedSession.id,
+  })
+
+  return { ok: true, value: updatedSession }
+}
+
+export function rejectAssistedSessionConsent(
+  authorizationHeader: string | null | undefined,
+  sessionId: string,
+  reason?: string,
+): AssistedSessionActionResult<AdminProxySession> {
+  const access = resolveDemoAccess(authorizationHeader)
+  if (!access) {
+    return { ok: false, status: 401, message: "Unauthorized." }
+  }
+
+  const result = getAssistedSessionForAccess(access, sessionId)
+  if (!result.ok) {
+    return result
+  }
+
+  if (access.demoUser.canonicalRole !== "TENANT_ADMIN") {
+    return { ok: false, status: 403, message: "Only tenant admins can reject consent." }
+  }
+
+  if (result.value.session.status !== "PENDING_CONSENT") {
+    return { ok: false, status: 409, message: "Only pending sessions can be rejected." }
+  }
+
+  const updatedSession: AdminProxySession = {
+    ...result.value.session,
+    status: "REVOKED",
+    endedAt: new Date().toISOString(),
+  }
+
+  assistedSessions[result.value.index] = updatedSession
+  recordAssistedAuditEvent({
+    session: updatedSession,
+    actorAdminUserId: access.user.id,
+    actorType: "TENANT_ADMIN",
+    action: "SESSION_REVOKED",
+    resourceType: "assisted_session",
+    resourceId: updatedSession.id,
+    after: { reason: reason?.trim() || "Consent rejected by tenant admin." },
+  })
+
+  return { ok: true, value: updatedSession }
+}
+
+export function startAssistedSession(
+  authorizationHeader: string | null | undefined,
+  sessionId: string,
+  input: AssistedSessionUpdateInput,
+): AssistedSessionActionResult<AdminProxySession> {
+  const access = resolveDemoAccess(authorizationHeader)
+  if (!access) {
+    return { ok: false, status: 401, message: "Unauthorized." }
+  }
+
+  const result = getAssistedSessionForAccess(access, sessionId)
+  if (!result.ok) {
+    return result
+  }
+
+  if (!isPlatformSuperAdminDemoUser(access.demoUser)) {
+    return { ok: false, status: 403, message: "Only platform super admin can start assisted sessions." }
+  }
+
+  if (result.value.session.status !== "PENDING_CONSENT") {
+    return { ok: false, status: 409, message: "Only pending sessions can be started." }
+  }
+
+  if (
+    result.value.session.consentMode === "CONTRACT"
+    && !input.contractEvidenceRef?.trim()
+  ) {
+    return { ok: false, status: 422, message: "Contract evidence reference is required for contract-based consent." }
+  }
+
+  const updatedSession: AdminProxySession = {
+    ...result.value.session,
+    status: "ACTIVE",
+    startedAt: new Date().toISOString(),
+  }
+
+  assistedSessions[result.value.index] = updatedSession
+  recordAssistedAuditEvent({
+    session: updatedSession,
+    actorAdminUserId: access.user.id,
+    actorType: "PLATFORM_ADMIN",
+    action: "SESSION_STARTED",
+    resourceType: "assisted_session",
+    resourceId: updatedSession.id,
+    after: { contractEvidenceRef: input.contractEvidenceRef?.trim() || null },
+  })
+
+  return { ok: true, value: updatedSession }
+}
+
+export function extendAssistedSession(
+  authorizationHeader: string | null | undefined,
+  sessionId: string,
+  input: AssistedSessionUpdateInput,
+): AssistedSessionActionResult<AdminProxySession> {
+  const access = resolveDemoAccess(authorizationHeader)
+  if (!access) {
+    return { ok: false, status: 401, message: "Unauthorized." }
+  }
+
+  const result = getAssistedSessionForAccess(access, sessionId)
+  if (!result.ok) {
+    return result
+  }
+
+  if (!isPlatformSuperAdminDemoUser(access.demoUser)) {
+    return { ok: false, status: 403, message: "Only platform super admin can extend assisted sessions." }
+  }
+
+  if (result.value.session.status !== "ACTIVE") {
+    return { ok: false, status: 409, message: "Only active sessions can be extended." }
+  }
+
+  const expiresAtRaw = input.expiresAt ? Date.parse(input.expiresAt) : NaN
+  if (!Number.isFinite(expiresAtRaw) || expiresAtRaw <= Date.now()) {
+    return { ok: false, status: 400, message: "expiresAt must be a future timestamp." }
+  }
+
+  const updatedSession: AdminProxySession = {
+    ...result.value.session,
+    expiresAt: new Date(expiresAtRaw).toISOString(),
+  }
+  assistedSessions[result.value.index] = updatedSession
+
+  recordAssistedAuditEvent({
+    session: updatedSession,
+    actorAdminUserId: access.user.id,
+    actorType: "PLATFORM_ADMIN",
+    action: "SESSION_EXTENDED",
+    resourceType: "assisted_session",
+    resourceId: updatedSession.id,
+    before: { expiresAt: result.value.session.expiresAt },
+    after: {
+      expiresAt: updatedSession.expiresAt,
+      reason: input.reason?.trim() || "Scope extension requested.",
+    },
+  })
+
+  return { ok: true, value: updatedSession }
+}
+
+export function completeAssistedSession(
+  authorizationHeader: string | null | undefined,
+  sessionId: string,
+  input: AssistedSessionUpdateInput,
+): AssistedSessionActionResult<CompleteAssistedSessionResponse> {
+  const access = resolveDemoAccess(authorizationHeader)
+  if (!access) {
+    return { ok: false, status: 401, message: "Unauthorized." }
+  }
+
+  const result = getAssistedSessionForAccess(access, sessionId)
+  if (!result.ok) {
+    return result
+  }
+
+  if (!isPlatformSuperAdminDemoUser(access.demoUser)) {
+    return { ok: false, status: 403, message: "Only platform super admin can complete assisted sessions." }
+  }
+
+  if (result.value.session.status !== "ACTIVE") {
+    return { ok: false, status: 409, message: "Only active sessions can be completed." }
+  }
+
+  const updatedSession: AdminProxySession = {
+    ...result.value.session,
+    status: "COMPLETED",
+    endedAt: new Date().toISOString(),
+  }
+
+  assistedSessions[result.value.index] = updatedSession
+  recordAssistedAuditEvent({
+    session: updatedSession,
+    actorAdminUserId: access.user.id,
+    actorType: "PLATFORM_ADMIN",
+    action: "SESSION_COMPLETED",
+    resourceType: "assisted_session",
+    resourceId: updatedSession.id,
+    after: {
+      handoverNotes: input.handoverNotes?.trim() || null,
+    },
+  })
+
+  const handoverReport = buildHandoverReportForSession(updatedSession)
+  assistedHandoverReports.push(handoverReport)
+
+  return {
+    ok: true,
+    value: {
+      session: updatedSession,
+      handoverReportId: handoverReport.id,
+    },
+  }
+}
+
+export function revokeAssistedSession(
+  authorizationHeader: string | null | undefined,
+  sessionId: string,
+  reason?: string,
+): AssistedSessionActionResult<AdminProxySession> {
+  const access = resolveDemoAccess(authorizationHeader)
+  if (!access) {
+    return { ok: false, status: 401, message: "Unauthorized." }
+  }
+
+  const result = getAssistedSessionForAccess(access, sessionId)
+  if (!result.ok) {
+    return result
+  }
+
+  const isPlatformAdmin = isPlatformSuperAdminDemoUser(access.demoUser)
+  const isTenantAdmin = access.demoUser.canonicalRole === "TENANT_ADMIN"
+  if (!isPlatformAdmin && !isTenantAdmin) {
+    return { ok: false, status: 403, message: "You are not allowed to revoke this session." }
+  }
+
+  if (
+    result.value.session.status === "COMPLETED"
+    || result.value.session.status === "REVOKED"
+    || result.value.session.status === "EXPIRED"
+  ) {
+    return { ok: false, status: 409, message: "Session is already closed." }
+  }
+
+  const updatedSession: AdminProxySession = {
+    ...result.value.session,
+    status: "REVOKED",
+    endedAt: new Date().toISOString(),
+  }
+  assistedSessions[result.value.index] = updatedSession
+
+  recordAssistedAuditEvent({
+    session: updatedSession,
+    actorAdminUserId: access.user.id,
+    actorType: isPlatformAdmin ? "PLATFORM_ADMIN" : "TENANT_ADMIN",
+    action: "SESSION_REVOKED",
+    resourceType: "assisted_session",
+    resourceId: updatedSession.id,
+    after: { reason: reason?.trim() || "Session revoked." },
+  })
+
+  return { ok: true, value: updatedSession }
+}
+
+export function listAssistedAuditEvents(
+  authorizationHeader: string | null | undefined,
+  sessionId: string,
+) {
+  const access = resolveDemoAccess(authorizationHeader)
+  const result = getAssistedSessionForAccess(access, sessionId)
+  if (!result.ok) {
+    return result
+  }
+
+  const items = assistedAuditEvents
+    .filter((event) => event.proxySessionId === sessionId)
+    .sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt))
+
+  return {
+    ok: true as const,
+    value: { items },
+  }
+}
+
+export function getAssistedHandoverReport(
+  authorizationHeader: string | null | undefined,
+  sessionId: string,
+): AssistedSessionActionResult<HandoverReport> {
+  const access = resolveDemoAccess(authorizationHeader)
+  const result = getAssistedSessionForAccess(access, sessionId)
+  if (!result.ok) {
+    return result
+  }
+
+  const report = assistedHandoverReports.find((item) => item.sessionId === sessionId)
+  if (!report) {
+    return { ok: false, status: 404, message: "Handover report not found." }
+  }
+
+  return {
+    ok: true,
+    value: report,
+  }
+}
+
+export function validateAssistedScopedWrite(
+  authorizationHeader: string | null | undefined,
+  sessionId: string | null | undefined,
+  tenantExternalId: string,
+  requiredScope: AssistedSessionScope,
+): AssistedSessionActionResult<AdminProxySession> {
+  if (!sessionId) {
+    return { ok: false, status: 400, message: "Missing assisted session header." }
+  }
+
+  const access = resolveDemoAccess(authorizationHeader)
+  const result = getAssistedSessionForAccess(access, sessionId)
+  if (!result.ok) {
+    return result
+  }
+
+  if (!access) {
+    return { ok: false, status: 401, message: "Unauthorized." }
+  }
+
+  if (!isPlatformSuperAdminDemoUser(access.demoUser)) {
+    return { ok: false, status: 403, message: "Only platform super admin can execute assisted scoped actions." }
+  }
+
+  if (result.value.session.status !== "ACTIVE") {
+    return { ok: false, status: 409, message: "Assisted session must be active for scoped writes." }
+  }
+
+  if (result.value.session.tenantId !== tenantExternalId) {
+    return { ok: false, status: 403, message: "Tenant mismatch for assisted session." }
+  }
+
+  if (!result.value.session.scopes.includes(requiredScope)) {
+    return { ok: false, status: 403, message: "Assisted session scope does not permit this action." }
+  }
+
+  return { ok: true, value: result.value.session }
+}
+
+export function recordAssistedScopedAction(
+  authorizationHeader: string | null | undefined,
+  sessionId: string | null | undefined,
+  tenantExternalId: string,
+  requiredScope: AssistedSessionScope,
+  payload: {
+    action: string
+    resourceType: string
+    resourceId?: string | null
+    before?: Record<string, unknown> | null
+    after?: Record<string, unknown> | null
+  },
+): AssistedSessionActionResult<AdminProxySession> {
+  const validation = validateAssistedScopedWrite(
+    authorizationHeader,
+    sessionId,
+    tenantExternalId,
+    requiredScope,
+  )
+  if (!validation.ok) {
+    return validation
+  }
+
+  const access = resolveDemoAccess(authorizationHeader)
+  if (!access) {
+    return { ok: false, status: 401, message: "Unauthorized." }
+  }
+  const result = getAssistedSessionForAccess(access, validation.value.id)
+  if (!result.ok) {
+    return result
+  }
+
+  recordAssistedAuditEvent({
+    session: result.value.session,
+    actorAdminUserId: access.user.id,
+    actorType: "PLATFORM_ADMIN",
+    action: payload.action,
+    resourceType: payload.resourceType,
+    resourceId: payload.resourceId ?? null,
+    before: payload.before ?? null,
+    after: payload.after ?? null,
+  })
+
+  return { ok: true, value: result.value.session }
 }
